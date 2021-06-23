@@ -278,17 +278,6 @@ class HornetDriver(Driver):
             sorted_stations.append(stations[k])
 
         self.lmdi("19")
-        self.lmdi("15")
-        # select stations
-        if 8 in stations:
-            self.lmdi("14")
-        if 2 in stations:
-            self.lmdi("11")
-        if 7 in stations:
-            self.lmdi("13")
-        if 3 in stations:
-            self.lmdi("12")
-        self.lmdi("15")
         self.lmdi("4")
 
         for msns in sorted_stations:
@@ -301,7 +290,6 @@ class HornetDriver(Driver):
                 n += 1
 
             self.lmdi("13")
-        self.lmdi("6")
 
     def enter_all(self, profile):
         self.enter_missions(self.validate_waypoints(profile.msns_as_list))
