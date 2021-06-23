@@ -147,3 +147,7 @@ DCS-BIOS: https://github.com/DCSFlightpanels/dcs-bios
 ## Other credits
 
 [PyMGRS](https://github.com/aydink/pymgrs) by aydink
+
+
+## Build
+[Build](./documentation/build.md)

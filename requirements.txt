@@ -12,3 +12,4 @@ Desktopmagic
 pywin32
 opencv-python
 setuptools==44.0.0
+pyinstaller

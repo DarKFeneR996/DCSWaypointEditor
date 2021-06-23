@@ -40,14 +40,14 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
         return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
     else:
         lat_deg = str(abs(round(latlong.lat.degree)))
-        lat_min = str(round(latlong.lat.decimal_minute, precision))
+        lat_min = str(format(latlong.lat.decimal_minute, str(precision/10)+"f"))
 
         lat_min_split = lat_min.split(".")
         lat_min_split[0] = lat_min_split[0].zfill(zfill_minutes)
         lat_min = ".".join(lat_min_split)
 
         lon_deg = str(abs(round(latlong.lon.degree))).zfill(easting_zfill)
-        lon_min = str(round(latlong.lon.decimal_minute, precision))
+        lon_min = str(format(latlong.lon.decimal_minute, str(precision/10)+"f"))
 
         lon_min_split = lon_min.split(".")
         lon_min_split[0] = lon_min_split[0].zfill(zfill_minutes)
@@ -173,7 +173,7 @@ class HornetDriver(Driver):
             if elev:
                 self.ufc("OSB3")
                 self.ufc("OSB1")
-                self.enter_number(elev)
+                self.enter_number(elev if elev>=0 else 0)
         else:
             self.ufc("OSB1")
             if latlong.lat.degree > 0:
@@ -662,7 +662,7 @@ class ViperDriver(Driver):
         self.icp_btn("ENTR")
 
     def enter_coords(self, latlong):
-        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, zfill_minutes=3, one_digit_seconds=False, precision=3)
         self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
