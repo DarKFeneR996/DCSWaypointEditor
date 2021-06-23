@@ -40,14 +40,14 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
         return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
     else:
         lat_deg = str(abs(round(latlong.lat.degree)))
-        lat_min = str(round(latlong.lat.decimal_minute, precision))
+        lat_min = str(format(latlong.lat.decimal_minute, str(precision/10)+"f"))
 
         lat_min_split = lat_min.split(".")
         lat_min_split[0] = lat_min_split[0].zfill(zfill_minutes)
         lat_min = ".".join(lat_min_split)
 
         lon_deg = str(abs(round(latlong.lon.degree))).zfill(easting_zfill)
-        lon_min = str(round(latlong.lon.decimal_minute, precision))
+        lon_min = str(format(latlong.lon.decimal_minute, str(precision/10)+"f"))
 
         lon_min_split = lon_min.split(".")
         lon_min_split[0] = lon_min_split[0].zfill(zfill_minutes)

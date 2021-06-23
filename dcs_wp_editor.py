@@ -9,7 +9,7 @@ import logging
 from pyproj import datadir, _datadir
 
 
-version = "v1.0.0-viral.1"
+version = "v1.0.0-viral.2"
 
 
 def main():
