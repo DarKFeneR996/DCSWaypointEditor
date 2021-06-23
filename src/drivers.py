@@ -173,7 +173,7 @@ class HornetDriver(Driver):
             if elev:
                 self.ufc("OSB3")
                 self.ufc("OSB1")
-                self.enter_number(elev)
+                self.enter_number(elev if elev>=0 else 0)
         else:
             self.ufc("OSB1")
             if latlong.lat.degree > 0:
