@@ -38,7 +38,7 @@ def install_dcs_bios(dcs_path):
             with zipfile.ZipFile(tmp_file) as zip_ref:
                 zip_ref.extractall(tmp_dir)
 
-            copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "Scripts\\DCS-BIOS")
+            copytree(tmp_dir + '\\dcs-bios-0.10.0', dcs_path + "Scripts\\DCS-BIOS")
 
             PyGUI.Popup(f'DCS-BIOS v{DCS_BIOS_VERSION} successfully downloaded and installed')
 
