@@ -97,8 +97,8 @@ def exception_gui(exc_info):
 
 
 def check_version(current_version):
-    version_url = "https://raw.githubusercontent.com/Santi871/DCSWaypointEditor/master/release_version.txt"
-    releases_url = "https://github.com/Santi871/DCSWaypointEditor/releases"
+    version_url = "https://raw.githubusercontent.com/Viral-51stvfw/DCSWaypointEditor/a8e59ffe9f3fb126ebd1342623d5a890c0caba9b/release_version.txt"
+    releases_url = "https://github.com/Viral-51stvfw/DCSWaypointEditor/releases"
 
     try:
         with urllib.request.urlopen(version_url) as response:
