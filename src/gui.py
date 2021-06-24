@@ -97,7 +97,7 @@ def exception_gui(exc_info):
 
 
 def check_version(current_version):
-    version_url = "https://raw.githubusercontent.com/Viral-51stvfw/DCSWaypointEditor/meatservos-f16-fix/release_version.txt"
+    version_url = "https://raw.githubusercontent.com/Viral-51stvfw/DCSWaypointEditor/master/release_version.txt"
     releases_url = "https://github.com/Viral-51stvfw/DCSWaypointEditor/releases"
 
     try:
@@ -109,7 +109,7 @@ def check_version(current_version):
     except (urllib.error.HTTPError, urllib.error.URLError):
         return False
 
-    new_version = html.decode("utf-8")
+    new_version = html.decode("utf-8").rstrip()
     if new_version != current_version:
         popup_answer = PyGUI.PopupYesNo(
             f"New version available: {new_version}\nDo you wish to update?")
