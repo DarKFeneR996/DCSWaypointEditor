@@ -640,10 +640,10 @@ class GUI:
 
         if not tomcat_mode:
             elevation = split_string[1].replace(' ', '')
-            if "ft" in elevation:
-                elevation = int(elevation.replace("ft", ""))
-            elif "m" in elevation:
-                elevation = round(int(elevation.replace("m", ""))*3.281)
+            if "FT" in elevation:
+                elevation = int(elevation.replace("FT", ""))
+            elif "M" in elevation:
+                elevation = round(int(elevation.replace("M", ""))*3.281)
             else:
                 raise ValueError("Unable to parse elevation: " + elevation)
         else:
