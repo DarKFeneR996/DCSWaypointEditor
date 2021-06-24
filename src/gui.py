@@ -97,7 +97,7 @@ def exception_gui(exc_info):
 
 
 def check_version(current_version):
-    version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/convert-to-51st/release_version.txt"
+    version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/master/release_version.txt"
     releases_url = "https://github.com/51st-Vfw/DCSWaypointEditor/releases"
 
     try:
