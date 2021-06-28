@@ -81,6 +81,7 @@ class DCSWyptEdGUI:
         self.logger = get_logger("gui")
         self.editor = editor
         self.software_version = software_version
+        self.profile = None
         self.scaled_dcs_gui = False
         self.is_dcs_f10_enabled = False
         self.is_dcs_f10_tgt_add = False
@@ -870,9 +871,12 @@ class DCSWyptEdGUI:
     # update ui state of widgets linked to a change in elevation (ft)
     #
     def do_waypoint_linked_update_elev_ft(self):
-        elevation = self.values['ux_elev_ft']
-        if elevation:
-            self.window.Element('ux_elev_m').Update(round(int(elevation)/3.281))
+        try:
+            elevation = float(self.values['ux_elev_ft'])
+        except:
+            elevation = None
+        if elevation is not None:
+            self.window.Element('ux_elev_m').Update(round(elevation/3.281))
         else:
             self.window.Element('ux_elev_m').Update("")
         self.update_gui_control_enable_state()
@@ -880,9 +884,12 @@ class DCSWyptEdGUI:
     # update ui state of widgets linked to a change in elevation (m)
     #
     def do_waypoint_linked_update_elev_m(self):
-        elevation = self.values['ux_elev_m']
-        if elevation:
-            self.window.Element('ux_elev_ft').Update(round(int(elevation)*3.281))
+        try:
+            elevation = float(self.values['ux_elev_m'])
+        except:
+            elevation = None
+        if elevation is not None:
+            self.window.Element('ux_elev_ft').Update(round(elevation*3.281))
         else:
             self.window.Element('ux_elev_ft').Update("")
         self.update_gui_control_enable_state()
@@ -916,6 +923,7 @@ class DCSWyptEdGUI:
     # might not have widgets), make sure to do appropriate ui updates here.
 
     def do_dcs_f10_capture(self):
+        self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         if self.is_dcs_f10_tgt_add:
             try:
@@ -926,6 +934,7 @@ class DCSWyptEdGUI:
                 if added is None:
                     self.logger.error("Failed to add waypoint from capture")
             except (IndexError, ValueError, TypeError):
+                # TODO: present through gui? mind different threads when called from keyboard handler...
                 self.logger.error("Failed to parse captured text", exc_info=True)
         else:
             try:
@@ -935,11 +944,13 @@ class DCSWyptEdGUI:
                 self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
                 self.do_waypoint_linked_update_elev_ft()
             except (IndexError, ValueError, TypeError):
+                # TODO: present through gui? mind different threads when called from keyboard handler...
                 self.logger.error("Failed to parse captured text", exc_info=True)
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
 
     def do_dcs_f10_capture_tgt_toggle(self):
+        self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
         self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
         self.update_gui_control_enable_state()
 
@@ -953,6 +964,7 @@ class DCSWyptEdGUI:
                 self.editor.enter_all(tmp_profile)
                 self.editor.set_driver(self.profile.aircraft)
         except:
+            # TODO: present through gui? mind different threads when called from keyboard handler...
             self.logger.error(f"Failed to load mission file '{self.editor.prefs.path_mission}'")
         
 
