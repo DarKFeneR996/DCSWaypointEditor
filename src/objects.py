@@ -1,9 +1,12 @@
 from dataclasses import dataclass, asdict
+from operator import pos
 from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
 import urllib.request
-from os import walk, path
+import re
+import xml.etree.ElementTree as xml
+from os import altsep, walk, path
 from src.logger import get_logger
 
 from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
@@ -276,7 +279,7 @@ class Profile:
         return readable_string
 
     @staticmethod
-    def from_string(profile_string):
+    def from_string_json(profile_string):
         profile_data = json.loads(profile_string)
         try:
             profile_name = profile_data["name"]
@@ -288,10 +291,49 @@ class Profile:
             if profile.profilename:
                 profile.save()
             return profile
-
         except Exception as e:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
+
+    @staticmethod
+    def from_string_xml(profile_string):
+        try:
+            root = xml.fromstring(profile_string)
+            wps = []
+            for wypt in root.iter('Waypoint'):
+                nam = wypt.find("Name")
+                pos = wypt.find("Position")
+                lat = pos.find("Latitude")
+                lon = pos.find("Longitude")
+                alt = pos.find("Altitude")
+                if lat is None or lon is None:
+                    raise ValueError("Failed to find position in XML waypoint")
+                if alt is None:
+                    elev = 0.0
+                else:
+                    elev = int(float(alt.text))
+                if nam is None:
+                    name = ""
+                else:
+                    name = nam.text.replace("\n", " ")
+                wp = Waypoint(wp_type="WP", name=name,
+                              position=LatLon(Latitude(lat.text), Longitude(lon.text)), elevation=elev)
+                wps.append(wp)
+            msns = []
+            # TODO: other waypoint types?
+            profile = Profile("", waypoints=wps+msns, aircraft="viper")
+            return profile
+        except Exception as e:
+            logger.error(e)
+            raise ValueError("Failed to load profile from XML data")
+    
+    @staticmethod
+    def from_string(profile_string):
+        result = re.findall(r"^\<\?(xml) ", profile_string)
+        if result is not None:
+            return Profile.from_string_xml(profile_string)
+        else:
+            return Profile.from_string_json(profile_string)
 
     def save(self, profilename=None):
         delete_list = list()

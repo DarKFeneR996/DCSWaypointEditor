@@ -57,18 +57,15 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
 
 
 class Driver:
-    def __init__(self, logger, config, host="127.0.0.1", port=7778):
+    def __init__(self, logger, prefs, host="127.0.0.1", port=7778):
         self.logger = logger
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.host, self.port = host, port
-        self.config = config
+        self.prefs = prefs
         self.limits = dict()
 
-        try:
-            self.short_delay = float(self.config.get("PREFERENCES", "button_release_short_delay"))
-            self.medium_delay = float(self.config.get("PREFERENCES", "button_release_medium_delay"))
-        except NoOptionError:
-            self.short_delay, self.medium_delay = 0.2, 0.5
+        self.short_delay = float(self.prefs.dcs_btn_rel_delay_short)
+        self.medium_delay = float(self.prefs.dcs_btn_rel_delay_medium)
 
     def press_with_delay(self, key, delay_after=None, delay_release=None, raw=False):
         if not key:

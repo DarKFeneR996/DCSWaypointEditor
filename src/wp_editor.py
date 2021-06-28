@@ -8,17 +8,17 @@ from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver,
 
 class WaypointEditor:
 
-    def __init__(self, settings):
+    def __init__(self, prefs):
         self.logger = get_logger("driver")
-        self.settings = settings
-        self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
+        self.prefs = prefs
+        self.db = DatabaseInterface(self.prefs.profile_db_name)
         self.default_bases = default_bases
-        self.drivers = dict(hornet=HornetDriver(self.logger, settings),
-                            harrier=HarrierDriver(self.logger, settings),
-                            mirage=MirageDriver(self.logger, settings),
-                            tomcat=TomcatDriver(self.logger, settings),
-                            warthog=WarthogDriver(self.logger, settings),
-                            viper=ViperDriver(self.logger, settings))
+        self.drivers = dict(hornet=HornetDriver(self.logger, self.prefs),
+                            harrier=HarrierDriver(self.logger, self.prefs),
+                            mirage=MirageDriver(self.logger, self.prefs),
+                            tomcat=TomcatDriver(self.logger, self.prefs),
+                            warthog=WarthogDriver(self.logger, self.prefs),
+                            viper=ViperDriver(self.logger, self.prefs))
         self.driver = self.drivers["hornet"]
 
     def set_driver(self, driver_name):
@@ -29,7 +29,7 @@ class WaypointEditor:
 
     def enter_all(self, profile):
         self.logger.info(f"Entering waypoints for aircraft: {profile.aircraft}")
-        sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
+        sleep(int(self.prefs.dcs_grace_period))
         self.driver.enter_all(profile)
 
     def stop(self):

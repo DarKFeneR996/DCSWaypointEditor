@@ -1,38 +1,39 @@
-from configparser import ConfigParser
 from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
-from src.gui import GUI, exception_gui, check_version
-from src.first_setup import first_time_setup
+from src.gui import DCSWyptEdGUI, exception_gui, check_version
 from src.objects import generate_default_bases
+from src.prefs_gui import PrefsGUI
+from src.prefs_manager import PrefsManager
 import traceback
 import logging
-from pyproj import datadir, _datadir
 
 
-version = "v1.0.0-51stVFW.7"
+version = "v1.0.0-raven_BETA.1"
 
 
 def main():
-    try:
-        open("settings.ini", "r").close()
-        first_time = False
-    except FileNotFoundError:
-        first_time = True
+    prefs = PrefsManager()
 
-    update_exit = check_version(version)
-    if update_exit:
-        return
+    if prefs.is_auto_upd_check == "true":
+        update_exit = check_version(version)
+        if update_exit:
+            return
 
-    setup_completed = not first_time or first_time_setup()
+    if prefs.is_new_prefs_file == False:
+        setup_completed = True
+    else:
+        setup_logger = get_logger("setup")
+        setup_logger.info("Running first time setup...")
+        prefs_gui = PrefsGUI(prefs, setup_logger)
+        setup_completed = prefs_gui.run()
+        setup_logger.info("First time setup completes with {setup_completed}")
 
     if setup_completed:
         generate_default_bases()
         log_settings(version)
-        settings = ConfigParser()
-        settings.read("settings.ini")
-        editor = WaypointEditor(settings)
+        editor = WaypointEditor(prefs)
 
-        gui = GUI(editor, version)
+        gui = DCSWyptEdGUI(editor, version)
 
         try:
             gui.run()

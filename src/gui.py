@@ -1,9 +1,13 @@
+from logging import disable
+from typing import Sequence
+from src.dcs_bios import detect_dcs_bios
 from src.objects import Profile, Waypoint, MSN
 from src.logger import get_logger
+from src.prefs_gui import PrefsGUI
+from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from peewee import DoesNotExist
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
-from PIL import ImageGrab, ImageEnhance, ImageOps
-from pathlib import Path
+from PIL import ImageEnhance, ImageOps
 import pytesseract
 import keyboard
 import os
@@ -30,10 +34,8 @@ def json_zip(j):
     ).decode('ascii')
     return j
 
-
 def json_unzip(j):
     return zlib.decompress(base64.b64decode(j)).decode('utf-8')
-
 
 def strike(text):
     result = '\u0336'
@@ -43,60 +45,13 @@ def strike(text):
             result = result + '\u0336'
     return result
 
-
 def unstrike(text):
     return text.replace('\u0336', '')
-
-
-def detect_dcs_bios(dcs_path):
-    dcs_bios_detected = False
-
-    try:
-        with open(dcs_path + "\\Scripts\\Export.lua", "r") as f:
-            if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and \
-                    os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS"):
-                dcs_bios_detected = True
-    except FileNotFoundError:
-        pass
-    return dcs_bios_detected
-
-
-def first_time_setup_gui():
-    default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
-    default_tesseract_path = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
-    dcs_bios_detected = "Detected" if detect_dcs_bios(
-        default_dcs_path) else "Not detected"
-
-    layout = [
-        [PyGUI.Text("DCS User Folder Path:"), PyGUI.Input(default_dcs_path, key="dcs_path", enable_events=True),
-         PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FOLDER, target="dcs_path")],
-
-        [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(default_tesseract_path, key="tesseract_path"),
-         PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
-
-        [PyGUI.Text("F10 Map Capture Hotkey:"), PyGUI.Input(
-            "ctrl+t", key="capture_key")],
-
-        [PyGUI.Text("Quick Capture Toggle Hotkey:"), PyGUI.Input(
-            "ctrl+shift+t", key="quick_capture_hotkey")],
-
-        [PyGUI.Text("Enter into Aircraft Hotkey (Optional):"), PyGUI.Input(
-            "", key="enter_aircraft_hotkey")],
-
-        [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
-         PyGUI.Button("Install", key="install_button", disabled=dcs_bios_detected == "Detected")],
-    ]
-
-    return PyGUI.Window("First time setup", [[PyGUI.Frame("Settings", layout)],
-                                             [PyGUI.Button("Accept", key="accept_button", pad=((250, 1), 1),
-                                                           disabled=dcs_bios_detected != "Detected")]])
-
 
 def exception_gui(exc_info):
     return PyGUI.PopupOK("An exception occured and the program terminated execution:\n\n" + exc_info)
 
-
-def check_version(current_version):
+def check_version(cur_version):
     version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/master/release_version.txt"
     releases_url = "https://github.com/51st-Vfw/DCSWaypointEditor/releases"
 
@@ -109,10 +64,10 @@ def check_version(current_version):
     except (urllib.error.HTTPError, urllib.error.URLError):
         return False
 
-    new_version = html.decode("utf-8").rstrip()
-    if new_version != current_version:
-        popup_answer = PyGUI.PopupYesNo(
-            f"New version available: {new_version}\nDo you wish to update?")
+    new_version = html.decode("utf-8")
+    if new_version != cur_version:
+        message = f"A new version is available ({new_version}).\nDo you want to update from {cur_version}?"
+        popup_answer = PyGUI.PopupYesNo(message, title="New Version Available")
 
         if popup_answer == "Yes":
             webbrowser.open(releases_url)
@@ -121,332 +76,64 @@ def check_version(current_version):
             return False
 
 
-def try_get_setting(settings, setting_name, setting_fallback, section="PREFERENCES"):
-    if settings.has_option(section, setting_name):
-        return settings.get(section, setting_name)
-    else:
-        settings[section][setting_name] = setting_fallback
-        with open("settings.ini", "w") as configfile:
-            settings.write(configfile)
-        return setting_fallback
-
-
-class GUI:
+class DCSWyptEdGUI:
     def __init__(self, editor, software_version):
         self.logger = get_logger("gui")
         self.editor = editor
-        self.captured_map_coords = None
-        self.profile = Profile('')
-        self.profile.aircraft = "hornet"
-        self.exit_quick_capture = False
-        self.values = None
-        self.capturing = False
-        self.capture_key = try_get_setting(self.editor.settings, "capture_key", "ctrl+t")
-        self.quick_capture_hotkey = try_get_setting(self.editor.settings, "quick_capture_hotkey", "ctrl+alt+t")
-        self.enter_aircraft_hotkey = try_get_setting(self.editor.settings, "enter_aircraft_hotkey", "ctrl+shift+t")
-        self.save_debug_images = try_get_setting(self.editor.settings, "save_debug_images", "false")
         self.software_version = software_version
-        self.is_focused = True
         self.scaled_dcs_gui = False
+        self.is_dcs_f10_enabled = False
+        self.is_dcs_f10_tgt_add = False
+        self.values = None
         self.selected_wp_type = "WP"
 
+        self.load_new_profile()
+
         try:
-            with open(f"{self.editor.settings.get('PREFERENCES', 'dcs_path')}\\Config\\options.lua", "r") as f:
+            with open(f"{self.editor.prefs.path_dcs}\\Config\\options.lua", "r") as f:
                 dcs_settings = lua.decode(f.read().replace("options = ", ""))
                 self.scaled_dcs_gui = dcs_settings["graphics"]["scaleGui"]
+            self.logger.info(f"DCS GUI scale is: {self.scaled_dcs_gui}")
         except (FileNotFoundError, ValueError, TypeError):
             self.logger.error("Failed to decode DCS settings", exc_info=True)
 
-        tesseract_path = self.editor.settings['PREFERENCES'].get(
-            'tesseract_path', "tesseract")
-        self.logger.info(f"Tesseract path is: {tesseract_path}")
-        pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        self.logger.info(f"Tesseract path is: {self.editor.prefs.path_tesseract}")
+        pytesseract.pytesseract.tesseract_cmd = self.editor.prefs.path_tesseract
         try:
             self.tesseract_version = pytesseract.get_tesseract_version()
-            self.capture_status = "Status: Not capturing"
-            self.capture_button_disabled = False
         except pytesseract.pytesseract.TesseractNotFoundError:
             self.tesseract_version = None
-            self.capture_status = "Status: Tesseract not found"
-            self.capture_button_disabled = True
-
+            PyGUI.Popup("Unable to find tesseract, DCS coordinate capture will be disabled.", title="Error")
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
+
         self.window = self.create_gui()
-        keyboard.add_hotkey(self.quick_capture_hotkey, self.toggle_quick_capture)
-        if self.enter_aircraft_hotkey != '':
-            keyboard.add_hotkey(self.enter_aircraft_hotkey, self.enter_coords_to_aircraft)
 
-    def exit_capture(self):
-        self.exit_quick_capture = True
 
-    @staticmethod
-    def get_profile_names():
+    # ================ profile support
+
+
+    def load_new_profile(self):
+        self.profile = Profile('')
+        self.profile.aircraft = self.editor.prefs.airframe_default
+
+    def profile_names(self):
         return [profile.name for profile in Profile.list_all()]
 
-    def create_gui(self):
-        self.logger.debug("Creating GUI")
-
-        latitude_col1 = [
-            [PyGUI.Text("Degrees")],
-            [PyGUI.InputText(size=(10, 1), key="latDeg", enable_events=True)],
-        ]
-
-        latitude_col2 = [
-            [PyGUI.Text("Minutes")],
-            [PyGUI.InputText(size=(10, 1), key="latMin", enable_events=True)],
-        ]
-
-        latitude_col3 = [
-            [PyGUI.Text("Seconds")],
-            [PyGUI.InputText(size=(10, 1), key="latSec",
-                             pad=(5, (3, 10)), enable_events=True)],
-        ]
-
-        longitude_col1 = [
-            [PyGUI.Text("Degrees")],
-            [PyGUI.InputText(size=(10, 1), key="lonDeg", enable_events=True)],
-        ]
-
-        longitude_col2 = [
-            [PyGUI.Text("Minutes")],
-            [PyGUI.InputText(size=(10, 1), key="lonMin", enable_events=True)],
-        ]
-
-        longitude_col3 = [
-            [PyGUI.Text("Seconds")],
-            [PyGUI.InputText(size=(10, 1), key="lonSec",
-                             pad=(5, (3, 10)), enable_events=True)],
-        ]
-
-        frameelevationlayout = [
-            [PyGUI.Text("Feet")],
-            [PyGUI.InputText(size=(20, 1), key="elevFeet",
-                             enable_events=True)],
-            [PyGUI.Text("Meters")],
-            [PyGUI.InputText(size=(20, 1), key="elevMeters",
-                             enable_events=True, pad=(5, (3, 10)))],
-        ]
-
-        mgrslayout = [
-            [PyGUI.InputText(size=(20, 1), key="mgrs",
-                             enable_events=True, pad=(5, (3, 12)))],
-        ]
-
-        framedatalayoutcol2 = [
-            [PyGUI.Text("Name")],
-            [PyGUI.InputText(size=(20, 1), key="msnName", pad=(5, (3, 10)))],
-        ]
-
-        framewptypelayout = [
-            [PyGUI.Radio("WP", group_id="wp_type", default=True, enable_events=True, key="WP"),
-             PyGUI.Radio("MSN", group_id="wp_type",
-                         enable_events=True, key="MSN"),
-             PyGUI.Radio("FP", group_id="wp_type", key="FP", enable_events=True),
-             PyGUI.Radio("ST", group_id="wp_type", key="ST", enable_events=True)],
-            [PyGUI.Radio("IP", group_id="wp_type", key="IP", enable_events=True),
-             PyGUI.Radio("DP", group_id="wp_type", key="DP", enable_events=True),
-             PyGUI.Radio("HA", group_id="wp_type", key="HA", enable_events=True),
-             PyGUI.Radio("HB", group_id="wp_type", key="HB", enable_events=True)],
-            [PyGUI.Button("Quick Capture", disabled=self.capture_button_disabled, key="quick_capture", pad=(5, (3, 8))),
-             PyGUI.Text("Sequence:", pad=((0, 1), 3),
-                        key="sequence_text", auto_size_text=False, size=(8, 1)),
-             PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
-                         auto_size_text=False, size=(5, 1), readonly=True,
-                         key="sequence", enable_events=True)]
-        ]
-
-        frameactypelayout = [
-            [
-                PyGUI.Radio("F/A-18C", group_id="ac_type",
-                            default=True, key="hornet", enable_events=True),
-                PyGUI.Radio("AV-8B", group_id="ac_type",
-                            disabled=False, key="harrier", enable_events=True),
-                PyGUI.Radio("M-2000C", group_id="ac_type",
-                            disabled=False, key="mirage", enable_events=True),
-                PyGUI.Radio("F-14A/B", group_id="ac_type",
-                            disabled=False, key="tomcat", enable_events=True),
-                PyGUI.Radio("A-10C", group_id="ac_type",
-                            disabled=False, key="warthog", enable_events=True),
-            ],
-            [PyGUI.Radio("F-16C", group_id="ac_type", disabled=False, key="viper", enable_events=True),]
-        ]
-
-        framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
-                                                    PyGUI.Column(longitude_col3)]])
-        framelatitude = PyGUI.Frame("Latitude", [[PyGUI.Column(latitude_col1), PyGUI.Column(latitude_col2),
-                                                  PyGUI.Column(latitude_col3)]])
-        frameelevation = PyGUI.Frame(
-            "Elevation", frameelevationlayout, pad=(5, (3, 10)))
-        frameactype = PyGUI.Frame("Aircraft Type", frameactypelayout)
-
-        framepositionlayout = [
-            [framelatitude],
-            [framelongitude],
-            [frameelevation,
-             PyGUI.Column(
-                 [
-                     [PyGUI.Frame("MGRS", mgrslayout)],
-                     [PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled, key="capture",
-                                   pad=(1, (18, 3)))],
-
-                     [PyGUI.Text(self.capture_status, key="capture_status",
-                                 auto_size_text=False, size=(20, 1))],
-                 ]
-             )
-             ],
-
-        ]
-
-        frameposition = PyGUI.Frame("Position", framepositionlayout)
-        framedata = PyGUI.Frame("Data", framedatalayoutcol2)
-        framewptype = PyGUI.Frame("Waypoint Type", framewptypelayout)
-
-        col0 = [
-            [PyGUI.Text("Select profile:")],
-            [PyGUI.Combo(values=[""] + self.get_profile_names(), readonly=True,
-                         enable_events=True, key='profileSelector', size=(27, 1))],
-            [PyGUI.Listbox(values=list(), size=(30, 27),
-                           enable_events=True, key='activesList')],
-            [PyGUI.Button("Add", size=(12, 1)),
-             PyGUI.Button("Update", size=(12, 1))],
-            [PyGUI.Button("Remove", size=(26, 1))],
-            # [PyGUI.Button("Move up", size=(12, 1)),
-            # PyGUI.Button("Move down", size=(12, 1))],
-            [PyGUI.Button("Save profile", size=(12, 1)),
-             PyGUI.Button("Delete profile", size=(12, 1))],
-            [PyGUI.Text(f"Version: {self.software_version}")]
-        ]
-
-        col1 = [
-            [PyGUI.Text("Select preset location")],
-            [PyGUI.Combo(values=[""] + sorted([base.name for _, base in self.editor.default_bases.items()],),
-                         readonly=False, enable_events=True, key='baseSelector'),
-             PyGUI.Button(button_text="F", key="filter")],
-            [framedata, framewptype],
-            [frameposition],
-            [frameactype],
-            [PyGUI.Button("Enter into aircraft", key="enter")],
-        ]
-
-        colmain1 = [
-            [PyGUI.MenuBar([["Profile",
-                             [[
-                                 ["Import", ["Paste as string from clipboard", "Load from encoded file"]]],
-                                 "Export", ["Copy as string to clipboard", "Copy plain text to clipboard",
-                                            "Save as encoded file"],
-                              ]]])],
-            [PyGUI.Column(col1)],
-        ]
-
-        layout = [
-            [PyGUI.Column(col0), PyGUI.Column(colmain1)],
-        ]
-
-        return PyGUI.Window('DCS Waypoint Editor', layout)
-
-    def set_sequence_station_selector(self, mode):
-        if mode is None:
-            self.window.Element("sequence_text").Update(value="Sequence:")
-            self.window.Element("sequence").Update(
-                values=("None", 1, 2, 3), value="None", disabled=True)
-        if mode == "sequence":
-            self.window.Element("sequence_text").Update(value="Sequence:")
-            self.window.Element("sequence").Update(
-                values=("None", 1, 2, 3), value="None", disabled=False)
-        elif mode == "station":
-            self.window.Element("sequence_text").Update(value="    Station:")
-            self.window.Element("sequence").Update(
-                values=(8, 7, 3, 2), value=8, disabled=False)
-
-    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None,
-                        waypoint_type=None):
-
-        if position is not None:
-            latdeg = round(position.lat.degree)
-            latmin = round(position.lat.minute)
-            latsec = round(position.lat.second, 2)
-
-            londeg = round(position.lon.degree)
-            lonmin = round(position.lon.minute)
-            lonsec = round(position.lon.second, 2)
-            mgrs_str = mgrs.encode(mgrs.LLtoUTM(
-                position.lat.decimal_degree, position.lon.decimal_degree), 5)
+    def profile_name_for_ui(self):
+        if self.profile.profilename == "":
+            return "Untitled"
         else:
-            latdeg = ""
-            latmin = ""
-            latsec = ""
+            return self.profile.profilename
 
-            londeg = ""
-            lonmin = ""
-            lonsec = ""
-            mgrs_str = ""
 
-        self.window.Element("latDeg").Update(latdeg)
-        self.window.Element("latMin").Update(latmin)
-        self.window.Element("latSec").Update(latsec)
+    # ================ waypoint support
 
-        self.window.Element("lonDeg").Update(londeg)
-        self.window.Element("lonMin").Update(lonmin)
-        self.window.Element("lonSec").Update(lonsec)
 
-        if elevation is not None:
-            elevation = round(elevation)
-        else:
-            elevation = ""
-
-        self.window.Element("elevFeet").Update(elevation)
-        self.window.Element("elevMeters").Update(
-            round(elevation/3.281) if type(elevation) == int else "")
-        if aircraft is not None:
-            self.window.Element(aircraft).Update(value=True)
-
-        if update_mgrs:
-            self.window.Element("mgrs").Update(mgrs_str)
-        self.window.Refresh()
-
-        if type(name) == str:
-            self.window.Element("msnName").Update(name)
-        else:
-            self.window.Element("msnName").Update("")
-
-        if waypoint_type is not None:
-            self.select_wp_type(waypoint_type)
-
-    def update_waypoints_list(self, set_to_first=False):
-        values = list()
-        self.profile.update_waypoint_numbers()
-
-        for wp in sorted(self.profile.waypoints,
-                         key=lambda waypoint: waypoint.wp_type if waypoint.wp_type != "MSN" else str(waypoint.station)):
-            namestr = str(wp)
-
-            if not self.editor.driver.validate_waypoint(wp):
-                namestr = strike(namestr)
-
-            values.append(namestr)
-
-        if set_to_first:
-            self.window.Element('activesList').Update(values=values, set_to_index=0)
-        else:
-            self.window.Element('activesList').Update(values=values)
-        self.window.Element(self.profile.aircraft).Update(value=True)
-
-    def disable_coords_input(self):
-        for element_name in\
-                ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec", "mgrs", "elevFeet", "elevMeters"):
-            self.window.Element(element_name).Update(disabled=True)
-
-    def enable_coords_input(self):
-        for element_name in\
-                ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec", "mgrs", "elevFeet", "elevMeters"):
-            self.window.Element(element_name).Update(disabled=False)
-
-    def filter_preset_waypoints_dropdown(self):
-        text = self.values["baseSelector"]
-        self.window.Element("baseSelector").\
-            Update(values=[""] + [base.name for _, base in self.editor.default_bases.items() if
-                                  text.lower() in base.name.lower()],
-                   set_to_index=0)
+    def find_selected_waypoint(self):
+        valuestr = unstrike(self.values['ux_prof_wypt_list'][0])
+        for wp in self.profile.waypoints:
+            if str(wp) == valuestr:
+                return wp
 
     def add_waypoint(self, position, elevation, name=None):
         if name is None:
@@ -454,13 +141,15 @@ class GUI:
 
         try:
             if self.selected_wp_type == "MSN":
-                station = int(self.values.get("sequence", 0))
+                station = int(self.values.get('ux_seq_stn_select', 0))
                 number = len(self.profile.stations_dict.get(station, list()))+1
+                print(f"*** MSN station {station}, number {number}")
+                print(f"station_dict {self.profile.stations_dict}")
                 wp = MSN(position=position, elevation=int(elevation) or 0, name=name,
                          station=station, number=number)
 
             else:
-                sequence = self.values["sequence"]
+                sequence = self.values['ux_seq_stn_select']
                 if sequence == "None":
                     sequence = 0
                 else:
@@ -477,12 +166,19 @@ class GUI:
                     self.profile.sequences.append(sequence)
 
             self.profile.waypoints.append(wp)
-            self.update_waypoints_list()
+            self.update_for_waypoint_list_change()
         except ValueError:
-            PyGUI.Popup("Error: missing data or invalid data format")
+            PyGUI.Popup("Error: missing data or invalid data format.")
 
         return True
 
+
+    # ================ dcs f10 map coordinate capture
+
+
+    # capture coordinates from the DCS F10 map using tesseract to perform OCR on the screen. returns
+    # a string with the extracted coordinates.
+    #
     def capture_map_coords(self, x_start=101, x_width=269, y_start=5, y_height=27):
         self.logger.debug("Attempting to capture map coords")
         gui_mult = 2 if self.scaled_dcs_gui else 1
@@ -490,7 +186,7 @@ class GUI:
         dt = datetime.datetime.now()
         debug_dirname = dt.strftime("%Y-%m-%d-%H-%M-%S")
 
-        if self.save_debug_images == "true":
+        if self.editor.prefs.is_tesseract_debug == "true":
             os.mkdir(debug_dirname)
 
         map_image = cv2.imread("data/map.bin")
@@ -499,42 +195,48 @@ class GUI:
         for display_number, image in enumerate(getDisplaysAsImages(), 1):
             self.logger.debug("Looking for map on screen " + str(display_number))
 
-            if self.save_debug_images == "true":
+            if self.editor.prefs.is_tesseract_debug == "true":
                 image.save(debug_dirname + "/screenshot-"+str(display_number)+".png")
 
-            screen_image = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)  # convert it to OpenCV format
-
-            search_result = cv2.matchTemplate(screen_image, map_image, cv2.TM_CCOEFF_NORMED)  # search for the "MAP" text in the screenshot
-            # matchTemplate returns a new greyscale image where the brightness of each pixel corresponds to how good a match there was at that point
-            # so now we search for the 'whitest' pixel
+            # convert screenshot to OpenCV format and search for the "MAP" text. matchTemplate returns a
+            # new greyscale image wherethe brightness of each pixel corresponds to how good a match there
+            # was at that point so now we search for the 'whitest' pixel.
+            #
+            screen_image = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
+            search_result = cv2.matchTemplate(screen_image, map_image, cv2.TM_CCOEFF_NORMED)  
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(search_result)
-            self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) + " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
+            self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) +
+                              " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
             start_x = max_loc[0] + map_image.shape[0]
             start_y = max_loc[1]
 
             if max_val > 0.9:  # better than a 90% match means we are on to something
 
-                search_result = cv2.matchTemplate(screen_image, arrow_image, cv2.TM_CCOEFF_NORMED)  # now we search for the arrow icon
+                # now we search for the arrow icon
+                #
+                search_result = cv2.matchTemplate(screen_image, arrow_image, cv2.TM_CCOEFF_NORMED)
                 min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(search_result)
-                self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) + " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
+                self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) +
+                                  " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
 
                 end_x = max_loc[0]
                 end_y = max_loc[1] + map_image.shape[1]
 
-                self.logger.debug("Capturing " + str(start_x) + "x" + str(start_y) + " to " + str(end_x) + "x" + str(end_y) )
+                self.logger.debug("Capturing " + str(start_x) + "x" + str(start_y) + " to " + str(end_x) +
+                                  "x" + str(end_y))
 
                 lat_lon_image = image.crop([start_x, start_y, end_x, end_y])
 
-                if self.save_debug_images == "true":
+                if self.editor.prefs.is_tesseract_debug == "true":
                     lat_lon_image.save(debug_dirname + "/lat_lon_image.png")
 
                 enhancer = ImageEnhance.Contrast(lat_lon_image)
                 enhanced = enhancer.enhance(6)
-                if self.save_debug_images == "true":
+                if self.editor.prefs.is_tesseract_debug == "true":
                     enhanced.save(debug_dirname + "/lat_lon_image_enhanced.png")
 
                 inverted = ImageOps.invert(enhanced)
-                if self.save_debug_images == "true":
+                if self.editor.prefs.is_tesseract_debug == "true":
                     inverted.save(debug_dirname + "/lat_lon_image_inverted.png")
 
                 captured_map_coords = pytesseract.image_to_string(inverted)
@@ -542,41 +244,18 @@ class GUI:
                 self.logger.debug("Raw captured text: " + captured_map_coords)
                 return captured_map_coords
 
-        self.logger.debug("Raise exception (could not find the map anywhere i guess)")
+        self.logger.debug("Raise exception (could not find the map anywhere i guess?)")
 
-        raise ValueError("F10 map not found")
+        raise ValueError("DCS F10 map not found")
 
-    def export_to_string(self):
-        dump = str(self.profile)
-        encoded = json_zip(dump)
-        pyperclip.copy(encoded)
-        PyGUI.Popup('Encoded string copied to clipboard, paste away!')
-
-    def import_from_string(self):
-        # Load the encoded string from the clipboard
-        encoded = pyperclip.paste()
-        try:
-            decoded = json_unzip(encoded)
-            self.profile = Profile.from_string(decoded)
-            self.profile.profilename = ""
-            self.logger.debug(self.profile.to_dict())
-            self.editor.set_driver(self.profile.aircraft)
-            self.update_waypoints_list(set_to_first=True)
-            self.window.Element("profileSelector").Update(set_to_index=0)
-            PyGUI.Popup('Loaded waypoint data from encoded string successfully')
-        except Exception as e:
-            self.logger.error(e, exc_info=True)
-            PyGUI.Popup('Failed to parse profile from string')
-
-    def load_new_profile(self):
-        self.profile = Profile('')
-
+    # parse the coordinate string extracted from the screen via capture_map_coords. returns a tuple
+    # with position and elevation.
+    #
     def parse_map_coords_string(self, coords_string, tomcat_mode=False):
-        position = None
         coords_string = coords_string.upper()
         # "X-00199287 Z+00523070, 0 ft"   Not sure how to convert this yet
 
-        # "37 T FJ 36255 11628, 5300 ft"  Tessaract did not like this one because the DCS font J looks too much like )
+        # "37 T FJ 36255 11628, 5300 ft"  tesseract did not like this one because the DCS font J looks too much like )
         res = re.match("^(\d+ [a-zA-Z] [a-zA-Z][a-zA-Z] \d+ \d+), ([-]?\d+) (FT|M)", coords_string)
         if res is not None:
             mgrs_string = res.group(1).replace(" ", "")
@@ -650,344 +329,757 @@ class GUI:
         else:
             elevation = self.capture_map_coords(2074, 97, 966, 32)
 
-        self.captured_map_coords = str()
-
-        if position is not None:
-            self.logger.info("Parsed captured text: " + str(position))
-        else:
-            self.logger.info("Position was null for coords_string: " + str(coords_string))
+        self.logger.info("Parsed captured text: " + str(position))
         return position, elevation
 
-    def input_parsed_coords(self):
-        try:
-            captured_coords = self.capture_map_coords()
-            position, elevation = self.parse_map_coords_string(captured_coords)
-            self.update_position(position, elevation, update_mgrs=True)
-            self.update_altitude_elements("meters")
-            self.window.Element('capture_status').Update("Status: Captured")
-            self.logger.debug(
-                "Parsed text as coords succesfully: " + str(position))
-        except (IndexError, ValueError, TypeError):
-            self.logger.error("Failed to parse captured text", exc_info=True)
-            self.window.Element('capture_status').Update(
-                "Status: Failed to capture")
-        finally:
-            self.enable_coords_input()
-            self.window.Element('quick_capture').Update(disabled=False)
-            self.window.Element('capture').Update(
-                text="Capture from DCS F10 map")
-            self.capturing = False
 
-        keyboard.remove_hotkey(self.capture_key)
+    # ================ ui/ux support
 
-    def add_wp_parsed_coords(self):
-        try:
-            captured_coords = self.capture_map_coords()
-            position, elevation = self.parse_map_coords_string(captured_coords)
-        except (IndexError, ValueError, TypeError):
-            self.logger.error("Failed to parse captured text", exc_info=True)
-            return
-        added = self.add_waypoint(position, elevation)
-        if not added:
-            self.stop_quick_capture()
 
-    def toggle_quick_capture(self):
-        if self.capturing:
-            self.stop_quick_capture()
+    # instantiate the gui and set it up according to the editor and preferences
+    #
+    def create_gui(self):
+        self.logger.debug("Creating GUI")
+
+        pois = [""] + sorted([poi.name for _, poi in self.editor.default_bases.items()],)
+        arfm_ui_text = airframe_type_to_ui_text(self.editor.prefs.airframe_default)
+
+        if self.tesseract_version is None:
+            is_dcs_f10_disabled = True
         else:
-            self.start_quick_capture()
+            is_dcs_f10_disabled = False
 
-    def start_quick_capture(self):
-        self.disable_coords_input()
-        self.window.Element('capture').Update(
-            text="Stop capturing")
-        self.window.Element('quick_capture').Update(disabled=True)
-        self.window.Element('capture_status').Update("Status: Capturing...")
+        menu_bar = PyGUI.MenuBar([["DCS WE", ["Preferences...::ux_menu_prefs",
+                                              "---",
+                                              "Check for Updates...::ux_menu_update"]],
+                                  ["File", [[["Import Profile", ["From Clipboard Encoded JSON::ux_menu_imp_clip",
+                                                                 "From Text JSON or CombatFlite XML File...::ux_menu_imp_file"]]],
+                                              "Export Profile", ["To Clipboard as Encoded JSON::ux_menu_exp_clip_enc",
+                                                                 "To Clipboard as Text::ux_menu_exp_clip_plain",
+                                                                 "To Text JSON File...::ux_menu_exp_file"]]],
+                                 ])
+
+        frame_prof = PyGUI.Frame("Profile",
+                                 [[PyGUI.Text("Profile:", size=(8,1), justification="right"),
+                                   PyGUI.Combo(values=[""] + self.profile_names(), readonly=True,
+                                               enable_events=True, key='ux_prof_select', size=(21,1))],
+                                  [PyGUI.Text("Airframe:", size=(8,1), justification="right"),
+                                   PyGUI.Combo(values=airframe_list(), default_value=arfm_ui_text,
+                                               enable_events=True, key='ux_prof_afrm_select', size=(21,1))],
+                                  [PyGUI.Text("Waypoints in Profile:")],
+                                  [PyGUI.Listbox(values=list(), size=(32,18),
+                                                 enable_events=True, key='ux_prof_wypt_list')],
+                                  [PyGUI.Button("Save", key='ux_prof_save', size=(6,1), pad=(6,(10,6))),
+                                   PyGUI.Button("Delete", key='ux_prof_delete', size=(6,1), pad=(6,(10,6))),
+                                   PyGUI.Button("Enter in Jet", key='ux_prof_enter', size=(10,1), pad=((26,6),(10,6)))],
+                                 ])
+
+        frame_coord = PyGUI.Frame("Coordinates",
+                                  [[PyGUI.Text("Latitude:", size=(8,1), justification="right"),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lat_deg', enable_events=True),
+                                    PyGUI.Text("(deg)", pad=((0,12),0)),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lat_min', enable_events=True),
+                                    PyGUI.Text("(min)", pad=((0,12),0)),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lat_sec', enable_events=True),
+                                    PyGUI.Text("(sec)", pad=((0,12),0))],
+ 
+                                   [PyGUI.Text("Longitude:", size=(8,1), justification="right"),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lon_deg', enable_events=True),
+                                    PyGUI.Text("(deg)", pad=((0,12),0)),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lon_min', enable_events=True),
+                                    PyGUI.Text("(min)", pad=((0,12),0)),
+                                    PyGUI.InputText(size=(8, 1), key='ux_lon_sec', enable_events=True),
+                                    PyGUI.Text("(sec)", pad=((0,12),0))],
+ 
+                                   [PyGUI.Text("MGRS:", size=(8,1), justification="right", pad=(5,(12,12))),
+                                    PyGUI.InputText(size=(25, 1), key='ux_mgrs', enable_events=True)],
+ 
+                                   [PyGUI.Text("Elevation:", size=(8,1), justification="right"),
+                                    PyGUI.InputText(size=(8, 1), key='ux_elev_ft', enable_events=True),
+                                    PyGUI.Text("(ft)", pad=((0,29),0)),
+                                    PyGUI.InputText(size=(8, 1), key='ux_elev_m', enable_events=True),
+                                    PyGUI.Text("(m)", pad=((0,12),0))]
+                                  ])
+
+        frame_capt = PyGUI.Frame("DCS Coordinate Capture",
+                                 [[PyGUI.Checkbox("Enable capture from DCS F10 map into", pad=((6,3),6),
+                                                  default=False, enable_events=True, key='ux_dcs_f10_enable',
+                                                  disabled=is_dcs_f10_disabled),
+                                   PyGUI.Combo(values=["Coordinate Fields", "New Waypoint"],
+                                               enable_events=True, key='ux_dcs_f10_tgt_select',
+                                               default_value="Coordinate Fields", pad=((0,18),6))],
+                                 ])
+
+        frame_wypt = PyGUI.Frame("Waypoint",
+                                 [[PyGUI.Text("Set up from predefined location:", pad=(6,(0,16))),
+                                   PyGUI.Combo(values=pois, readonly=False, enable_events=True,
+                                               key='ux_poi_wypt_select', size=(20,1), pad=(6,(0,16))),
+                                   PyGUI.Button(button_text="Filter", size=(6,1), key='ux_poi_filter', pad=(6,(0,16)))],
+                                  [PyGUI.Text("Name:", size=(8,1), justification="right"),
+                                   PyGUI.InputText(size=(50, 1), key='ux_wypt_name')],
+                                  [PyGUI.Text("Type:", size=(8,1), justification="right"),
+                                    PyGUI.Combo(values=["WP", "MSN", "FP", "ST", "IP", "DP", "HA", "HB"],
+                                               default_value="WP", enable_events=True, readonly=True,
+                                               key='ux_wypt_type_select', size=(8,1))],
+                                  [PyGUI.Text("Sequence:", key="ux_seq_sta_text", size=(8,1), justification="right"),
+                                   PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
+                                               enable_events=True, readonly=True, key='ux_seq_stn_select',
+                                               size=(8,1))],
+                                  [frame_coord],
+                                  [frame_capt],
+                                  [PyGUI.Button("Add", key='ux_wypt_add', size=(14, 1), pad=((6,16),(12,6))),
+                                   PyGUI.Button("Update", key='ux_wypt_update', size=(14, 1), pad=((16,16),(12,6))),
+                                   PyGUI.Button("Remove", key='ux_wypt_delete', size=(14, 1), pad=((16,6),(12,6)))]
+                                 ])
+
+        frame_stat = PyGUI.Frame("Status",
+                                 [[PyGUI.Text("Progress:", size=(8,1), justification="right"),
+                                   PyGUI.ProgressBar(1.0, size=(27,16)),
+                                   PyGUI.Button("Cancel", disabled=True)]
+                                 ])
+
+        col_0 = PyGUI.Column([[menu_bar],
+                              [frame_prof],
+                              [PyGUI.Text(f"Version: {self.software_version}")]], vertical_alignment="top")
+        col_1 = PyGUI.Column([[frame_wypt], [frame_stat]], vertical_alignment="top")
+
+        return PyGUI.Window('DCS Waypoint Editor', [[col_0, col_1]])
+
+    # update state in response to a profile change.
+    #
+    def update_for_profile_change(self, set_to_first=False, update_enable=True):
+        profiles = [""] + self.profile_names()
+        self.window.Element('ux_prof_select').Update(values=profiles,
+                                                     set_to_index=profiles.index(self.profile.profilename))
+        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        ac_ui_text = airframe_type_to_ui_text(self.profile.aircraft)
+        self.window.Element('ux_prof_afrm_select').Update(value=ac_ui_text)
+        self.editor.set_driver(self.profile.aircraft)
+        self.update_for_waypoint_list_change(set_to_first=set_to_first, update_enable=False)
+        self.update_for_coords_change()
+        self.window.Element('ux_prof_wypt_list').Update(set_to_index=[])
+        if update_enable:
+            self.update_gui_control_enable_state()
+
+    # update state in response to changes to the waypoint list.
+    #
+    def update_for_waypoint_list_change(self, set_to_first=False, update_enable=True):
+        values = list()
+        self.profile.update_waypoint_numbers()
+
+        for wp in sorted(self.profile.waypoints,
+                         key=lambda waypoint: waypoint.wp_type if waypoint.wp_type != "MSN" else str(waypoint.station)):
+            namestr = str(wp)
+            if not self.editor.driver.validate_waypoint(wp):
+                namestr = strike(namestr)
+            values.append(namestr)
+
+        if set_to_first:
+            self.window.Element('ux_prof_wypt_list').Update(values=values, set_to_index=0)
+        else:
+            self.window.Element('ux_prof_wypt_list').Update(values=values)
+        if update_enable:
+            self.update_gui_control_enable_state()
+
+    # update state in response to changes to the waypoint type.
+    #
+    def update_for_waypoint_type_change(self):
+        if self.selected_wp_type == "WP":
+            self.window.Element("ux_seq_sta_text").Update(value="Sequence:")
+            self.window.Element('ux_seq_stn_select').Update(values=("None", 1, 2, 3), value="None",
+                                                            disabled=False, readonly=True)
+        elif self.selected_wp_type == "MSN":
+            self.window.Element("ux_seq_sta_text").Update(value="Station:")
+            self.window.Element('ux_seq_stn_select').Update(values=(8, 7, 3, 2), value=8,
+                                                            disabled=False, readonly=True)
+        else:
+            self.window.Element("ux_seq_sta_text").Update(value="Sequence:")
+            self.window.Element('ux_seq_stn_select').Update(values=("None", 1, 2, 3), value="None",
+                                                            disabled=True, readonly=False)
+
+    # update state in response to changes in the coordinates.
+    #
+    def update_for_coords_change(self, position=None, elevation=None, name=None, update_mgrs=True,
+                                 wypt_type=None, wypt_seq_sta=None, update_enable=True):
+        if position is not None:
+            self.window.Element('ux_lat_deg').Update(round(position.lat.degree))
+            self.window.Element('ux_lat_min').Update(round(position.lat.minute))
+            self.window.Element('ux_lat_sec').Update(round(position.lat.second, 2))
+
+            self.window.Element('ux_lon_deg').Update(round(position.lon.degree))
+            self.window.Element('ux_lon_min').Update(round(position.lon.minute))
+            self.window.Element('ux_lon_sec').Update(round(position.lon.second, 2))
+
+            mgrs_val = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
+
+        else:
+            self.window.Element('ux_lat_deg').Update("")
+            self.window.Element('ux_lat_min').Update("")
+            self.window.Element('ux_lat_sec').Update("")
+
+            self.window.Element('ux_lon_deg').Update("")
+            self.window.Element('ux_lon_min').Update("")
+            self.window.Element('ux_lon_sec').Update("")
+
+            mgrs_val = ""
+
+        if update_mgrs:
+            self.window.Element('ux_mgrs').Update(mgrs_val)
+
+        if elevation is not None:
+            self.window.Element('ux_elev_ft').Update(int(float(elevation)))
+            self.window.Element('ux_elev_m').Update(int(round(float(elevation)/3.281)))
+        else:
+            self.window.Element('ux_elev_ft').Update("")
+            self.window.Element('ux_elev_m').Update("")
+        
+        if name is not None:
+            self.window.Element('ux_wypt_name').Update(name)
+        else:
+            self.window.Element('ux_wypt_name').Update("")
+
+        if wypt_type is not None:
+            self.selected_wp_type = wypt_type
+            self.window.Element('ux_wypt_type_select').Update(value=wypt_type)
+            self.update_for_waypoint_type_change()
+    
+        if wypt_seq_sta is not None:
+            self.window.Element('ux_seq_stn_select').Update(value=wypt_seq_sta)
+        else:
+            self.window.Element('ux_seq_stn_select').Update(value="None")
+
+        if update_enable:
+            self.update_gui_control_enable_state()
+
         self.window.Refresh()
-        keyboard.add_hotkey(
-            self.capture_key,
-            self.input_parsed_coords, 
-            timeout=1
-        )
-        self.capturing = True
 
-    def input_tomcat_alignment(self):
-        try:
-            captured_coords = self.capture_map_coords(2075, 343, 913, 40)
-            position, elevation = self.parse_map_coords_string(captured_coords, tomcat_mode=True)
-        except (IndexError, ValueError, TypeError):
-            self.logger.error("Failed to parse captured text", exc_info=True)
-            return
+    # update gui state for control enables based on current interface state.
+    #
+    def update_gui_control_enable_state(self):
+        if self.is_dcs_f10_enabled == True and self.tesseract_version is not None:
+            self.window.Element('ux_dcs_f10_tgt_select').Update(disabled=False, readonly=True)
+        else:
+            self.window.Element('ux_dcs_f10_tgt_select').Update(disabled=True, readonly=False)
 
-    def stop_quick_capture(self):
+        if self.is_dcs_f10_tgt_add:
+            self.window.Element('ux_dcs_f10_tgt_select').Update(set_to_index=1)
+        else:
+            self.window.Element('ux_dcs_f10_tgt_select').Update(set_to_index=0)
+
+        if self.profile.profilename != '':
+            self.window.Element('ux_prof_delete').Update(disabled=False)
+        else:
+            self.window.Element('ux_prof_delete').Update(disabled=True)
+
+        if self.profile.has_waypoints == True:
+            self.window.Element('ux_prof_save').Update(disabled=False)
+            self.window.Element('ux_prof_enter').Update(disabled=False)
+        else:
+            self.window.Element('ux_prof_save').Update(disabled=True)
+            if detect_dcs_bios(self.editor.prefs.path_dcs):
+                self.window.Element('ux_prof_enter').Update(disabled=True)
+            else:
+                self.window.Element('ux_prof_enter').Update(disabled=False)
+
+        posn, elev, _ = self.validate_coords()
+        if posn is not None and elev is not None:
+            self.window.Element('ux_wypt_add').Update(disabled=False)
+        else:
+            self.window.Element('ux_wypt_add').Update(disabled=True)
+
+        if len(self.window.Element('ux_prof_wypt_list').get()) > 0:
+            self.window.Element('ux_wypt_update').Update(disabled=False)
+            self.window.Element('ux_wypt_delete').Update(disabled=False)
+        else:
+            self.window.Element('ux_wypt_update').Update(disabled=True)
+            self.window.Element('ux_wypt_delete').Update(disabled=True)
+
+    # update the coordinates elements enable/disable state
+    #
+    def update_gui_coords_input_disabled(self, disabled):
+        for element_name in ('ux_lat_deg', 'ux_lat_min', 'ux_lat_sec', 'ux_lon_deg', 'ux_lon_min',
+                             'ux_lon_sec', 'ux_mgrs', 'ux_elev_ft', 'ux_elev_m'):
+            self.window.Element(element_name).Update(disabled=disabled)
+
+    # change the binding of a hotkey. providing only previous will unbind the key.
+    #
+    # to change the callback, first unbind, then rebind.
+    #
+    def rebind_hotkey(self, previous, current=None, callback=None):
         try:
-            keyboard.remove_hotkey(self.capture_key)
+            if previous is not current:
+                self.logger.info(f"Rebinding hotkey from '{previous}' to '{current}'")
+                if previous is not None and previous != "":
+                    keyboard.remove_hotkey(previous)
+                if current is not None and current != "" and callback is not None:
+                    keyboard.add_hotkey(current, callback)
         except KeyError:
-            pass
+            self.logger.debug(f"Cannot change hotkey binding from '{previous}' to '{current}'")
 
-        self.enable_coords_input()
-        self.window.Element('capture').Update(text="Capture from DCS F10 map")
-        self.window.Element('quick_capture').Update(disabled=False)
-        self.window.Element('capture_status').Update("Status: Not capturing")
-        self.capturing = False
-
-    def update_altitude_elements(self, elevation_unit):
-        if elevation_unit == "feet":
-            elevation = self.window.Element("elevMeters").Get()
-            try:
-                if elevation:
-                    self.window.Element("elevFeet").Update(
-                        round(int(elevation)*3.281))
-                else:
-                    self.window.Element("elevFeet").Update("")
-            except ValueError:
-                pass
-        elif elevation_unit == "meters":
-            elevation = self.window.Element("elevFeet").Get()
-            try:
-                if elevation:
-                    self.window.Element("elevMeters").Update(
-                        round(int(elevation)/3.281))
-                else:
-                    self.window.Element("elevMeters").Update("")
-            except ValueError:
-                pass
-
+    # validate coordinates in ui. returns an {position, elevation, name} tuple; None's if invalid
+    #
     def validate_coords(self):
-        lat_deg = self.window.Element("latDeg").Get()
-        lat_min = self.window.Element("latMin").Get()
-        lat_sec = self.window.Element("latSec").Get()
+        lat_deg = self.window.Element('ux_lat_deg').Get()
+        lat_min = self.window.Element('ux_lat_min').Get()
+        lat_sec = self.window.Element('ux_lat_sec').Get()
 
-        lon_deg = self.window.Element("lonDeg").Get()
-        lon_min = self.window.Element("lonMin").Get()
-        lon_sec = self.window.Element("lonSec").Get()
+        lon_deg = self.window.Element('ux_lon_deg').Get()
+        lon_min = self.window.Element('ux_lon_min').Get()
+        lon_sec = self.window.Element('ux_lon_sec').Get()
 
         try:
             position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                               Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
-
-            elevation = int(self.window.Element("elevFeet").Get())
-            name = self.window.Element("msnName").Get()
+            elevation = int(self.window.Element('ux_elev_ft').Get())
+            name = self.window.Element('ux_wypt_name').Get()
             return position, elevation, name
         except ValueError as e:
             self.logger.error(f"Failed to validate coords: {e}")
             return None, None, None
 
-    def update_profiles_list(self, name):
-        profiles = self.get_profile_names()
-        self.window.Element("profileSelector").Update(values=[""] + profiles,
-                                                      set_to_index=profiles.index(name) + 1)
 
-    def select_wp_type(self, wp_type):
-        self.selected_wp_type = wp_type
+    # ================ ui menu item handlers
 
-        if wp_type == "WP":
-            self.set_sequence_station_selector("sequence")
-        elif wp_type == "MSN":
-            self.set_sequence_station_selector("station")
+
+    def do_preferences(self):
+        prefs = self.editor.prefs
+        hotkey_capture = prefs.hotkey_capture
+        hotkey_capture_mode = prefs.hotkey_capture_mode
+        hotkey_enter_profile = prefs.hotkey_enter_profile
+        hotkey_enter_mission = prefs.hotkey_enter_mission
+
+        prefs_gui = PrefsGUI(prefs, self.logger)
+        prefs_gui.run()
+
+        if self.profile.profilename == "":
+            self.profile.aircraft = prefs.airframe_default
+            self.update_for_profile_change()
+
+        if self.is_dcs_f10_enabled:
+            self.rebind_hotkey(hotkey_capture, prefs.hotkey_capture, self.do_dcs_f10_capture)
+            self.rebind_hotkey(hotkey_capture_mode, prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
         else:
-            self.set_sequence_station_selector(None)
+            self.rebind_hotkey(hotkey_capture)
+            self.rebind_hotkey(hotkey_capture_mode)
+        self.rebind_hotkey(hotkey_enter_profile, prefs.hotkey_enter_profile, self.do_profile_enter_in_jet)
+        self.rebind_hotkey(hotkey_enter_mission, prefs.hotkey_enter_mission, self.do_mission_enter_in_jet)
 
-        self.window.Element(wp_type).Update(value=True)
+        self.update_gui_control_enable_state()
+    
+    def do_check_updates(self):
+        return check_version(self.software_version)
 
-    def find_selected_waypoint(self):
-        valuestr = unstrike(self.values['activesList'][0])
-        for wp in self.profile.waypoints:
-            if str(wp) == valuestr:
-                return wp
+    # exports profile to clipboard as a zip'd JSON encoded in ASCII
+    #
+    def do_profile_export_to_encoded_string(self):
+        name = self.profile_name_for_ui()
+        encoded = json_zip(str(self.profile))
+        pyperclip.copy(encoded)
+        PyGUI.Popup(f"Profile '{name}' copied as encoded text to clipboard.")
 
-    def remove_selected_waypoint(self):
-        valuestr = unstrike(self.values['activesList'][0])
-        for wp in self.profile.waypoints:
-            if str(wp) == valuestr:
-                self.profile.waypoints.remove(wp)
+    # exports profile to clipboard as a human-readable string
+    #
+    def do_profile_export_to_plain_string(self):
+        name = self.profile_name_for_ui()
+        profile_string = self.profile.to_readable_string()
+        pyperclip.copy(profile_string)
+        PyGUI.Popup(f"Profile '{name}' copied as plain text to clipboard.")
 
-    def enter_coords_to_aircraft(self):
-        self.window.Element('enter').Update(disabled=True)
-        self.editor.enter_all(self.profile)
-        self.window.Element('enter').Update(disabled=False)
+    # exports profile to file as JSON
+    #
+    def do_profile_export_to_file(self):
+        name = self.profile_name_for_ui()
+        filename = PyGUI.PopupGetFile("File Name", f"Exporting Profile '{name}' from Database",
+                                      default_extension=".json", save_as=True,
+                                      file_types=(("JSON File", "*.json"),))
+        if filename is not None:
+            with open(filename + ".json", "w+") as f:
+                f.write(str(self.profile))
+            PyGUI.Popup(f"Profile '{name}' successfullly written to '{filename}'.")
+
+    # imports profile from zip'd JSON encoded as ASCII on clipboard into empty/new profile
+    #
+    def do_profile_import_from_encoded_string(self):
+        encoded = pyperclip.paste()
+        try:
+            decoded = json_unzip(encoded)
+            #
+            # note that encoded JSON may carry profile name, we will force the name to the name of
+            # the empty slot, "" here.
+            #
+            self.profile = Profile.from_string(decoded)
+            self.profile.profilename = ""
+            if self.profile.aircraft is None:
+                self.profile.aircraft = self.editor.prefs.airframe_default
+            self.window.Element('ux_prof_select').Update(set_to_index=0)
+            self.update_for_profile_change(set_to_first=True)
+            self.logger.debug(self.profile.to_dict())
+        except Exception as e:
+            PyGUI.Popup("Failed to parse encoded profile from clipboard.")
+            self.logger.error(e, exc_info=True)
+
+    # imports profile from text JSON or combatflite XML file into empty/new profile
+    #
+    def do_profile_import_from_file(self):
+        filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
+        if filename is not None:
+            with open(filename, "r") as f:
+                self.profile = Profile.from_string(f.read())
+            #
+            # note that text JSON may carry profile name, we will force the name to the name of the
+            # empty slot, "" here.
+            #
+            self.profile.profilename = ""
+            if self.profile.aircraft is None:
+                self.profile.aircraft = self.editor.prefs.airframe_default
+            self.window.Element('ux_prof_select').Update(set_to_index=0)
+            self.update_for_profile_change(set_to_first=True)
+            self.logger.debug(self.profile.to_dict())
+
+
+    # ================ ui profile panel handlers
+
+
+    def do_profile_select(self):
+        try:
+            profile_name = self.values['ux_prof_select']
+            if profile_name != '':
+                self.profile = Profile.load(profile_name)
+            else:
+                self.load_new_profile()
+        except DoesNotExist:
+            PyGUI.Popup(f"Profile '{profile_name}'' was not found in the database.", title="Error")
+            self.load_new_profile()
+        self.update_for_profile_change(set_to_first=True)
+
+    def do_airframe_select(self):
+        airframe_type = airframe_ui_text_to_type(self.values['ux_prof_afrm_select'])
+        self.profile.aircraft = airframe_type
+        if self.profile.profilename != "":
+            self.profile.save(self.profile.profilename)
+        self.update_for_profile_change()
+
+    def do_profile_save(self):
+        name = self.profile.profilename
+        if not name:
+            name = PyGUI.PopupGetText("Profile Name", "Saving Profile to Database")
+            if name and len(name) > 0:
+                if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
+                    self.profile.save(name)
+                    self.update_for_profile_change()
+                else:
+                    PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
+
+    def do_profile_delete(self):
+        if self.profile.profilename != "":
+            Profile.delete(self.profile.profilename)
+            self.load_new_profile()
+            self.update_for_profile_change()
+
+    def do_profile_enter_in_jet(self):
+        if self.profile.has_waypoints == True:
+            self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
+            self.window.Element('ux_prof_enter').Update(disabled=True)
+            # TODO: setup callback and so on for progress ui
+            self.editor.enter_all(self.profile)
+            self.window.Element('ux_prof_enter').Update(disabled=False)
+
+    def do_profile_waypoint_list(self):
+        if self.values['ux_prof_wypt_list']:
+            wypt = self.find_selected_waypoint()
+            if wypt.wp_type == "MSN":
+                seq_stn = wypt.station
+            elif wypt.wp_type == "WPT":
+                seq_stn = wypt.Sequence
+            else:
+                seq_stn = None
+            self.update_for_coords_change(wypt.position, wypt.elevation, wypt.name, wypt_type=wypt.wp_type,
+                                          wypt_seq_sta=seq_stn)
+
+
+    # ================ ui waypoint panel handlers
+
+
+    def do_wypt_type_select(self):
+        self.selected_wp_type = self.values['ux_wypt_type_select']
+        self.update_for_waypoint_type_change()
+
+    def do_seq_stn_select(self):
+        return
+
+    def do_poi_wypt_select(self):
+        poi = self.editor.default_bases.get(self.values['ux_poi_wypt_select'])
+        if poi is not None:
+            self.update_for_coords_change(poi.position, poi.elevation, poi.name)
+
+    def do_dcs_f10_tgt_select(self):
+        if self.is_dcs_f10_enabled:
+            if self.values['ux_dcs_f10_tgt_select'] == "Coordinate Fields":
+                self.is_dcs_f10_tgt_add = False
+            else:
+                self.is_dcs_f10_tgt_add = True
+
+    def do_poi_wypt_filter(self):
+        text = self.values['ux_poi_wypt_select']
+        self.window.Element('ux_poi_wypt_select').\
+            Update(values=[""] + [poi.name for _, poi in self.editor.default_bases.items() if
+                                  text.lower() in poi.name.lower()],
+                   set_to_index=0)
+
+    def do_waypoint_add(self):
+        position, elevation, name = self.validate_coords()
+        if position is not None:
+            self.add_waypoint(position, elevation, name)
+        else:
+            PyGUI.Popup("Cannot add waypoint without coordinates.")
+        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.update_for_waypoint_list_change()
+
+    def do_waypoint_update(self):
+        if self.values['ux_prof_wypt_list']:
+            waypoint = self.find_selected_waypoint()
+            position, elevation, name = self.validate_coords()
+            if position is not None:
+                waypoint.position = position
+                waypoint.elevation = elevation
+                waypoint.name = name
+            else:
+                PyGUI.Popup("Cannot update waypoint without coordinates.")
+        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.update_for_waypoint_list_change()
+
+    def do_waypoint_delete(self):
+        if self.values['ux_prof_wypt_list']:
+            valuestr = unstrike(self.values['ux_prof_wypt_list'][0])
+            for wp in self.profile.waypoints:
+                if str(wp) == valuestr:
+                    self.profile.waypoints.remove(wp)
+            self.update_for_waypoint_list_change()
+        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+
+    def do_dcs_f10_enable(self):
+        self.is_dcs_f10_enabled = self.values['ux_dcs_f10_enable']
+        if self.is_dcs_f10_enabled:
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.do_dcs_f10_capture)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
+        else:
+            self.rebind_hotkey(self.editor.prefs.hotkey_capture)
+            self.rebind_hotkey(self.editor.prefs.hotkey_capture_mode)
+        self.update_gui_control_enable_state()
+
+    # update ui state of widgets linked to a change in elevation (ft)
+    #
+    def do_waypoint_linked_update_elev_ft(self):
+        elevation = self.values['ux_elev_ft']
+        if elevation:
+            self.window.Element('ux_elev_m').Update(round(int(elevation)/3.281))
+        else:
+            self.window.Element('ux_elev_m').Update("")
+        self.update_gui_control_enable_state()
+
+    # update ui state of widgets linked to a change in elevation (m)
+    #
+    def do_waypoint_linked_update_elev_m(self):
+        elevation = self.values['ux_elev_m']
+        if elevation:
+            self.window.Element('ux_elev_ft').Update(round(int(elevation)*3.281))
+        else:
+            self.window.Element('ux_elev_ft').Update("")
+        self.update_gui_control_enable_state()
+
+    # update ui state of widgets linked to a change in mgrs
+    #
+    def do_waypoint_linked_update_mgrs(self):
+        position, _, _ = self.validate_coords()
+        if position is not None:
+            m = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
+            self.window.Element('ux_mgrs').Update(m)
+        self.update_gui_control_enable_state()
+
+    # update ui state of widgets linked to a change in position (lat/lon)
+    #
+    def do_waypoint_linked_update_position(self):
+        mgrs_str = self.values['ux_mgrs']
+        if mgrs_str is not None:
+            try:
+                decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_str.replace(" ", "")))
+                position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+                self.update_for_coords_change(position, update_mgrs=False)
+            except (TypeError, ValueError, UnboundLocalError) as e:
+                PyGUI.Popup(f"Cannot decode MGRS '{mgrs_str}', {e}")
+
+
+    # ================ non-gui handlers
+
+
+    # as these are not typically called form the run loop (as they represent hotkeys and so on that
+    # might not have widgets), make sure to do appropriate ui updates here.
+
+    def do_dcs_f10_capture(self):
+        self.update_gui_coords_input_disabled(True)
+        if self.is_dcs_f10_tgt_add:
+            try:
+                captured_coords = self.capture_map_coords()
+                position, elevation = self.parse_map_coords_string(captured_coords)
+                self.logger.debug("Parsed text as coords succesfully: " + str(position))
+                added = self.add_waypoint(position, elevation)
+                if added is None:
+                    self.logger.error("Failed to add waypoint from capture")
+            except (IndexError, ValueError, TypeError):
+                self.logger.error("Failed to parse captured text", exc_info=True)
+        else:
+            try:
+                captured_coords = self.capture_map_coords()
+                position, elevation = self.parse_map_coords_string(captured_coords)
+                self.logger.debug("Parsed text as coords succesfully: " + str(position))
+                self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
+                self.do_waypoint_linked_update_elev_ft()
+            except (IndexError, ValueError, TypeError):
+                self.logger.error("Failed to parse captured text", exc_info=True)
+        self.update_gui_coords_input_disabled(False)
+        self.update_for_waypoint_list_change()
+
+    def do_dcs_f10_capture_tgt_toggle(self):
+        self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
+        self.update_gui_control_enable_state()
+
+    def do_mission_enter_in_jet(self):
+        self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
+        try:
+            with open(self.editor.prefs.path_mission, "r") as f:
+                tmp_profile = Profile.from_string(f.read())
+                tmp_profile.aircraft = self.editor.prefs.airframe_default
+                self.editor.set_driver(tmp_profile.aircraft)
+                self.editor.enter_all(tmp_profile)
+                self.editor.set_driver(self.profile.aircraft)
+        except:
+            self.logger.error(f"Failed to load mission file '{self.editor.prefs.path_mission}'")
+        
+
+    # ================ ui main loop
+
 
     def run(self):
+        self.window.finalize()
+    
+        if self.is_dcs_f10_enabled:
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.do_dcs_f10_capture)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
+        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_profile, self.do_profile_enter_in_jet)
+        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_mission, self.do_mission_enter_in_jet)
+
+        self.update_for_profile_change()
+
         while True:
             event, self.values = self.window.Read()
-            self.logger.debug(f"Event: {event}")
-            self.logger.debug(f"Values: {self.values}")
+            self.logger.debug(f"DCSWE Event: {event}")
+            self.logger.debug(f"DCSWE Values: {self.values}")
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
                 break
 
-            elif event == "Add":
-                position, elevation, name = self.validate_coords()
-                if position is not None:
-                    self.add_waypoint(position, elevation, name)
+            # ======== menu items
 
-            elif event == "Copy as string to clipboard":
-                self.export_to_string()
+            elif 'ux_menu_prefs' in event:
+                self.do_preferences()
 
-            elif event == "Paste as string from clipboard":
-                self.import_from_string()
+            elif 'ux_menu_update' in event:
+                if self.do_check_updates():
+                    break
 
-            elif event == "Update":
-                if self.values['activesList']:
-                    waypoint = self.find_selected_waypoint()
-                    position, elevation, name = self.validate_coords()
-                    if position is not None:
-                        waypoint.position = position
-                        waypoint.elevation = elevation
-                        waypoint.name = name
-                        self.update_waypoints_list()
+            elif 'ux_menu_exp_clip_enc' in event:
+                self.do_profile_export_to_encoded_string()
 
-            elif event == "Remove":
-                if self.values['activesList']:
-                    self.remove_selected_waypoint()
-                    self.update_waypoints_list()
+            elif 'ux_menu_exp_clip_plain' in event:
+                self.do_profile_export_to_plain_string()
 
-            elif event == "activesList":
-                if self.values['activesList']:
-                    waypoint = self.find_selected_waypoint()
-                    self.update_position(
-                        waypoint.position, waypoint.elevation, waypoint.name, waypoint_type=waypoint.wp_type)
+            elif 'ux_menu_exp_file' in event:
+                self.do_profile_export_to_file()
 
-            elif event == "Save profile":
-                if self.profile.waypoints:
-                    name = self.profile.profilename
-                    if not name:
-                        name = PyGUI.PopupGetText(
-                            "Enter profile name", "Saving profile")
+            elif 'ux_menu_imp_clip' in event:
+                self.do_profile_import_from_encoded_string()
 
-                    if not name:
-                        continue
+            elif 'ux_menu_imp_file' in event:
+                self.do_profile_import_from_file()
 
-                    self.profile.save(name)
-                    self.update_profiles_list(name)
+            # ======== profile panel, combo controls
 
-            elif event == "Delete profile":
-                if not self.profile.profilename:
-                    continue
+            elif event == 'ux_prof_select':
+                self.do_profile_select()
 
-                Profile.delete(self.profile.profilename)
-                profiles = self.get_profile_names()
-                self.window.Element("profileSelector").Update(
-                    values=[""] + profiles)
-                self.load_new_profile()
-                self.update_waypoints_list()
-                self.update_position()
+            elif event == 'ux_prof_afrm_select':
+                self.do_airframe_select()
 
-            elif event == "profileSelector":
-                try:
-                    profile_name = self.values['profileSelector']
-                    if profile_name != '':
-                        self.profile = Profile.load(profile_name)
-                    else:
-                        self.profile = Profile('')
-                    self.editor.set_driver(self.profile.aircraft)
-                    self.update_waypoints_list()
+            # ======== profile panel, button controls
 
-                except DoesNotExist:
-                    PyGUI.Popup("Profile not found")
+            elif event == 'ux_prof_save':
+                self.do_profile_save()
 
-            elif event == "Save as encoded file":
-                filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
-                                              save_as=True, file_types=(("JSON File", "*.json"),))
+            elif event == 'ux_prof_delete':
+                self.do_profile_delete()
 
-                if filename is None:
-                    continue
+            elif event == 'ux_prof_enter':
+                self.do_profile_enter_in_jet()
 
-                with open(filename + ".json", "w+") as f:
-                    f.write(str(self.profile))
+            # ======== profile panel, list controls
 
-            elif event == "Copy plain text to clipboard":
-                profile_string = self.profile.to_readable_string()
-                pyperclip.copy(profile_string)
-                PyGUI.Popup("Profile copied as plain text to clipboard")
+            elif event == 'ux_prof_wypt_list':
+                self.do_profile_waypoint_list()
 
-            elif event == "Load from encoded file":
-                filename = PyGUI.PopupGetFile(
-                    "Enter file name", "Importing profile")
+            # ======== waypoint panel, combo controls
 
-                if filename is None:
-                    continue
+            elif event == 'ux_wypt_type_select':
+                self.do_wypt_type_select()
 
-                with open(filename, "r") as f:
-                    self.profile = Profile.from_string(f.read())
-                self.update_waypoints_list()
+            elif event == 'ux_seq_stn_select':
+                self.do_seq_stn_select()
 
-                if self.profile.profilename:
-                    self.update_profiles_list(self.profile.profilename)
+            elif event == 'ux_poi_wypt_select':
+                self.do_poi_wypt_select()
 
-            elif event == "capture":
-                if not self.capturing:
-                    self.start_quick_capture()
-                else:
-                    self.stop_quick_capture()
+            elif event == 'ux_dcs_f10_tgt_select':
+                self.do_dcs_f10_tgt_select()
 
-            elif event == "quick_capture":
-                self.exit_quick_capture = False
-                self.disable_coords_input()
-                self.window.Element('capture').Update(text="Stop capturing")
-                self.window.Element('quick_capture').Update(disabled=True)
-                self.window.Element('capture_status').Update(
-                    "Status: Capturing...")
-                self.capturing = True
-                self.window.Refresh()
-                keyboard.add_hotkey(
-                    self.capture_key, self.add_wp_parsed_coords, timeout=1)
+            elif event == 'ux_poi_filter':
+                self.do_poi_wypt_filter()
 
-            elif event == "baseSelector":
-                base = self.editor.default_bases.get(
-                    self.values['baseSelector'])
+            # ======== waypoint panel, button controls
 
-                if base is not None:
-                    self.update_position(
-                        base.position, base.elevation, base.name)
+            elif event == 'ux_wypt_add':
+                self.do_waypoint_add()
 
-            elif event == "enter":
-                self.enter_coords_to_aircraft()
+            elif event == 'ux_wypt_update':
+                self.do_waypoint_update()
 
-            elif event in ("MSN", "WP", "HA", "FP", "ST", "DP", "IP", "HB"):
-                self.select_wp_type(event)
+            elif event == 'ux_wypt_delete':
+                self.do_waypoint_delete()
 
-            elif event == "elevFeet":
-                self.update_altitude_elements("meters")
+            elif event == 'ux_dcs_f10_enable':
+                self.do_dcs_f10_enable()
 
-            elif event == "elevMeters":
-                self.update_altitude_elements("feet")
+            # ======== waypoint panel, text field controls
 
-            elif event in ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec"):
-                position, _, _ = self.validate_coords()
+            elif event == 'ux_elev_ft':
+                self.do_waypoint_linked_update_elev_ft()
 
-                if position is not None:
-                    m = mgrs.encode(mgrs.LLtoUTM(
-                        position.lat.decimal_degree, position.lon.decimal_degree), 5)
-                    self.window.Element("mgrs").Update(m)
+            elif event == 'ux_elev_m':
+                self.do_waypoint_linked_update_elev_m()
 
-            elif event == "mgrs":
-                mgrs_string = self.window.Element("mgrs").Get()
-                if mgrs_string:
-                    try:
-                        decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string.replace(" ", "")))
-                        position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(
-                            degree=decoded_mgrs["lon"]))
-                        self.update_position(position, update_mgrs=False)
-                    except (TypeError, ValueError, UnboundLocalError) as e:
-                        self.logger.error(f"Failed to decode MGRS: {e}")
+            elif event in ('ux_lat_deg', 'ux_lat_min', 'ux_lat_sec', 'ux_lon_deg', 'ux_lon_min', 'ux_lon_sec'):
+                self.do_waypoint_linked_update_mgrs()
 
-            elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage", "viper"):
-                self.profile.aircraft = event
-                self.editor.set_driver(event)
-                self.update_waypoints_list()
-
-            elif event == "filter":
-                self.filter_preset_waypoints_dropdown()
+            elif event == 'ux_mgrs':
+                self.do_waypoint_linked_update_position()
 
         self.close()
 
     def close(self):
-        try:
-            keyboard.remove_hotkey(self.capture_key)
-        except KeyError:
-            pass
+        self.rebind_hotkey(self.editor.prefs.hotkey_capture)
+        self.rebind_hotkey(self.editor.prefs.hotkey_capture_mode)
+        self.rebind_hotkey(self.editor.prefs.hotkey_enter_profile)
+        self.rebind_hotkey(self.editor.prefs.hotkey_enter_mission)
 
         self.window.Close()
+
         self.editor.stop()
