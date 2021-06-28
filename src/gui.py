@@ -85,6 +85,7 @@ class DCSWyptEdGUI:
         self.scaled_dcs_gui = False
         self.is_dcs_f10_enabled = False
         self.is_dcs_f10_tgt_add = False
+        self.is_entering_data = False
         self.values = None
         self.selected_wp_type = "WP"
 
@@ -574,13 +575,13 @@ class DCSWyptEdGUI:
 
         if self.profile.has_waypoints == True:
             self.window.Element('ux_prof_save').Update(disabled=False)
-            self.window.Element('ux_prof_enter').Update(disabled=False)
+            if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+                self.window.Element('ux_prof_enter').Update(disabled=False)
+            else:
+                self.window.Element('ux_prof_enter').Update(disabled=True)
         else:
             self.window.Element('ux_prof_save').Update(disabled=True)
-            if detect_dcs_bios(self.editor.prefs.path_dcs):
-                self.window.Element('ux_prof_enter').Update(disabled=True)
-            else:
-                self.window.Element('ux_prof_enter').Update(disabled=False)
+            self.window.Element('ux_prof_enter').Update(disabled=True)
 
         posn, elev, _ = self.validate_coords()
         if posn is not None and elev is not None:
@@ -657,13 +658,13 @@ class DCSWyptEdGUI:
             self.update_for_profile_change()
 
         if self.is_dcs_f10_enabled:
-            self.rebind_hotkey(hotkey_capture, prefs.hotkey_capture, self.do_dcs_f10_capture)
-            self.rebind_hotkey(hotkey_capture_mode, prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
+            self.rebind_hotkey(hotkey_capture, prefs.hotkey_capture, self.hkey_dcs_f10_capture)
+            self.rebind_hotkey(hotkey_capture_mode, prefs.hotkey_capture_mode, self.hkey_dcs_f10_capture_tgt_toggle)
         else:
             self.rebind_hotkey(hotkey_capture)
             self.rebind_hotkey(hotkey_capture_mode)
-        self.rebind_hotkey(hotkey_enter_profile, prefs.hotkey_enter_profile, self.do_profile_enter_in_jet)
-        self.rebind_hotkey(hotkey_enter_mission, prefs.hotkey_enter_mission, self.do_mission_enter_in_jet)
+        self.rebind_hotkey(hotkey_enter_profile, prefs.hotkey_enter_profile, self.hkey_profile_enter_in_jet)
+        self.rebind_hotkey(hotkey_enter_mission, prefs.hotkey_enter_mission, self.hkey_mission_enter_in_jet)
 
         self.update_gui_control_enable_state()
     
@@ -778,12 +779,15 @@ class DCSWyptEdGUI:
             self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
-        if self.profile.has_waypoints == True:
+        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
+            self.is_entering_data = True
             self.window.Element('ux_prof_enter').Update(disabled=True)
-            # TODO: setup callback and so on for progress ui
-            self.editor.enter_all(self.profile)
-            self.window.Element('ux_prof_enter').Update(disabled=False)
+            if self.profile.has_waypoints == True:
+                # TODO: setup callback and so on for progress ui
+                self.editor.enter_all(self.profile)
+            self.is_entering_data = False
+            self.update_gui_control_enable_state()
 
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
@@ -861,8 +865,8 @@ class DCSWyptEdGUI:
     def do_dcs_f10_enable(self):
         self.is_dcs_f10_enabled = self.values['ux_dcs_f10_enable']
         if self.is_dcs_f10_enabled:
-            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.do_dcs_f10_capture)
-            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.hkey_dcs_f10_capture)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.hkey_dcs_f10_capture_tgt_toggle)
         else:
             self.rebind_hotkey(self.editor.prefs.hotkey_capture)
             self.rebind_hotkey(self.editor.prefs.hotkey_capture_mode)
@@ -916,13 +920,13 @@ class DCSWyptEdGUI:
                 PyGUI.Popup(f"Cannot decode MGRS '{mgrs_str}', {e}")
 
 
-    # ================ non-gui handlers
+    # ================ keyboard hotkey handlers
 
 
     # as these are not typically called form the run loop (as they represent hotkeys and so on that
     # might not have widgets), make sure to do appropriate ui updates here.
 
-    def do_dcs_f10_capture(self):
+    def hkey_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         if self.is_dcs_f10_tgt_add:
@@ -949,23 +953,33 @@ class DCSWyptEdGUI:
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
 
-    def do_dcs_f10_capture_tgt_toggle(self):
+    def hkey_dcs_f10_capture_tgt_toggle(self):
         self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
         self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
         self.update_gui_control_enable_state()
 
-    def do_mission_enter_in_jet(self):
-        self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
-        try:
-            with open(self.editor.prefs.path_mission, "r") as f:
-                tmp_profile = Profile.from_string(f.read())
-                tmp_profile.aircraft = self.editor.prefs.airframe_default
-                self.editor.set_driver(tmp_profile.aircraft)
-                self.editor.enter_all(tmp_profile)
-                self.editor.set_driver(self.profile.aircraft)
-        except:
-            # TODO: present through gui? mind different threads when called from keyboard handler...
-            self.logger.error(f"Failed to load mission file '{self.editor.prefs.path_mission}'")
+    def hkey_profile_enter_in_jet(self):
+        self.do_profile_enter_in_jet(self)
+
+    def hkey_mission_enter_in_jet(self):
+        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+            self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
+            self.is_entering_data = True
+            self.window.Element('ux_prof_enter').Update(disabled=True)
+            try:
+                with open(self.editor.prefs.path_mission, "r") as f:
+                    tmp_profile = Profile.from_string(f.read())
+                    if tmp_profile.has_waypoints:
+                        tmp_profile.aircraft = self.editor.prefs.airframe_default
+                        self.editor.set_driver(tmp_profile.aircraft)
+                        # TODO: setup callback and so on for progress ui
+                        self.editor.enter_all(tmp_profile)
+                        self.editor.set_driver(self.profile.aircraft)
+            except:
+                # TODO: present through gui? mind different threads when called from keyboard handler...
+                self.logger.error(f"Failed to load mission file '{self.editor.prefs.path_mission}'")
+            self.is_entering_data = False
+            self.update_gui_control_enable_state()
         
 
     # ================ ui main loop
@@ -975,10 +989,10 @@ class DCSWyptEdGUI:
         self.window.finalize()
     
         if self.is_dcs_f10_enabled:
-            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.do_dcs_f10_capture)
-            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.do_dcs_f10_capture_tgt_toggle)
-        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_profile, self.do_profile_enter_in_jet)
-        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_mission, self.do_mission_enter_in_jet)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.hkey_dcs_f10_capture)
+            self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.hkey_dcs_f10_capture_tgt_toggle)
+        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_profile, self.hkey_profile_enter_in_jet)
+        self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_mission, self.hkey_mission_enter_in_jet)
 
         self.update_for_profile_change()
 
