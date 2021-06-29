@@ -408,9 +408,9 @@ class DCSWyptEdGUI:
                                  [[PyGUI.Checkbox("Enable capture from DCS F10 map into", pad=((6,3),6),
                                                   default=False, enable_events=True, key='ux_dcs_f10_enable',
                                                   disabled=is_dcs_f10_disabled),
-                                   PyGUI.Combo(values=["Coordinate Fields", "New Waypoint"],
+                                   PyGUI.Combo(values=["Coordiante Panel", "New Waypoint"],
                                                enable_events=True, key='ux_dcs_f10_tgt_select',
-                                               default_value="Coordinate Fields", pad=((0,18),6))],
+                                               default_value="Coordiante Panel", pad=((0,18),6))],
                                  ])
 
         frame_wypt = PyGUI.Frame("Waypoint",
@@ -824,7 +824,7 @@ class DCSWyptEdGUI:
 
     def do_dcs_f10_tgt_select(self):
         if self.is_dcs_f10_enabled:
-            if self.values['ux_dcs_f10_tgt_select'] == "Coordinate Fields":
+            if self.values['ux_dcs_f10_tgt_select'] == "Coordiante Panel":
                 self.is_dcs_f10_tgt_add = False
             else:
                 self.is_dcs_f10_tgt_add = True
