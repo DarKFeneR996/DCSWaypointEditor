@@ -25,6 +25,7 @@ import cv2
 import numpy
 import re
 import datetime
+import queue
 
 def json_zip(j):
     j = base64.b64encode(
@@ -79,6 +80,7 @@ def check_version(cur_version):
 class DCSWyptEdGUI:
     def __init__(self, editor, software_version):
         self.logger = get_logger("gui")
+        self.hkey_pend_q = queue.Queue()
         self.editor = editor
         self.software_version = software_version
         self.profile = None
@@ -317,8 +319,7 @@ class DCSWyptEdGUI:
             split_string = latlon_string.split(' ')
             lat_string = split_string[1]
             lon_string = split_string[3]
-            position = string2latlon(
-                lat_string, lon_string, format_str="d%°%m%'%S")
+            position = string2latlon(lat_string, lon_string, format_str="d%°%m%'%S")
 
         if not tomcat_mode:
             elevation = split_string[1].replace(' ', '')
@@ -928,9 +929,28 @@ class DCSWyptEdGUI:
 
 
     # as these are not typically called form the run loop (as they represent hotkeys and so on that
-    # might not have widgets), make sure to do appropriate ui updates here.
+    # might not have widgets), we pend hotkeys onto hkey_pend_q via hkey_<foo> and do the work on
+    # the main thread via do_<foo>.
+
+    def hkey_popup_err(self, err_msg):
+        self.logger.error(f"Hotkey processing error: {err_msg}")
+        PyGUI.Popup(err_msg, title="Error")
+        with self.hkey_pend_q.mutex:
+            self.hkey_pend_q.queue.clear()
 
     def hkey_dcs_f10_capture(self):
+        self.hkey_pend_q.put(self.do_dcs_f10_capture)
+    
+    def hkey_dcs_f10_capture_tgt_toggle(self):
+        self.hkey_pend_q.put(self.do_dcs_f10_capture_tgt_toggle)
+ 
+    def hkey_profile_enter_in_jet(self):
+        self.hkey_pend_q.put(self.do_profile_enter_in_jet)
+
+    def hkey_mission_enter_in_jet(self):
+        self.hkey_pend_q.put(self.do_mission_enter_in_jet)
+
+    def do_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         if self.is_dcs_f10_tgt_add:
@@ -940,10 +960,9 @@ class DCSWyptEdGUI:
                 self.logger.debug("Parsed text as coords succesfully: " + str(position))
                 added = self.add_waypoint(position, elevation)
                 if added is None:
-                    self.logger.error("Failed to add waypoint from capture")
+                    self.hkey_popup_err("Failed to add waypoint from DCS F10 map capture.")
             except (IndexError, ValueError, TypeError):
-                # TODO: present through gui? mind different threads when called from keyboard handler...
-                self.logger.error("Failed to parse captured text", exc_info=True)
+                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.")
         else:
             try:
                 captured_coords = self.capture_map_coords()
@@ -952,20 +971,19 @@ class DCSWyptEdGUI:
                 self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
                 self.do_waypoint_linked_update_elev_ft()
             except (IndexError, ValueError, TypeError):
-                # TODO: present through gui? mind different threads when called from keyboard handler...
-                self.logger.error("Failed to parse captured text", exc_info=True)
+                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.", title="Error")
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
 
-    def hkey_dcs_f10_capture_tgt_toggle(self):
+    def do_dcs_f10_capture_tgt_toggle(self):
         self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
         self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
         self.update_gui_control_enable_state()
 
-    def hkey_profile_enter_in_jet(self):
+    def do_profile_enter_in_jet(self):
         self.do_profile_enter_in_jet(self)
 
-    def hkey_mission_enter_in_jet(self):
+    def do_mission_enter_in_jet(self):
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
@@ -980,8 +998,7 @@ class DCSWyptEdGUI:
                         self.editor.enter_all(tmp_profile)
                         self.editor.set_driver(self.profile.aircraft)
             except:
-                # TODO: present through gui? mind different threads when called from keyboard handler...
-                self.logger.error(f"Failed to load mission file '{self.editor.prefs.path_mission}'")
+                self.hkey_popup_err(f"Failed to load mission file '{self.editor.prefs.path_mission}'.")
             self.is_entering_data = False
             self.update_gui_control_enable_state()
         
@@ -1001,13 +1018,29 @@ class DCSWyptEdGUI:
         self.update_for_profile_change()
 
         while True:
-            event, self.values = self.window.Read()
-            self.logger.debug(f"DCSWE Event: {event}")
-            self.logger.debug(f"DCSWE Values: {self.values}")
+            event, self.values = self.window.Read(timeout=250, timeout_key='Timeout')
+            if event != 'Timeout':
+                self.logger.debug(f"DCSWE Event: {event}")
+                self.logger.debug(f"DCSWE Values: {self.values}")
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
                 break
+
+            # ======== hotkeys (enqueued from background thread)
+
+            elif event == 'Timeout':
+                while True:
+                    try:
+                        hkey_callback = self.hkey_pend_q.get(False)
+                    except queue.Empty:
+                        break
+                    err_msg = hkey_callback()
+                    if err_msg is not None:
+                        PyGUI.Popup(err_msg, title="Error")
+                        with self.hkey_pend_q.mutex:
+                            self.hkey_pend_q.clear()
+
 
             # ======== menu items
 
