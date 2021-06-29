@@ -298,27 +298,53 @@ class Profile:
     def from_string_xml(profile_string):
         try:
             root = xml.fromstring(profile_string)
+            #
+            # root element of a combatflite xml is "Objects", this element includes two elements of
+            # interest: "Waypoint" and "Object"
+            #
             wps = []
-            for wypt in root.iter('Waypoint'):
-                nam = wypt.find("Name")
-                pos = wypt.find("Position")
-                lat = pos.find("Latitude")
-                lon = pos.find("Longitude")
-                alt = pos.find("Altitude")
-                if lat is None or lon is None:
-                    raise ValueError("Failed to find position in XML waypoint")
-                if alt is None:
-                    elev = 0.0
-                else:
-                    elev = int(float(alt.text))
-                if nam is None:
+            for elem in root.iter("Waypoint"):
+                e_nam = elem.find("Name")
+                if e_nam is None:
                     name = ""
                 else:
-                    name = nam.text.replace("\n", " ")
-                wp = Waypoint(wp_type="WP", name=name,
-                              position=LatLon(Latitude(lat.text), Longitude(lon.text)), elevation=elev)
+                    name = e_nam.text.replace("\n", " ")
+                e_pos = elem.find("Position")
+                e_lat = e_pos.find("Latitude")
+                e_lon = e_pos.find("Longitude")
+                e_alt = e_pos.find("Altitude")
+                if e_lat is None or e_lon is None:
+                    raise ValueError("Failed to find position in XML waypoint")
+                if e_alt is None:
+                    elev = 0.0
+                else:
+                    elev = int(float(e_alt.text))
+                wp = Waypoint(name=name, sequence=0,
+                              position=LatLon(Latitude(e_lat.text), Longitude(e_lon.text)), elevation=elev)
                 wps.append(wp)
+            
             msns = []
+            for elem in root.iter("Object"):
+                e_nam = elem.find("Name")
+                if e_nam is None:
+                    name = ""
+                else:
+                    name = e_nam.text.replace("\n", " ")
+                if name.lower().startswith("dmpi targeted by "):
+                    e_pos = elem.find("Position")
+                    e_lat = e_pos.find("Latitude")
+                    e_lon = e_pos.find("Longitude")
+                    e_alt = e_pos.find("Altitude")
+                    if e_lat is None or e_lon is None:
+                        raise ValueError("Failed to find position in XML DMPI object")
+                    if e_alt is None:
+                        elev = 0.0
+                    else:
+                        elev = int(float(e_alt.text))
+                    msn = MSN(name=name, station=8,
+                              position=LatLon(Latitude(e_lat.text), Longitude(e_lon.text)), elevation=elev)
+                    msns.append(msn)
+
             # TODO: other waypoint types?
             profile = Profile("", waypoints=wps+msns, aircraft="viper")
             return profile
