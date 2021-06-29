@@ -243,10 +243,14 @@ class DCSWyptEdGUI:
                 if self.editor.prefs.is_tesseract_debug == "true":
                     inverted.save(debug_dirname + "/lat_lon_image_inverted.png")
 
-                captured_map_coords = pytesseract.image_to_string(inverted)
+                captured_map_coords = pytesseract.image_to_string(inverted).replace("\x0A\x0C", "")
 
-                self.logger.debug("Raw captured text: " + captured_map_coords)
-                return captured_map_coords
+                self.logger.debug(f"Raw captured text: {captured_map_coords}")
+
+                # HACK: tesseract sometimes recognizes "E" as "£". since the latter is never a valid
+                # HACK: symbol, unconditionally replace it.
+                #
+                return captured_map_coords.replace("£", "E")
 
         self.logger.debug("Raise exception (could not find the map anywhere i guess?)")
 
@@ -257,6 +261,9 @@ class DCSWyptEdGUI:
     #
     def parse_map_coords_string(self, coords_string, tomcat_mode=False):
         coords_string = coords_string.upper()
+
+        self.logger.info(f"Parsing captured text: {coords_string}")
+
         # "X-00199287 Z+00523070, 0 ft"   Not sure how to convert this yet
 
         # "37 T FJ 36255 11628, 5300 ft"  tesseract did not like this one because the DCS font J looks too much like )
@@ -264,8 +271,7 @@ class DCSWyptEdGUI:
         if res is not None:
             mgrs_string = res.group(1).replace(" ", "")
             decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
-            position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(
-                degree=decoded_mgrs["lon"]))
+            position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
             elevation = float(res.group(2))
 
             if res.group(3) == "M":
@@ -312,6 +318,13 @@ class DCSWyptEdGUI:
 
             return position, elevation
 
+        self.logger.info("Unable to parse captured text")
+        return None, None
+    
+        '''
+        TODO: taking this code out temporarily, not clear we should ever hit it. there is no use of
+        TODO: tomcat_mode in the file and position is not parsed in non-tomcat_mode.
+
         split_string = coords_string.split(',')
 
         if tomcat_mode:
@@ -334,6 +347,7 @@ class DCSWyptEdGUI:
 
         self.logger.info("Parsed captured text: " + str(position))
         return position, elevation
+        '''
 
 
     # ================ ui/ux support
