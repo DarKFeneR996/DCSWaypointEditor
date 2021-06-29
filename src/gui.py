@@ -726,17 +726,21 @@ class DCSWyptEdGUI:
         filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
         if filename is not None:
             with open(filename, "r") as f:
-                self.profile = Profile.from_string(f.read())
-            #
-            # note that text JSON may carry profile name, we will force the name to the name of the
-            # empty slot, "" here.
-            #
-            self.profile.profilename = ""
-            if self.profile.aircraft is None:
-                self.profile.aircraft = self.editor.prefs.airframe_default
-            self.window.Element('ux_prof_select').Update(set_to_index=0)
-            self.update_for_profile_change(set_to_first=True)
-            self.logger.debug(self.profile.to_dict())
+                data = f.read()
+            try:
+                self.profile = Profile.from_string(data)
+                #
+                # note that text JSON may carry profile name, we will force the name to the name of the
+                # empty slot, "" here.
+                #
+                self.profile.profilename = ""
+                if self.profile.aircraft is None:
+                    self.profile.aircraft = self.editor.prefs.airframe_default
+                self.window.Element('ux_prof_select').Update(set_to_index=0)
+                self.update_for_profile_change(set_to_first=True)
+                self.logger.debug(self.profile.to_dict())
+            except:
+                PyGUI.Popup(f"Unable to parse the file '{filename}'", title="Error")
 
 
     # ================ ui profile panel handlers

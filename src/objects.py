@@ -4,7 +4,6 @@ from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
 import urllib.request
-import re
 import xml.etree.ElementTree as xml
 from os import altsep, walk, path
 from src.logger import get_logger
@@ -329,10 +328,11 @@ class Profile:
     
     @staticmethod
     def from_string(profile_string):
-        result = re.findall(r"^\<\?(xml) ", profile_string)
-        if result is not None:
+        try:
+            index = profile_string.index("<?xml version")
+            profile_string = profile_string[index:]
             return Profile.from_string_xml(profile_string)
-        else:
+        except:
             return Profile.from_string_json(profile_string)
 
     def save(self, profilename=None):
