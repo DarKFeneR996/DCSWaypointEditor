@@ -69,7 +69,7 @@ class PrefsGUI:
         except:
             errors = errors + ", enter mission hotkey"
         if len(errors) > 0:
-            PyGUI.Popup(f"Invalid value for {errors}, change ignored.", title="Error")
+            PyGUI.Popup(f"Invalid value(s) for {errors}, change ignored.", title="Error")
         self.prefs.is_auto_upd_check = bool_to_pref_str(values.get("ux_is_auto_upd_check"))
         self.prefs.is_tesseract_debug = bool_to_pref_str(values.get("ux_is_tesseract_debug"))
         self.prefs.persist_prefs()
@@ -91,24 +91,22 @@ class PrefsGUI:
             PyGUI.Input(self.prefs.path_tesseract, key="ux_path_tesseract"),
             PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="ux_path_tesseract")],
 
-            [PyGUI.Text("CombatFlite mission XML:", (20,1), justification="right"),
+            [PyGUI.Text("Mission file:", (20,1), justification="right"),
             PyGUI.Input(self.prefs.path_mission, key="ux_path_mission"),
-            PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="ux_path_mission")]
+            PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="ux_path_mission")],
         ]
         layout_hotkeys = [
             [PyGUI.Text("DCS F10 map capture:", (20,1), justification="right"),
             PyGUI.Input(self.prefs.hotkey_capture, key="ux_hotkey_capture", pad=((5,80),0))],
 
-            [PyGUI.Text("Capture mode toggle:", (20,1), justification="right"),
+            [PyGUI.Text("Toggle capture mode:", (20,1), justification="right"),
             PyGUI.Input(self.prefs.hotkey_capture_mode, key="ux_hotkey_capture_mode")],
 
-            [PyGUI.Text("Load current profile:", (20,1), justification="right"),
+            [PyGUI.Text("Load current profile into jet:", (20,1), justification="right"),
             PyGUI.Input(self.prefs.hotkey_enter_profile, key="ux_hotkey_enter_profile")],
 
-            [PyGUI.Text("Load CF mission XML:", (20,1), justification="right"),
-            PyGUI.Input(self.prefs.hotkey_enter_mission, key="ux_hotkey_enter_mission")],
-
-            [PyGUI.Text("Use \"ctrl\", \"alt\", \"shift\", and keyboard characters joined by \"+\" to build hot keys.")]
+            [PyGUI.Text("Load mission file into jet:", (20,1), justification="right"),
+            PyGUI.Input(self.prefs.hotkey_enter_mission, key="ux_hotkey_enter_mission")]
         ]
         layout_dcsbios = [
             [PyGUI.Text("Grace period:", (20,1), justification="right"),
@@ -125,7 +123,7 @@ class PrefsGUI:
 
             [PyGUI.Text("DCS-BIOS:", (20,1), justification="right"),
             PyGUI.Text(dcs_bios_detected, key="ux_dcs_bios_stat", size=(10,1)),
-            PyGUI.Button("Install DCS-BIOS", key="ux_install", disabled=dcs_bios_detected == "Detected")]
+            PyGUI.Button("Install DCS-BIOS", (8,1), key="ux_install", disabled=dcs_bios_detected == "Detected")]
         ]
         layout_misc = [
             [PyGUI.Text("Default airframe:", (20,1), justification="right"),
@@ -140,7 +138,7 @@ class PrefsGUI:
         ]
 
         return PyGUI.Window("Preferences",
-                            [[PyGUI.Frame("Paths", layout_paths)],
+                            [[PyGUI.Frame("Paths & Files", layout_paths)],
                             [PyGUI.Frame("DCS Hot Keys", layout_hotkeys)],
                             [PyGUI.Frame("DCS BIOS Parameters", layout_dcsbios)],
                             [PyGUI.Frame("Miscellaneous", layout_misc)],
