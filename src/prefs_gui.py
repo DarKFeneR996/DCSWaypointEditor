@@ -175,6 +175,8 @@ class PrefsGUI:
                 break
 
             elif event == "ux_install":
+                self.logger.error("TODO: DCS-BIOS installation disabled for now...")
+                '''
                 try:
                     self.logger.info("Installing DCS BIOS...")
                     install_dcs_bios(dcs_path)
@@ -186,6 +188,7 @@ class PrefsGUI:
                     self.window.Element("ux_dcs_bios_stat").Update(value="Install Failed")
                     self.logger.error("DCS-BIOS failed to install", exc_info=True)
                     PyGUI.Popup(f"DCS-BIOS failed to install:\n{e}", title="Error")
+                '''
     
             elif event == "ux_path_dcs":
                 dcs_bios_detected = detect_dcs_bios(values["ux_path_dcs"])
