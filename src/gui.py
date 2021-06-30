@@ -951,7 +951,7 @@ class DCSWyptEdGUI:
 
     # as these are not typically called form the run loop (as they represent hotkeys and so on that
     # might not have widgets), we pend hotkeys onto hkey_pend_q via hkey_<foo> and do the work on
-    # the main thread via do_<foo>.
+    # the main thread via do_hk_<foo>.
 
     def hkey_popup_err(self, err_msg):
         self.logger.error(f"Hotkey processing error: {err_msg}")
@@ -960,18 +960,18 @@ class DCSWyptEdGUI:
             self.hkey_pend_q.queue.clear()
 
     def hkey_dcs_f10_capture(self):
-        self.hkey_pend_q.put(self.do_dcs_f10_capture)
+        self.hkey_pend_q.put(self.do_hk_dcs_f10_capture)
     
     def hkey_dcs_f10_capture_tgt_toggle(self):
-        self.hkey_pend_q.put(self.do_dcs_f10_capture_tgt_toggle)
+        self.hkey_pend_q.put(self.do_hk_dcs_f10_capture_tgt_toggle)
  
     def hkey_profile_enter_in_jet(self):
-        self.hkey_pend_q.put(self.do_profile_enter_in_jet)
+        self.hkey_pend_q.put(self.do_hk_profile_enter_in_jet)
 
     def hkey_mission_enter_in_jet(self):
-        self.hkey_pend_q.put(self.do_mission_enter_in_jet)
+        self.hkey_pend_q.put(self.do_hk_mission_enter_in_jet)
 
-    def do_dcs_f10_capture(self):
+    def do_hk_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         if self.is_dcs_f10_tgt_add:
@@ -996,15 +996,15 @@ class DCSWyptEdGUI:
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
 
-    def do_dcs_f10_capture_tgt_toggle(self):
+    def do_hk_dcs_f10_capture_tgt_toggle(self):
         self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
         self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
         self.update_gui_control_enable_state()
 
-    def do_profile_enter_in_jet(self):
+    def do_hk_profile_enter_in_jet(self):
         self.do_profile_enter_in_jet(self)
 
-    def do_mission_enter_in_jet(self):
+    def do_hk_mission_enter_in_jet(self):
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
