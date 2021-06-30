@@ -740,10 +740,10 @@ class DCSWyptEdGUI:
     def do_profile_import_from_file(self):
         filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
         if filename is not None:
-            with open(filename, "r") as f:
+            with open(filename, "rb") as f:
                 data = f.read()
             try:
-                self.profile = Profile.from_string(data)
+                self.profile = Profile.from_string(data.decode("UTF-8"))
                 #
                 # note that text JSON may carry profile name, we will force the name to the name of the
                 # empty slot, "" here.
@@ -1003,14 +1003,15 @@ class DCSWyptEdGUI:
             self.is_entering_data = True
             self.window.Element('ux_prof_enter').Update(disabled=True)
             try:
-                with open(self.editor.prefs.path_mission, "r") as f:
-                    tmp_profile = Profile.from_string(f.read())
-                    if tmp_profile.has_waypoints:
-                        tmp_profile.aircraft = self.editor.prefs.airframe_default
-                        self.editor.set_driver(tmp_profile.aircraft)
-                        # TODO: setup callback and so on for progress ui
-                        self.editor.enter_all(tmp_profile)
-                        self.editor.set_driver(self.profile.aircraft)
+                with open(self.editor.prefs.path_mission, "rb") as f:
+                    data = f.read()
+                tmp_profile = Profile.from_string(data.decode("UTF-8"))
+                if tmp_profile.has_waypoints:
+                    tmp_profile.aircraft = self.editor.prefs.airframe_default
+                    self.editor.set_driver(tmp_profile.aircraft)
+                    # TODO: setup callback and so on for progress ui
+                    self.editor.enter_all(tmp_profile)
+                    self.editor.set_driver(self.profile.aircraft)
             except:
                 self.hkey_popup_err(f"Failed to load mission file '{self.editor.prefs.path_mission}'.")
             self.is_entering_data = False
