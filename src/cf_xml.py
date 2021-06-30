@@ -128,28 +128,14 @@ class CombatFliteXML:
             #
             dmpi_wypt = []
             dmpi_refp = []
-            name_pfx = f"DMPI targeted by " + f"{flight}"
             for elem in CombatFliteXML.find_objects_named(root, f"DMPI "):
                 name = CombatFliteXML.elem_get_name(elem)
                 match = re.match(r"^DMPI targeted by (?P<flight>[\S]+)",
                                  name, flags=re.IGNORECASE)
-                print(f"{name}, {match}")
                 if match and flight.lower() == match.group('flight').lower():
-                    print(f"wp {len(dmpi_wypt)}")
                     dmpi_wypt.append(elem)
                 elif not match:
-                    print(f"rp {len(dmpi_refp)}")
                     dmpi_refp.append(elem)
-                '''
-                print(f"{CombatFliteXML.elem_get_name(elem)}")
-                name = CombatFliteXML.elem_get_name(elem).lower()
-                if name.startswith(name_pfx.lower()):
-                    print(f"wp {len(dmpi_wypt)}")
-                    dmpi_wypt.append(elem)
-                elif not name.startswith(f"DMPI targeted by "):
-                    print(f"rp {len(dmpi_refp)}")
-                    dmpi_refp.append(elem)
-                '''
             logger.info(f"CF XML: got {len(dmpi_wypt)} '{flight}' DMPI waypoints")
             logger.info(f"CF XML: got {len(dmpi_refp)} DMPI reference points")
 
