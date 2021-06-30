@@ -278,7 +278,7 @@ class Profile:
         return readable_string
 
     @staticmethod
-    def from_string_json(profile_string):
+    def from_string(profile_string):
         profile_data = json.loads(profile_string)
         try:
             profile_name = profile_data["name"]
@@ -293,73 +293,6 @@ class Profile:
         except Exception as e:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
-
-    @staticmethod
-    def from_string_xml(profile_string):
-        try:
-            root = xml.fromstring(profile_string)
-            #
-            # root element of a combatflite xml is "Objects", this element includes two elements of
-            # interest: "Waypoint" and "Object"
-            #
-            wps = []
-            for elem in root.iter("Waypoint"):
-                e_nam = elem.find("Name")
-                if e_nam is None:
-                    name = ""
-                else:
-                    name = e_nam.text.replace("\n", " ")
-                e_pos = elem.find("Position")
-                e_lat = e_pos.find("Latitude")
-                e_lon = e_pos.find("Longitude")
-                e_alt = e_pos.find("Altitude")
-                if e_lat is None or e_lon is None:
-                    raise ValueError("Failed to find position in XML waypoint")
-                if e_alt is None:
-                    elev = 0.0
-                else:
-                    elev = int(float(e_alt.text))
-                wp = Waypoint(name=name, sequence=0,
-                              position=LatLon(Latitude(e_lat.text), Longitude(e_lon.text)), elevation=elev)
-                wps.append(wp)
-            
-            msns = []
-            for elem in root.iter("Object"):
-                e_nam = elem.find("Name")
-                if e_nam is None:
-                    name = ""
-                else:
-                    name = e_nam.text.replace("\n", " ")
-                if name.lower().startswith("dmpi targeted by "):
-                    e_pos = elem.find("Position")
-                    e_lat = e_pos.find("Latitude")
-                    e_lon = e_pos.find("Longitude")
-                    e_alt = e_pos.find("Altitude")
-                    if e_lat is None or e_lon is None:
-                        raise ValueError("Failed to find position in XML DMPI object")
-                    if e_alt is None:
-                        elev = 0.0
-                    else:
-                        elev = int(float(e_alt.text))
-                    msn = MSN(name=name, station=8,
-                              position=LatLon(Latitude(e_lat.text), Longitude(e_lon.text)), elevation=elev)
-                    msns.append(msn)
-
-            # TODO: other waypoint types?
-            profile = Profile("", waypoints=wps+msns, aircraft="viper")
-            return profile
-        except Exception as e:
-            logger.error(e)
-            raise ValueError("Failed to load profile from XML data")
-    
-    @staticmethod
-    def from_string(profile_string):
-        try:
-            index = profile_string.index("<?xml version")
-            profile_string = profile_string[index:]
-            return Profile.from_string_xml(profile_string)
-        except:
-            return Profile.from_string_json(profile_string)
 
     def save(self, profilename=None):
         delete_list = list()

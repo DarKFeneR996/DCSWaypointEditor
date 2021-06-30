@@ -1,5 +1,6 @@
 from logging import disable
 from typing import Sequence
+from src.cf_xml import CombatFliteXML
 from src.dcs_bios import detect_dcs_bios
 from src.objects import Profile, Waypoint, MSN
 from src.logger import get_logger
@@ -128,6 +129,15 @@ class DCSWyptEdGUI:
             return "Untitled"
         else:
             return self.profile.profilename
+
+    def import_profile(self, path, csign="Enfield1-1", name="", aircraft="viper"):
+        with open(path, "rb") as f:
+            data = f.read()
+        str = data.decode("UTF-8")
+        if CombatFliteXML.is_xml(str):
+            return CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+        else:
+            return Profile.from_string(str)
 
 
     # ================ waypoint support
@@ -719,12 +729,11 @@ class DCSWyptEdGUI:
     def do_profile_import_from_encoded_string(self):
         encoded = pyperclip.paste()
         try:
-            decoded = json_unzip(encoded)
+            self.profile = Profile.from_string(json_unzip(encoded))
             #
             # note that encoded JSON may carry profile name, we will force the name to the name of
             # the empty slot, "" here.
             #
-            self.profile = Profile.from_string(decoded)
             self.profile.profilename = ""
             if self.profile.aircraft is None:
                 self.profile.aircraft = self.editor.prefs.airframe_default
@@ -740,10 +749,8 @@ class DCSWyptEdGUI:
     def do_profile_import_from_file(self):
         filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
         if filename is not None:
-            with open(filename, "rb") as f:
-                data = f.read()
             try:
-                self.profile = Profile.from_string(data.decode("UTF-8"))
+                self.profile = self.import_profile(filename, csign="Enfield1-1", name="", aircraft="viper")
                 #
                 # note that text JSON may carry profile name, we will force the name to the name of the
                 # empty slot, "" here.
@@ -1003,9 +1010,9 @@ class DCSWyptEdGUI:
             self.is_entering_data = True
             self.window.Element('ux_prof_enter').Update(disabled=True)
             try:
-                with open(self.editor.prefs.path_mission, "rb") as f:
-                    data = f.read()
-                tmp_profile = Profile.from_string(data.decode("UTF-8"))
+                tmp_profile = self.import_profile(self.editor.prefs.path_mission,
+                                                  csign="", name="",
+                                                  aircraft=self.editor.prefs.airframe_default)
                 if tmp_profile.has_waypoints:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
