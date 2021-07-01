@@ -130,11 +130,16 @@ class DCSWyptEdGUI:
         else:
             return self.profile.profilename
 
-    def import_profile(self, path, csign="Enfield1-1", name="", aircraft="viper"):
+    def import_profile(self, path, csign="", name="", aircraft="viper", warn=False):
         with open(path, "rb") as f:
             data = f.read()
         str = data.decode("UTF-8")
         if CombatFliteXML.is_xml(str):
+            if csign != "" and not self.editor.prefs.is_callsign_valid(csign):
+                if warn:
+                    PyGUI.Popup(f"The callsign '{csign}' is invalid.\n" +
+                                 "DCSWE will not use a callsign for this import.", title="Note")
+                csign = ""
             return CombatFliteXML.profile_from_string(str, csign, name, aircraft)
         else:
             return Profile.from_string(str)
@@ -370,35 +375,36 @@ class DCSWyptEdGUI:
 
         pois = [""] + sorted([poi.name for _, poi in self.editor.default_bases.items()],)
         arfm_ui_text = airframe_type_to_ui_text(self.editor.prefs.airframe_default)
+        
+        is_dcs_f10_disabled = True if self.tesseract_version is None else False
 
-        if self.tesseract_version is None:
-            is_dcs_f10_disabled = True
-        else:
-            is_dcs_f10_disabled = False
+        menu_dcswe = ["DCS WE",
+                      ["Preferences...::ux_menu_prefs",
+                       "---",
+                       "Check for Updates...::ux_menu_update"]]
+        menu_file = ["File",
+                     [[["Import Profile", ["From Clipboard Encoded JSON::ux_menu_imp_clip",
+                                           "From JSON or CombatFlite XML File...::ux_menu_imp_file"]]],
+                        "Export Profile", ["To Clipboard as Encoded JSON::ux_menu_exp_clip_enc",
+                                           "To Clipboard as Text::ux_menu_exp_clip_plain",
+                                           "To JSON File...::ux_menu_exp_file"]]]
 
-        menu_bar = PyGUI.MenuBar([["DCS WE", ["Preferences...::ux_menu_prefs",
-                                              "---",
-                                              "Check for Updates...::ux_menu_update"]],
-                                  ["File", [[["Import Profile", ["From Clipboard Encoded JSON::ux_menu_imp_clip",
-                                                                 "From Text JSON or CombatFlite XML File...::ux_menu_imp_file"]]],
-                                              "Export Profile", ["To Clipboard as Encoded JSON::ux_menu_exp_clip_enc",
-                                                                 "To Clipboard as Text::ux_menu_exp_clip_plain",
-                                                                 "To Text JSON File...::ux_menu_exp_file"]]],
-                                 ])
+        menu_bar = PyGUI.MenuBar([menu_dcswe, menu_file])
 
         frame_prof = PyGUI.Frame("Profile",
                                  [[PyGUI.Text("Profile:", size=(8,1), justification="right"),
                                    PyGUI.Combo(values=[""] + self.profile_names(), readonly=True,
-                                               enable_events=True, key='ux_prof_select', size=(21,1))],
+                                               enable_events=True, key='ux_prof_select', size=(37,1))],
                                   [PyGUI.Text("Airframe:", size=(8,1), justification="right"),
                                    PyGUI.Combo(values=airframe_list(), default_value=arfm_ui_text,
-                                               enable_events=True, key='ux_prof_afrm_select', size=(21,1))],
+                                               enable_events=True, key='ux_prof_afrm_select', size=(37,1))],
                                   [PyGUI.Text("Waypoints in Profile:")],
-                                  [PyGUI.Listbox(values=list(), size=(32,18),
+                                  [PyGUI.Listbox(values=list(), size=(48,19),
                                                  enable_events=True, key='ux_prof_wypt_list')],
-                                  [PyGUI.Button("Save", key='ux_prof_save', size=(6,1), pad=(6,(10,6))),
-                                   PyGUI.Button("Delete", key='ux_prof_delete', size=(6,1), pad=(6,(10,6))),
-                                   PyGUI.Button("Enter in Jet", key='ux_prof_enter', size=(10,1), pad=((26,6),(10,6)))],
+                                  [PyGUI.Button("Save", key='ux_prof_save', size=(10,1), pad=(6,(9,6))),
+                                   PyGUI.Button("Delete", key='ux_prof_delete', size=(10,1), pad=(6,(9,6))),
+                                   PyGUI.Button("Enter into Jet", key='ux_prof_enter', size=(12,1),
+                                                pad=((56,6),(9,6)))],
                                  ])
 
         frame_coord = PyGUI.Frame("Coordinates",
@@ -421,18 +427,20 @@ class DCSWyptEdGUI:
                                    [PyGUI.Text("MGRS:", size=(8,1), justification="right", pad=(5,(12,12))),
                                     PyGUI.InputText(size=(25, 1), key='ux_mgrs', enable_events=True)],
  
-                                   [PyGUI.Text("Elevation:", size=(8,1), justification="right"),
-                                    PyGUI.InputText(size=(8, 1), key='ux_elev_ft', enable_events=True),
-                                    PyGUI.Text("(ft)", pad=((0,29),0)),
-                                    PyGUI.InputText(size=(8, 1), key='ux_elev_m', enable_events=True),
-                                    PyGUI.Text("(m)", pad=((0,12),0))]
+                                   [PyGUI.Text("Elevation:", size=(8,1), pad=(4,(2,8)), justification="right"),
+                                    PyGUI.InputText(size=(8, 1), pad=(6,(2,8)), key='ux_elev_ft',
+                                                    enable_events=True),
+                                    PyGUI.Text("(ft)", pad=((6,29),(2,8))),
+                                    PyGUI.InputText(size=(8, 1), pad=(0,(2,8)), key='ux_elev_m',
+                                                    enable_events=True),
+                                    PyGUI.Text("(m)", pad=((6,12),(2,8)))]
                                   ])
 
         frame_capt = PyGUI.Frame("DCS Coordinate Capture",
                                  [[PyGUI.Checkbox("Enable capture from DCS F10 map into", pad=((6,3),6),
                                                   default=False, enable_events=True, key='ux_dcs_f10_enable',
                                                   disabled=is_dcs_f10_disabled),
-                                   PyGUI.Combo(values=["Coordiante Panel", "New Waypoint"],
+                                   PyGUI.Combo(values=["Coordiante Panel", "New Waypoint"], size=(18,1),
                                                enable_events=True, key='ux_dcs_f10_tgt_select',
                                                default_value="Coordiante Panel", pad=((0,18),6))],
                                  ])
@@ -443,7 +451,7 @@ class DCSWyptEdGUI:
                                                key='ux_poi_wypt_select', size=(20,1), pad=(6,(0,16))),
                                    PyGUI.Button(button_text="Filter", size=(6,1), key='ux_poi_filter', pad=(6,(0,16)))],
                                   [PyGUI.Text("Name:", size=(8,1), justification="right"),
-                                   PyGUI.InputText(size=(50, 1), key='ux_wypt_name')],
+                                   PyGUI.InputText(size=(49, 1), key='ux_wypt_name')],
                                   [PyGUI.Text("Type:", size=(8,1), justification="right"),
                                     PyGUI.Combo(values=["WP", "MSN", "FP", "ST", "IP", "DP", "HA", "HB"],
                                                default_value="WP", enable_events=True, readonly=True,
@@ -460,31 +468,43 @@ class DCSWyptEdGUI:
                                  ])
 
         frame_stat = PyGUI.Frame("Status",
-                                 [[PyGUI.Text("Progress:", size=(8,1), justification="right"),
-                                   PyGUI.ProgressBar(1.0, size=(27,16)),
-                                   PyGUI.Button("Cancel", disabled=True)]
+                                 [[PyGUI.Text("Progress:", size=(8,1), pad=(6,(2,6)), justification="right"),
+                                   PyGUI.ProgressBar(1.0, size=(24,12), pad=(6,10)),
+                                   PyGUI.Button("Cancel", size=(8,1), pad=((6,7),10), disabled=True)]
                                  ])
-
+        
         col_0 = PyGUI.Column([[menu_bar],
                               [frame_prof],
-                              [PyGUI.Text(f"Version: {self.software_version}")]], vertical_alignment="top")
-        col_1 = PyGUI.Column([[frame_wypt], [frame_stat]], vertical_alignment="top")
+                              [PyGUI.Text(f"Version: {self.software_version}", pad=(6,12))]],
+                             vertical_alignment="top")
+        col_1 = PyGUI.Column([[frame_wypt],
+                              [frame_stat],
+                              [PyGUI.Text("Callsign:", size=(8,1), pad=((12,10),12),
+                                          justification="right"),
+                               PyGUI.InputText(default_text=self.editor.prefs.callsign_default,
+                                               key='ux_callsign', enable_events=True, size=(50,1),
+                                               pad=(0,6))]],
+                             vertical_alignment="top")
 
-        return PyGUI.Window('DCS Waypoint Editor', [[col_0, col_1]])
+        window = PyGUI.Window('DCS Waypoint Editor', [[col_0, col_1]], finalize=True)
+
+        window['ux_callsign'].bind('<FocusOut>', ':focus_out')
+
+        return window
 
     # update state in response to a profile change.
     #
     def update_for_profile_change(self, set_to_first=False, update_enable=True):
         profiles = [""] + self.profile_names()
-        self.window.Element('ux_prof_select').Update(values=profiles,
-                                                     set_to_index=profiles.index(self.profile.profilename))
-        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.window['ux_prof_select'].update(values=profiles,
+                                             set_to_index=profiles.index(self.profile.profilename))
+        self.window['ux_poi_wypt_select'].update(set_to_index=0)
         ac_ui_text = airframe_type_to_ui_text(self.profile.aircraft)
-        self.window.Element('ux_prof_afrm_select').Update(value=ac_ui_text)
+        self.window['ux_prof_afrm_select'].update(value=ac_ui_text)
         self.editor.set_driver(self.profile.aircraft)
         self.update_for_waypoint_list_change(set_to_first=set_to_first, update_enable=False)
         self.update_for_coords_change()
-        self.window.Element('ux_prof_wypt_list').Update(set_to_index=[])
+        self.window['ux_prof_wypt_list'].update(set_to_index=[])
         if update_enable:
             self.update_gui_control_enable_state()
 
@@ -502,9 +522,9 @@ class DCSWyptEdGUI:
             values.append(namestr)
 
         if set_to_first:
-            self.window.Element('ux_prof_wypt_list').Update(values=values, set_to_index=0)
+            self.window['ux_prof_wypt_list'].update(values=values, set_to_index=0)
         else:
-            self.window.Element('ux_prof_wypt_list').Update(values=values)
+            self.window['ux_prof_wypt_list'].update(values=values)
         if update_enable:
             self.update_gui_control_enable_state()
 
@@ -512,68 +532,68 @@ class DCSWyptEdGUI:
     #
     def update_for_waypoint_type_change(self):
         if self.selected_wp_type == "WP":
-            self.window.Element("ux_seq_sta_text").Update(value="Sequence:")
-            self.window.Element('ux_seq_stn_select').Update(values=("None", 1, 2, 3), value="None",
+            self.window['ux_seq_sta_text'].update(value="Sequence:")
+            self.window['ux_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
                                                             disabled=False, readonly=True)
         elif self.selected_wp_type == "MSN":
-            self.window.Element("ux_seq_sta_text").Update(value="Station:")
-            self.window.Element('ux_seq_stn_select').Update(values=(8, 7, 3, 2), value=8,
-                                                            disabled=False, readonly=True)
+            self.window['ux_seq_sta_text'].update(value="Station:")
+            self.window['ux_seq_stn_select'].update(values=(8, 7, 3, 2), value=8,
+                                                    disabled=False, readonly=True)
         else:
-            self.window.Element("ux_seq_sta_text").Update(value="Sequence:")
-            self.window.Element('ux_seq_stn_select').Update(values=("None", 1, 2, 3), value="None",
-                                                            disabled=True, readonly=False)
+            self.window['ux_seq_sta_text'].update(value="Sequence:")
+            self.window['ux_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
+                                                    disabled=True, readonly=False)
 
     # update state in response to changes in the coordinates.
     #
     def update_for_coords_change(self, position=None, elevation=None, name=None, update_mgrs=True,
                                  wypt_type=None, wypt_seq_sta=None, update_enable=True):
         if position is not None:
-            self.window.Element('ux_lat_deg').Update(round(position.lat.degree))
-            self.window.Element('ux_lat_min').Update(round(position.lat.minute))
-            self.window.Element('ux_lat_sec').Update(round(position.lat.second, 2))
+            self.window['ux_lat_deg'].update(round(position.lat.degree))
+            self.window['ux_lat_min'].update(round(position.lat.minute))
+            self.window['ux_lat_sec'].update(round(position.lat.second, 2))
 
-            self.window.Element('ux_lon_deg').Update(round(position.lon.degree))
-            self.window.Element('ux_lon_min').Update(round(position.lon.minute))
-            self.window.Element('ux_lon_sec').Update(round(position.lon.second, 2))
+            self.window['ux_lon_deg'].update(round(position.lon.degree))
+            self.window['ux_lon_min'].update(round(position.lon.minute))
+            self.window['ux_lon_sec'].update(round(position.lon.second, 2))
 
             mgrs_val = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
 
         else:
-            self.window.Element('ux_lat_deg').Update("")
-            self.window.Element('ux_lat_min').Update("")
-            self.window.Element('ux_lat_sec').Update("")
+            self.window['ux_lat_deg'].update("")
+            self.window['ux_lat_min'].update("")
+            self.window['ux_lat_sec'].update("")
 
-            self.window.Element('ux_lon_deg').Update("")
-            self.window.Element('ux_lon_min').Update("")
-            self.window.Element('ux_lon_sec').Update("")
+            self.window['ux_lon_deg'].update("")
+            self.window['ux_lon_min'].update("")
+            self.window['ux_lon_sec'].update("")
 
             mgrs_val = ""
 
         if update_mgrs:
-            self.window.Element('ux_mgrs').Update(mgrs_val)
+            self.window['ux_mgrs'].update(mgrs_val)
 
         if elevation is not None:
-            self.window.Element('ux_elev_ft').Update(int(float(elevation)))
-            self.window.Element('ux_elev_m').Update(int(round(float(elevation)/3.281)))
+            self.window['ux_elev_ft'].update(int(float(elevation)))
+            self.window['ux_elev_m'].update(int(round(float(elevation)/3.281)))
         else:
-            self.window.Element('ux_elev_ft').Update("")
-            self.window.Element('ux_elev_m').Update("")
+            self.window['ux_elev_ft'].update("")
+            self.window['ux_elev_m'].update("")
         
         if name is not None:
-            self.window.Element('ux_wypt_name').Update(name)
+            self.window['ux_wypt_name'].update(name)
         else:
-            self.window.Element('ux_wypt_name').Update("")
+            self.window['ux_wypt_name'].update("")
 
         if wypt_type is not None:
             self.selected_wp_type = wypt_type
-            self.window.Element('ux_wypt_type_select').Update(value=wypt_type)
+            self.window['ux_wypt_type_select'].update(value=wypt_type)
             self.update_for_waypoint_type_change()
     
         if wypt_seq_sta is not None:
-            self.window.Element('ux_seq_stn_select').Update(value=wypt_seq_sta)
+            self.window['ux_seq_stn_select'].update(value=wypt_seq_sta)
         else:
-            self.window.Element('ux_seq_stn_select').Update(value="None")
+            self.window['ux_seq_stn_select'].update(value="None")
 
         if update_enable:
             self.update_gui_control_enable_state()
@@ -584,49 +604,51 @@ class DCSWyptEdGUI:
     #
     def update_gui_control_enable_state(self):
         if self.is_dcs_f10_enabled == True and self.tesseract_version is not None:
-            self.window.Element('ux_dcs_f10_tgt_select').Update(disabled=False, readonly=True)
+            self.window['ux_dcs_f10_tgt_select'].update(disabled=False, readonly=True)
         else:
-            self.window.Element('ux_dcs_f10_tgt_select').Update(disabled=True, readonly=False)
+            self.window['ux_dcs_f10_tgt_select'].update(disabled=True, readonly=False)
 
         if self.is_dcs_f10_tgt_add:
-            self.window.Element('ux_dcs_f10_tgt_select').Update(set_to_index=1)
+            self.window['ux_dcs_f10_tgt_select'].update(set_to_index=1)
         else:
-            self.window.Element('ux_dcs_f10_tgt_select').Update(set_to_index=0)
+            self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
         if self.profile.profilename != '':
-            self.window.Element('ux_prof_delete').Update(disabled=False)
+            self.window['ux_prof_save'].update(text="Save As...")
+            self.window['ux_prof_delete'].update(disabled=False)
         else:
-            self.window.Element('ux_prof_delete').Update(disabled=True)
+            self.window['ux_prof_save'].update(text="Save...")
+            self.window['ux_prof_delete'].update(disabled=True)
 
         if self.profile.has_waypoints == True:
-            self.window.Element('ux_prof_save').Update(disabled=False)
+            self.window['ux_prof_save'].update(disabled=False)
             if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
-                self.window.Element('ux_prof_enter').Update(disabled=False)
+                self.window['ux_prof_enter'].update(disabled=False)
             else:
-                self.window.Element('ux_prof_enter').Update(disabled=True)
+                self.window['ux_prof_enter'].update(disabled=True)
         else:
-            self.window.Element('ux_prof_save').Update(disabled=True)
-            self.window.Element('ux_prof_enter').Update(disabled=True)
+            self.window['ux_prof_save'].update(disabled=True)
+            self.window['ux_prof_enter'].update(disabled=True)
 
         posn, elev, _ = self.validate_coords()
         if posn is not None and elev is not None:
-            self.window.Element('ux_wypt_add').Update(disabled=False)
+            self.window['ux_wypt_add'].update(disabled=False)
         else:
-            self.window.Element('ux_wypt_add').Update(disabled=True)
+            self.window['ux_wypt_add'].update(disabled=True)
 
-        if len(self.window.Element('ux_prof_wypt_list').get()) > 0:
-            self.window.Element('ux_wypt_update').Update(disabled=False)
-            self.window.Element('ux_wypt_delete').Update(disabled=False)
+        if len(self.window['ux_prof_wypt_list'].get()) > 0:
+            self.window['ux_wypt_update'].update(disabled=False)
+            self.window['ux_wypt_delete'].update(disabled=False)
         else:
-            self.window.Element('ux_wypt_update').Update(disabled=True)
-            self.window.Element('ux_wypt_delete').Update(disabled=True)
+            self.window['ux_wypt_update'].update(disabled=True)
+            self.window['ux_wypt_delete'].update(disabled=True)
 
     # update the coordinates elements enable/disable state
     #
     def update_gui_coords_input_disabled(self, disabled):
         for element_name in ('ux_lat_deg', 'ux_lat_min', 'ux_lat_sec', 'ux_lon_deg', 'ux_lon_min',
                              'ux_lon_sec', 'ux_mgrs', 'ux_elev_ft', 'ux_elev_m'):
-            self.window.Element(element_name).Update(disabled=disabled)
+            self.window.Element(element_name).update(disabled=disabled)
 
     # change the binding of a hotkey. providing only previous will unbind the key.
     #
@@ -646,19 +668,19 @@ class DCSWyptEdGUI:
     # validate coordinates in ui. returns an {position, elevation, name} tuple; None's if invalid
     #
     def validate_coords(self):
-        lat_deg = self.window.Element('ux_lat_deg').Get()
-        lat_min = self.window.Element('ux_lat_min').Get()
-        lat_sec = self.window.Element('ux_lat_sec').Get()
+        lat_deg = self.window['ux_lat_deg'].get()
+        lat_min = self.window['ux_lat_min'].get()
+        lat_sec = self.window['ux_lat_sec'].get()
 
-        lon_deg = self.window.Element('ux_lon_deg').Get()
-        lon_min = self.window.Element('ux_lon_min').Get()
-        lon_sec = self.window.Element('ux_lon_sec').Get()
+        lon_deg = self.window['ux_lon_deg'].get()
+        lon_min = self.window['ux_lon_min'].get()
+        lon_sec = self.window['ux_lon_sec'].get()
 
         try:
             position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                               Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
-            elevation = int(self.window.Element('ux_elev_ft').Get())
-            name = self.window.Element('ux_wypt_name').Get()
+            elevation = int(self.window['ux_elev_ft'].get())
+            name = self.window['ux_wypt_name'].get()
             return position, elevation, name
         except ValueError as e:
             self.logger.error(f"Failed to validate coords: {e}")
@@ -737,7 +759,7 @@ class DCSWyptEdGUI:
             self.profile.profilename = ""
             if self.profile.aircraft is None:
                 self.profile.aircraft = self.editor.prefs.airframe_default
-            self.window.Element('ux_prof_select').Update(set_to_index=0)
+            self.window['ux_prof_select'].update(set_to_index=0)
             self.update_for_profile_change(set_to_first=True)
             self.logger.debug(self.profile.to_dict())
         except Exception as e:
@@ -750,7 +772,10 @@ class DCSWyptEdGUI:
         filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
         if filename is not None:
             try:
-                self.profile = self.import_profile(filename, csign="Enfield1-1", name="", aircraft="viper")
+                self.validate_text_callsign('ux_callsign')
+                self.profile = self.import_profile(filename, warn=True,
+                                                   csign=self.editor.prefs.callsign_default,
+                                                   aircraft=self.editor.prefs.airframe_default)
                 #
                 # note that text JSON may carry profile name, we will force the name to the name of the
                 # empty slot, "" here.
@@ -758,7 +783,7 @@ class DCSWyptEdGUI:
                 self.profile.profilename = ""
                 if self.profile.aircraft is None:
                     self.profile.aircraft = self.editor.prefs.airframe_default
-                self.window.Element('ux_prof_select').Update(set_to_index=0)
+                self.window['ux_prof_select'].update(set_to_index=0)
                 self.update_for_profile_change(set_to_first=True)
                 self.logger.debug(self.profile.to_dict())
             except:
@@ -789,14 +814,16 @@ class DCSWyptEdGUI:
 
     def do_profile_save(self):
         name = self.profile.profilename
-        if not name:
-            name = PyGUI.PopupGetText("Profile Name", "Saving Profile to Database")
-            if name and len(name) > 0:
-                if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
-                    self.profile.save(name)
-                    self.update_for_profile_change()
-                else:
-                    PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
+        if name == "":
+            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
+        else:
+            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile")
+        if name and len(name) > 0:
+            if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
+                self.profile.save(name)
+                self.update_for_profile_change()
+            else:
+                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
 
     def do_profile_delete(self):
         if self.profile.profilename != "":
@@ -808,7 +835,7 @@ class DCSWyptEdGUI:
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.is_entering_data = True
-            self.window.Element('ux_prof_enter').Update(disabled=True)
+            self.window['ux_prof_enter'].update(disabled=True)
             if self.profile.has_waypoints == True:
                 # TODO: setup callback and so on for progress ui
                 self.editor.enter_all(self.profile)
@@ -852,8 +879,8 @@ class DCSWyptEdGUI:
 
     def do_poi_wypt_filter(self):
         text = self.values['ux_poi_wypt_select']
-        self.window.Element('ux_poi_wypt_select').\
-            Update(values=[""] + [poi.name for _, poi in self.editor.default_bases.items() if
+        self.window['ux_poi_wypt_select'].\
+            update(values=[""] + [poi.name for _, poi in self.editor.default_bases.items() if
                                   text.lower() in poi.name.lower()],
                    set_to_index=0)
 
@@ -863,7 +890,7 @@ class DCSWyptEdGUI:
             self.add_waypoint(position, elevation, name)
         else:
             PyGUI.Popup("Cannot add waypoint without coordinates.")
-        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.window['ux_poi_wypt_select'].update(set_to_index=0)
         self.update_for_waypoint_list_change()
 
     def do_waypoint_update(self):
@@ -876,7 +903,7 @@ class DCSWyptEdGUI:
                 waypoint.name = name
             else:
                 PyGUI.Popup("Cannot update waypoint without coordinates.")
-        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.window['ux_poi_wypt_select'].update(set_to_index=0)
         self.update_for_waypoint_list_change()
 
     def do_waypoint_delete(self):
@@ -886,7 +913,7 @@ class DCSWyptEdGUI:
                 if str(wp) == valuestr:
                     self.profile.waypoints.remove(wp)
             self.update_for_waypoint_list_change()
-        self.window.Element('ux_poi_wypt_select').Update(set_to_index=0)
+        self.window['ux_poi_wypt_select'].update(set_to_index=0)
 
     def do_dcs_f10_enable(self):
         self.is_dcs_f10_enabled = self.values['ux_dcs_f10_enable']
@@ -903,12 +930,9 @@ class DCSWyptEdGUI:
     def do_waypoint_linked_update_elev_ft(self):
         try:
             elevation = float(self.values['ux_elev_ft'])
+            self.window['ux_elev_m'].update(round(elevation/3.281))
         except:
-            elevation = None
-        if elevation is not None:
-            self.window.Element('ux_elev_m').Update(round(elevation/3.281))
-        else:
-            self.window.Element('ux_elev_m').Update("")
+            self.window['ux_elev_m'].update("")
         self.update_gui_control_enable_state()
 
     # update ui state of widgets linked to a change in elevation (m)
@@ -916,12 +940,9 @@ class DCSWyptEdGUI:
     def do_waypoint_linked_update_elev_m(self):
         try:
             elevation = float(self.values['ux_elev_m'])
+            self.window['ux_elev_ft'].update(round(elevation*3.281))
         except:
-            elevation = None
-        if elevation is not None:
-            self.window.Element('ux_elev_ft').Update(round(elevation*3.281))
-        else:
-            self.window.Element('ux_elev_ft').Update("")
+            self.window['ux_elev_ft'].update("")
         self.update_gui_control_enable_state()
 
     # update ui state of widgets linked to a change in mgrs
@@ -930,7 +951,7 @@ class DCSWyptEdGUI:
         position, _, _ = self.validate_coords()
         if position is not None:
             m = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
-            self.window.Element('ux_mgrs').Update(m)
+            self.window['ux_mgrs'].update(m)
         self.update_gui_control_enable_state()
 
     # update ui state of widgets linked to a change in position (lat/lon)
@@ -944,6 +965,13 @@ class DCSWyptEdGUI:
                 self.update_for_coords_change(position, update_mgrs=False)
             except (TypeError, ValueError, UnboundLocalError) as e:
                 PyGUI.Popup(f"Cannot decode MGRS '{mgrs_str}', {e}")
+
+
+    # ================ ui miscellaneous controls
+
+
+    def do_callsign(self):
+        return
 
 
     # ================ keyboard hotkey handlers
@@ -1008,10 +1036,11 @@ class DCSWyptEdGUI:
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
-            self.window.Element('ux_prof_enter').Update(disabled=True)
+            self.window['ux_prof_enter'].update(disabled=True)
             try:
+                self.validate_text_callsign('ux_callsign')
                 tmp_profile = self.import_profile(self.editor.prefs.path_mission,
-                                                  csign="", name="",
+                                                  csign=self.editor.prefs.callsign_default,
                                                   aircraft=self.editor.prefs.airframe_default)
                 if tmp_profile.has_waypoints:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
@@ -1023,14 +1052,25 @@ class DCSWyptEdGUI:
                 self.hkey_popup_err(f"Failed to load mission file '{self.editor.prefs.path_mission}'.")
             self.is_entering_data = False
             self.update_gui_control_enable_state()
-        
+
+
+    # ================ text field validation
+
+
+    def validate_text_callsign(self, event):
+        callsign = self.window[event].get()
+        try:
+            self.editor.prefs.callsign_default = callsign
+            self.editor.prefs.persist_prefs()
+            return None
+        except:
+            return "Invalid callsign.\nCallsigns must be of the form \"Witcher1-1\"."
+
 
     # ================ ui main loop
 
 
     def run(self):
-        self.window.finalize()
-    
         if self.is_dcs_f10_enabled:
             self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.hkey_dcs_f10_capture)
             self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.hkey_dcs_f10_capture_tgt_toggle)
@@ -1039,11 +1079,60 @@ class DCSWyptEdGUI:
 
         self.update_for_profile_change()
 
+        handler_map = { 'ux_menu_prefs' : self.do_preferences,
+                        'ux_menu_update' : self.do_check_updates,
+                        'ux_menu_exp_clip_enc' : self.do_profile_export_to_encoded_string,
+                        'ux_menu_exp_clip_plain' : self.do_profile_export_to_plain_string,
+                        'ux_menu_exp_file' : self.do_profile_export_to_file,
+                        'ux_menu_imp_clip' : self.do_profile_import_from_encoded_string,
+                        'ux_menu_imp_file' : self.do_profile_import_from_file,
+
+                        'ux_prof_select' : self.do_profile_select,
+                        'ux_prof_afrm_select' : self.do_airframe_select,
+
+                        'ux_prof_save' : self.do_profile_save,
+                        'ux_prof_delete' : self.do_profile_delete,
+                        'ux_prof_enter' : self.do_profile_enter_in_jet,
+
+                        'ux_prof_wypt_list' : self.do_profile_waypoint_list,
+
+                        'ux_wypt_type_select' : self.do_wypt_type_select,
+                        'ux_seq_stn_select' : self.do_seq_stn_select,
+                        'ux_poi_wypt_select' : self.do_poi_wypt_select,
+                        'ux_dcs_f10_tgt_select' : self.do_dcs_f10_tgt_select,
+                        'ux_poi_filter' : self.do_poi_wypt_filter,
+
+                        'ux_wypt_add': self.do_waypoint_add,
+                        'ux_wypt_update': self.do_waypoint_update,
+                        'ux_wypt_delete': self.do_waypoint_delete,
+                        'ux_dcs_f10_enable': self.do_dcs_f10_enable,
+
+                        'ux_elev_ft' : self.do_waypoint_linked_update_elev_ft,
+                        'ux_elev_m' : self.do_waypoint_linked_update_elev_m,
+                        'ux_lat_deg' : self.do_waypoint_linked_update_mgrs,
+                        'ux_lat_min' : self.do_waypoint_linked_update_mgrs,
+                        'ux_lat_sec' : self.do_waypoint_linked_update_mgrs,
+                        'ux_lon_deg' : self.do_waypoint_linked_update_mgrs,
+                        'ux_lon_min' : self.do_waypoint_linked_update_mgrs,
+                        'ux_lon_sec' : self.do_waypoint_linked_update_mgrs,
+
+                        'ux_mgrs' : self.do_waypoint_linked_update_position,
+
+                        'ux_callsign' : self.do_callsign
+         }
+        validate_map = { 'ux_callsign:focus_out' : self.validate_text_callsign }
+
         while True:
             event, self.values = self.window.Read(timeout=250, timeout_key='Timeout')
             if event != 'Timeout':
                 self.logger.debug(f"DCSWE Event: {event}")
                 self.logger.debug(f"DCSWE Values: {self.values}")
+                try:
+                    err_msg = (validate_map[event])(event.split(":")[0])
+                    if err_msg is not None:
+                        PyGUI.Popup(err_msg, title="Error")
+                except:
+                    pass
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
@@ -1063,103 +1152,22 @@ class DCSWyptEdGUI:
                         with self.hkey_pend_q.mutex:
                             self.hkey_pend_q.clear()
 
+            # ======== ui handlers
 
-            # ======== menu items
-
-            elif 'ux_menu_prefs' in event:
-                self.do_preferences()
-
-            elif 'ux_menu_update' in event:
-                if self.do_check_updates():
-                    break
-
-            elif 'ux_menu_exp_clip_enc' in event:
-                self.do_profile_export_to_encoded_string()
-
-            elif 'ux_menu_exp_clip_plain' in event:
-                self.do_profile_export_to_plain_string()
-
-            elif 'ux_menu_exp_file' in event:
-                self.do_profile_export_to_file()
-
-            elif 'ux_menu_imp_clip' in event:
-                self.do_profile_import_from_encoded_string()
-
-            elif 'ux_menu_imp_file' in event:
-                self.do_profile_import_from_file()
-
-            # ======== profile panel, combo controls
-
-            elif event == 'ux_prof_select':
-                self.do_profile_select()
-
-            elif event == 'ux_prof_afrm_select':
-                self.do_airframe_select()
-
-            # ======== profile panel, button controls
-
-            elif event == 'ux_prof_save':
-                self.do_profile_save()
-
-            elif event == 'ux_prof_delete':
-                self.do_profile_delete()
-
-            elif event == 'ux_prof_enter':
-                self.do_profile_enter_in_jet()
-
-            # ======== profile panel, list controls
-
-            elif event == 'ux_prof_wypt_list':
-                self.do_profile_waypoint_list()
-
-            # ======== waypoint panel, combo controls
-
-            elif event == 'ux_wypt_type_select':
-                self.do_wypt_type_select()
-
-            elif event == 'ux_seq_stn_select':
-                self.do_seq_stn_select()
-
-            elif event == 'ux_poi_wypt_select':
-                self.do_poi_wypt_select()
-
-            elif event == 'ux_dcs_f10_tgt_select':
-                self.do_dcs_f10_tgt_select()
-
-            elif event == 'ux_poi_filter':
-                self.do_poi_wypt_filter()
-
-            # ======== waypoint panel, button controls
-
-            elif event == 'ux_wypt_add':
-                self.do_waypoint_add()
-
-            elif event == 'ux_wypt_update':
-                self.do_waypoint_update()
-
-            elif event == 'ux_wypt_delete':
-                self.do_waypoint_delete()
-
-            elif event == 'ux_dcs_f10_enable':
-                self.do_dcs_f10_enable()
-
-            # ======== waypoint panel, text field controls
-
-            elif event == 'ux_elev_ft':
-                self.do_waypoint_linked_update_elev_ft()
-
-            elif event == 'ux_elev_m':
-                self.do_waypoint_linked_update_elev_m()
-
-            elif event in ('ux_lat_deg', 'ux_lat_min', 'ux_lat_sec', 'ux_lon_deg', 'ux_lon_min', 'ux_lon_sec'):
-                self.do_waypoint_linked_update_mgrs()
-
-            elif event == 'ux_mgrs':
-                self.do_waypoint_linked_update_position()
+            else:
+                try:
+                    if "::" in event:
+                        (handler_map[event.split("::")[1]])()
+                    else:
+                        (handler_map[event])()
+                except:
+                    pass
 
         self.close()
 
     def close(self):
+        self.validate_text_callsign('ux_callsign')
+
         self.rebind_hotkey(self.editor.prefs.hotkey_capture)
         self.rebind_hotkey(self.editor.prefs.hotkey_capture_mode)
         self.rebind_hotkey(self.editor.prefs.hotkey_enter_profile)
