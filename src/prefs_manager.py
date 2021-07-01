@@ -219,7 +219,7 @@ class PrefsManager:
     # validate a callsign
     #
     def is_callsign_valid(self, callsign):
-        if not re.match(r"^[\D]+[\d]+-[\d]+$", callsign):
+        if callsign != "" and not re.match(r"^[\D]+[\d]+-[\d]+$", callsign):
             return False
         else:
             return True
