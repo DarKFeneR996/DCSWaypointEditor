@@ -988,12 +988,6 @@ class DCSWyptEdGUI:
     # might not have widgets), we pend hotkeys onto hkey_pend_q via hkey_<foo> and do the work on
     # the main thread via do_hk_<foo>.
 
-    def hkey_popup_err(self, err_msg):
-        self.logger.error(f"Hotkey processing error: {err_msg}")
-        PyGUI.Popup(err_msg, title="Error")
-        with self.hkey_pend_q.mutex:
-            self.hkey_pend_q.queue.clear()
-
     def hkey_dcs_f10_capture(self):
         self.hkey_pend_q.put(self.do_hk_dcs_f10_capture)
     
@@ -1009,32 +1003,23 @@ class DCSWyptEdGUI:
     def do_hk_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
-        sound = UX_SND_ERROR
-        if self.is_dcs_f10_tgt_add:
-            try:
-                captured_coords = self.capture_map_coords()
-                position, elevation = self.parse_map_coords_string(captured_coords)
-                self.logger.debug("Parsed text as coords succesfully: " + str(position))
-                added = self.add_waypoint(position, elevation)
-                if added is None:
-                    self.hkey_popup_err("Failed to add waypoint from DCS F10 map capture.")
-                else:
-                    sound = UX_SND_F10CAP_GOT_WAYPT
-            except (IndexError, ValueError, TypeError):
-                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.")
-        else:
-            try:
-                captured_coords = self.capture_map_coords()
-                position, elevation = self.parse_map_coords_string(captured_coords)
-                self.logger.debug("Parsed text as coords succesfully: " + str(position))
+        try:
+            captured_coords = self.capture_map_coords()
+            position, elevation = self.parse_map_coords_string(captured_coords)
+            if position is None:
+                raise ValueError("Capture or parse fails")
+            self.logger.debug("Parsed text as coords succesfully: " + str(position))
+            if self.is_dcs_f10_tgt_add:
+                if self.add_waypoint(position, elevation) is None:
+                    raise ValueError("Adding captured waypoint fails")
+            else:
                 self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
                 self.do_waypoint_linked_update_elev_ft()
-                sound = UX_SND_F10CAP_GOT_WAYPT
-            except (IndexError, ValueError, TypeError):
-                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.")
+            winsound.PlaySound(UX_SND_F10CAP_GOT_WAYPT, flags=winsound.SND_FILENAME)
+        except (IndexError, ValueError, TypeError):
+            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
-        winsound.PlaySound(sound, flags=winsound.SND_FILENAME)
 
     def do_hk_dcs_f10_capture_tgt_toggle(self):
         self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
@@ -1052,7 +1037,6 @@ class DCSWyptEdGUI:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
-        sound = UX_SND_ERROR
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
@@ -1071,7 +1055,6 @@ class DCSWyptEdGUI:
                     self.editor.set_driver(self.profile.aircraft)
             except:
                 winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
-                self.hkey_popup_err(f"Failed to load mission file '{self.editor.prefs.path_mission}'.")
             self.is_entering_data = False
             self.update_gui_control_enable_state()
         else:
