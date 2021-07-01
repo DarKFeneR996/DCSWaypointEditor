@@ -27,6 +27,13 @@ import numpy
 import re
 import datetime
 import queue
+import winsound
+
+UX_SND_ERROR = "data/ux_error.wav"
+UX_SND_INJECT_TO_JET = "data/ux_action.wav"
+UX_SND_F10CAP_TOGGLE_MODE = "data/ux_action.wav"
+UX_SND_F10CAP_GOT_WAYPT = "data/ux_cap_wypt.wav"
+UX_SND_F10CAP_GOT_PANEL = "data/ux_cap_cpan.wav"
 
 def json_zip(j):
     j = base64.b64encode(
@@ -1002,6 +1009,7 @@ class DCSWyptEdGUI:
     def do_hk_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
+        sound = UX_SND_ERROR
         if self.is_dcs_f10_tgt_add:
             try:
                 captured_coords = self.capture_map_coords()
@@ -1010,6 +1018,8 @@ class DCSWyptEdGUI:
                 added = self.add_waypoint(position, elevation)
                 if added is None:
                     self.hkey_popup_err("Failed to add waypoint from DCS F10 map capture.")
+                else:
+                    sound = UX_SND_F10CAP_GOT_WAYPT
             except (IndexError, ValueError, TypeError):
                 self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.")
         else:
@@ -1019,20 +1029,30 @@ class DCSWyptEdGUI:
                 self.logger.debug("Parsed text as coords succesfully: " + str(position))
                 self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
                 self.do_waypoint_linked_update_elev_ft()
+                sound = UX_SND_F10CAP_GOT_WAYPT
             except (IndexError, ValueError, TypeError):
-                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.", title="Error")
+                self.hkey_popup_err("Failed to parse coordinate text captured from DCS F10 map.")
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
+        winsound.PlaySound(sound, flags=winsound.SND_FILENAME)
 
     def do_hk_dcs_f10_capture_tgt_toggle(self):
         self.logger.info(f"Toggling DCS F10 map capture target, was {self.is_dcs_f10_tgt_add}")
         self.is_dcs_f10_tgt_add = not self.is_dcs_f10_tgt_add
+        winsound.PlaySound(UX_SND_F10CAP_TOGGLE_MODE, flags=winsound.SND_FILENAME)
+        if self.is_dcs_f10_tgt_add:
+            winsound.PlaySound(UX_SND_F10CAP_TOGGLE_MODE, flags=winsound.SND_FILENAME)
         self.update_gui_control_enable_state()
 
     def do_hk_profile_enter_in_jet(self):
-        self.do_profile_enter_in_jet(self)
+        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+            winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
+            self.do_profile_enter_in_jet(self)
+        else:
+            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
+        sound = UX_SND_ERROR
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
@@ -1042,6 +1062,7 @@ class DCSWyptEdGUI:
                 tmp_profile = self.import_profile(self.editor.prefs.path_mission,
                                                   csign=self.editor.prefs.callsign_default,
                                                   aircraft=self.editor.prefs.airframe_default)
+                winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
                 if tmp_profile.has_waypoints:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
@@ -1049,9 +1070,12 @@ class DCSWyptEdGUI:
                     self.editor.enter_all(tmp_profile)
                     self.editor.set_driver(self.profile.aircraft)
             except:
+                winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
                 self.hkey_popup_err(f"Failed to load mission file '{self.editor.prefs.path_mission}'.")
             self.is_entering_data = False
             self.update_gui_control_enable_state()
+        else:
+            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
 
     # ================ text field validation
