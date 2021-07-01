@@ -86,6 +86,8 @@ class CombatFliteXML:
     #
     @staticmethod
     def profile_from_string(str, callsign="", name="", aircraft="viper"):
+        logger.info(f"CF XML from string for '{callsign}' in '{aircraft}'")
+
         match = re.match(r"^(?P<flight>[a-zA-Z]+[\d]+)-(?P<ship>[\d]+)$",
                          callsign, flags=re.IGNORECASE)
         if match and match.group('flight') is not None and match.group('ship') is not None:
@@ -132,7 +134,7 @@ class CombatFliteXML:
                 name = CombatFliteXML.elem_get_name(elem)
                 match = re.match(r"^DMPI targeted by (?P<flight>[\S]+)",
                                  name, flags=re.IGNORECASE)
-                if match and flight.lower() == match.group('flight').lower():
+                if match and (callsign == "" or flight.lower() == match.group('flight').lower()):
                     dmpi_wypt.append(elem)
                 elif not match:
                     dmpi_refp.append(elem)
@@ -156,12 +158,14 @@ class CombatFliteXML:
                         name = CombatFliteXML.elem_get_name(elem_r)
                         match = re.match(r"^DMPI [\d]+[\s]+(?P<shp>[\d]+):(?P<sta>[\d]+)?",
                                          name, flags=re.IGNORECASE)
-                        if match:
+                        if match and callsign != "":
                             dmpi_ship = match.group('shp')
                             dmpi_station = match.group('sta')
                         else:
                             dmpi_ship = ""
                             dmpi_station = "8"
+                            if callsign == "":
+                                name = CombatFliteXML.elem_get_name(elem_w)
                         if dmpi_ship == "" or dmpi_ship == ship:
                             msn = MSN(name=name, station=dmpi_station,
                                       position=pos_wypt, elevation=elv_wypt)
