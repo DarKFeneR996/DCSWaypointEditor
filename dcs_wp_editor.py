@@ -8,7 +8,7 @@ import traceback
 import logging
 
 
-version = "v1.0.0-raven_BETA.3"
+version = "v1.0.0-raven_BETA.4"
 
 
 def main():
