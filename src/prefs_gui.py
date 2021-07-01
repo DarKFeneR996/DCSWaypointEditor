@@ -37,7 +37,7 @@ class PrefsGUI:
         self.prefs.path_mission = values.get('ux_path_mission')
         errors = ""
         try:
-            self.prefs.airframe_default = airframe_ui_text_to_type(values.get("ux_airframe_default"))
+            self.prefs.airframe_default = airframe_ui_text_to_type(values.get('ux_airframe_default'))
         except:
             errors = "default airframe"
         try:
@@ -79,8 +79,11 @@ class PrefsGUI:
     def create_gui(self):
         is_auto_upd_check = pref_str_to_bool(self.prefs.is_auto_upd_check)
         is_tesseract_debug = pref_str_to_bool(self.prefs.is_tesseract_debug)
-
-        dcs_bios_detected = "Detected" if detect_dcs_bios(self.prefs.path_dcs) else "Not Detected"
+        dcs_bios_ver = detect_dcs_bios(self.prefs.path_dcs)
+        if dcs_bios_ver is not None:
+            dcs_bios_detected = f"Detected version {dcs_bios_ver}"
+        else:
+            dcs_bios_detected = "Not Detected"
 
         layout_paths = [
             [PyGUI.Text("DCS user directory:", (20,1), justification="right"),
@@ -122,13 +125,15 @@ class PrefsGUI:
             PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],
 
             [PyGUI.Text("DCS-BIOS:", (20,1), justification="right"),
-            PyGUI.Text(dcs_bios_detected, key='ux_dcs_bios_stat', size=(10,1)),
-            PyGUI.Button("Install DCS-BIOS", (8,1), key="ux_install", disabled=dcs_bios_detected == "Detected")]
+            PyGUI.Text(dcs_bios_detected, key='ux_dcs_bios_stat', size=(19,1)),
+            PyGUI.Button("Install DCS-BIOS", key='ux_install', size=(18,1),
+                         disabled=(dcs_bios_ver is not None))]
         ]
         layout_misc = [
             [PyGUI.Text("Default airframe:", (20,1), justification="right"),
-            PyGUI.Combo(values=airframe_list(), default_value=airframe_type_to_ui_text(self.prefs.airframe_default),
-                        key="ux_airframe_default", pad=((5,277),0))],
+            PyGUI.Combo(values=airframe_list(),
+                        default_value=airframe_type_to_ui_text(self.prefs.airframe_default),
+                        key='ux_airframe_default', pad=((5,277),0))],
 
             [PyGUI.Text("Check for updates:", (20,1), justification="right"),
             PyGUI.Checkbox(text="", default=is_auto_upd_check, key='ux_is_auto_upd_check')],
@@ -143,7 +148,7 @@ class PrefsGUI:
                             [PyGUI.Frame("DCS BIOS Parameters", layout_dcsbios)],
                             [PyGUI.Frame("Miscellaneous", layout_misc)],
                             [PyGUI.Button("OK", key='ux_ok', size=(8,1), pad=((254,0),16),
-                                          disabled=dcs_bios_detected != "Detected")]],
+                                          disabled=(dcs_bios_ver is None))]],
                             modal=True)
 
     # run the gui for the preferences window.

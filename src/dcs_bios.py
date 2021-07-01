@@ -1,6 +1,7 @@
 from shutil import copytree
 import PySimpleGUI as PyGUI
 import os
+import re
 import requests
 import tempfile
 import zipfile
@@ -8,19 +9,27 @@ import zipfile
 DCS_BIOS_VERSION = '0.10.0'
 DCS_BIOS_URL = "https://github.com/dcs-bios/dcs-bios/archive/refs/tags/v{}.zip"
 
-# examine DCS Export.lua to see if DCS-BIOS is installed
+DCS_BIOS_VERSION = "0.7.40"
+DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/{}/DCS-BIOS_{}.zip"
+
+# examine DCS Export.lua to see if DCS-BIOS is installed and returns a version string.
 #
 def detect_dcs_bios(dcs_path):
-    dcs_bios_detected = False
+    version = None
 
     try:
         with open(dcs_path + "\\Scripts\\Export.lua", "r") as f:
-            if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and \
-                    os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS"):
-                dcs_bios_detected = True
+            export_str = f.read()
+        if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in export_str and \
+                os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS"):
+            match = re.match(r"^-- DCSFlightpanels/dcs-bios (?P<vers>[\S]+)$", export_str)
+            if match:
+                version = match.group('vers')
+            else:
+                version = "v?.?.?"
     except:
         pass
-    return dcs_bios_detected
+    return version
 
 # install dcs bios
 #
