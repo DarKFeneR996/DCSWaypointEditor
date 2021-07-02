@@ -257,7 +257,7 @@ class DCSWyptEdGUI:
                     lat_lon_image.save(debug_dirname + "/lat_lon_image.png")
 
                 enhancer = ImageEnhance.Contrast(lat_lon_image)
-                enhanced = enhancer.enhance(6)
+                enhanced = enhancer.enhance(2)
                 if self.editor.prefs.is_tesseract_debug == "true":
                     enhanced.save(debug_dirname + "/lat_lon_image_enhanced.png")
 
@@ -269,9 +269,14 @@ class DCSWyptEdGUI:
 
                 self.logger.debug(f"Raw captured text: {captured_map_coords}")
 
-                # HACK: tesseract sometimes recognizes "E" as "£". since the latter is never a valid
-                # HACK: symbol, unconditionally replace it.
+                # HACK: tesseract sometimes recognizes "E" as "£" and "J" as ")", "]", or "}". since
+                # HACK: "£", ")", "]", and "}" symbols cannot appear in the coordinate formats that
+                # HACK: DCS uses, we'll assume any occurance of "£", ")", and "]" are something else
+                # HACK: and fix up the string here.
                 #
+                captured_map_coords = captured_map_coords.replace(")", "J")
+                captured_map_coords = captured_map_coords.replace("]", "J")
+                captured_map_coords = captured_map_coords.replace("}", "J")
                 return captured_map_coords.replace("£", "E")
 
         self.logger.debug("Raise exception (could not find the map anywhere i guess?)")
@@ -279,17 +284,23 @@ class DCSWyptEdGUI:
         raise ValueError("DCS F10 map not found")
 
     # parse the coordinate string extracted from the screen via capture_map_coords. returns a tuple
-    # with position and elevation.
+    # with position and elevation (which may be negative).
     #
     def parse_map_coords_string(self, coords_string, tomcat_mode=False):
         coords_string = coords_string.upper()
 
-        self.logger.info(f"Parsing captured text: {coords_string}")
+        self.logger.info(f"Parsing captured coordinate string: {coords_string}")
 
-        # "X-00199287 Z+00523070, 0 ft"   Not sure how to convert this yet
+        # tesseract recognition is not 100% (see, for example, the issues with "E" and "£" above).
+        # as a result, we will tend to use regex's below that allow latitude in the non-critical
+        # parts of the string (e.g., for a "°" delimiter).
 
-        # "37 T FJ 36255 11628, 5300 ft"  tesseract did not like this one because the DCS font J looks too much like )
-        res = re.match("^(\d+ [a-zA-Z] [a-zA-Z][a-zA-Z] \d+ \d+), ([-]?\d+) (FT|M)", coords_string)
+        # "37 T FJ 36255 11628, 5300 ft" -- MGRS
+        #
+        # NOTE: regex handles tesseract mistake where fields run together; e.g., "TFJ" in place of "T FJ"
+        #
+        res = re.match(r"^(\d+[.\s]*[A-Z][.\s]*[A-Z][A-Z][.\s]*\d+[.\s]*\d+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+                       coords_string)
         if res is not None:
             mgrs_string = res.group(1).replace(" ", "")
             decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
@@ -301,8 +312,9 @@ class DCSWyptEdGUI:
 
             return position, elevation
 
-        # "N43°10.244 E40°40.204, 477 ft"  Degrees and decimal minutes
-        res = re.match("^([NS])(\d+)°([^\s]+) ([EW])(\d+)°([^,]+), ([-]?\d+) (FT|M)", coords_string)
+        # "N43°10.244 E40°40.204, 477 ft" -- Degrees and decimal minutes
+        res = re.match(r"^([NS])(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+                       coords_string)
         if res is not None:
             lat_str = res.group(2) + " " + res.group(3) + " " + res.group(1)
             lon_str = res.group(5) + " " + res.group(6) + " " + res.group(4)
@@ -314,8 +326,9 @@ class DCSWyptEdGUI:
 
             return position, elevation
 
-        # "N42-43-17.55 E40-38-21.69, 0 ft" Degrees, minutes and decimal seconds
-        res = re.match("^([NS])(\d+)-(\d+)-([^\s]+) ([EW])(\d+)-(\d+)-([^,]+), ([-]?\d+) (FT|M)", coords_string)
+        # "N42-43-17.55 E40-38-21.69, 0 ft" -- Degrees, minutes and decimal seconds
+        res = re.match(r"^([NS])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+                       coords_string)
         if res is not None:
             lat_str = res.group(2) + " " + res.group(3) + " " + res.group(4) + " " + res.group(1)
             lon_str = res.group(6) + " " + res.group(7) + " " + res.group(8) + " " + res.group(5)
@@ -327,8 +340,9 @@ class DCSWyptEdGUI:
 
             return position, elevation
 
-        # "43°34'37"N 29°11'18"E, 0 ft" Degrees minutes and seconds
-        res = re.match("^(\d+)°(\d+)'([^\"]+)\"([NS]) (\d+)°(\d+)'([^\"]+)\"([EW]), ([-]?\d+) (FT|M)", coords_string)
+        # "43°34'37"N 29°11'18"E, 0 ft" -- Degrees minutes and seconds
+        res = re.match(r"^(\d+)[\D]+(\d+)[\D]+(\d+)[^NS]+([NS])[\D]+(\d+)[\D]+(\d+)[\D]+(\d+)[^EW]+([EW])[\D]+([-]?\d+)[^FTM]+(FT|M)",
+                       coords_string)
         if res is not None:
             lat_str = res.group(1) + " " + res.group(2) + " " + res.group(3) + " " + res.group(4)
             lon_str = res.group(5) + " " + res.group(6) + " " + res.group(7) + " " + res.group(8)
@@ -339,6 +353,10 @@ class DCSWyptEdGUI:
                 elevation = elevation * 3.281
 
             return position, elevation
+
+        # "X-00199287 Z+00523070, 0 ft" -- X/Y
+        # 
+        # Not sure how to convert this yet, just fall through with an error.
 
         self.logger.info("Unable to parse captured text")
         return None, None
