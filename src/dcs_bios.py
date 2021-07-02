@@ -70,7 +70,8 @@ def dcs_bios_install(dcs_path):
     vers_install = None
 
     if (backup_path(dcs_path + "\\Scripts\\DCS-BIOS", is_move=True) and \
-        backup_path(dcs_path + "\\Scripts\\Export.lua", is_move=False)):
+        (is_export_setup(dcs_path) or \
+         backup_path(dcs_path + "\\Scripts\\Export.lua", is_move=False))):
         with tempfile.TemporaryDirectory() as tmp_dir:
             url = DCS_BIOS_URL.format(DCS_BIOS_VERSION, DCS_BIOS_VERSION)
             try:
@@ -96,7 +97,5 @@ def dcs_bios_install(dcs_path):
             f.write(f"{DCS_BIOS_VERSION}")
 
         vers_install = DCS_BIOS_VERSION
-
-            #PyGUI.Popup(f'DCS-BIOS v{DCS_BIOS_VERSION} successfully downloaded and installed')
 
     return vers_install
