@@ -158,7 +158,11 @@ class DCSWyptEdGUI:
                     PyGUI.Popup(f"The callsign '{csign}' is invalid.\n" +
                                  "DCSWE will not use a callsign for this import.", title="Note")
                 csign = ""
-            return CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+            profile = CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+            if not profile.has_waypoints and warn:
+                PyGUI.Popup(f"The profile loaded with no waypoints.\n" +
+                             "Are you sure you have a valid callsign set up?", title="Note")
+            return profile
         else:
             return Profile.from_string(str)
 
@@ -1175,6 +1179,7 @@ class DCSWyptEdGUI:
     def do_hk_profile_enter_in_jet(self):
         if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
+            winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             self.do_profile_enter_in_jet()
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
@@ -1196,6 +1201,8 @@ class DCSWyptEdGUI:
                     # TODO: setup callback and so on for progress ui
                     self.editor.enter_all(tmp_profile)
                     self.editor.set_driver(self.profile.aircraft)
+                else:
+                    winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
             except:
                 winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
             self.is_entering_data = False
