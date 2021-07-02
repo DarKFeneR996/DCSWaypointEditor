@@ -1286,6 +1286,7 @@ class DCSWyptEdGUI:
                 while True:
                     try:
                         hkey_callback = self.hkey_pend_q.get(False)
+                        self.logger.debug(f"DCSWE hkey callback: {hkey_callback}")
                         err_msg = hkey_callback()
                         if err_msg is not None:
                             PyGUI.Popup(err_msg, title="Error")
@@ -1293,12 +1294,20 @@ class DCSWyptEdGUI:
                                 self.hkey_pend_q.clear()
                     except queue.Empty:
                         break
-                while True:
-                    try:
-                        menu_callback = self.menu_pend_q.get(False)
-                        menu_callback()
-                    except queue.Empty:
-                        break
+
+                # to handle validation correctly, prior to triggering a menu command, force a focus_out
+                # on the current element.
+                #
+                if not self.menu_pend_q.empty() and self.window.find_element_with_focus() is not None:
+                    self.window.force_focus()
+                else:
+                    while True:
+                        try:
+                            menu_callback = self.menu_pend_q.get(False)
+                            self.logger.debug(f"DCSWE menu callback: {menu_callback}")
+                            menu_callback()
+                        except queue.Empty:
+                            break
 
             # ======== ui handlers
 
