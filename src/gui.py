@@ -1175,7 +1175,7 @@ class DCSWyptEdGUI:
     def do_hk_profile_enter_in_jet(self):
         if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
-            self.do_profile_enter_in_jet(self)
+            self.do_profile_enter_in_jet()
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
