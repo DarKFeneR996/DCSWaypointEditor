@@ -1,5 +1,3 @@
-from logging import disable
-from typing import Sequence
 from src.cf_xml import CombatFliteXML
 from src.dcs_bios import detect_dcs_bios
 from src.objects import Profile, Waypoint, MSN
@@ -20,6 +18,7 @@ import pyperclip
 from slpp import slpp as lua
 import src.pymgrs as mgrs
 import PySimpleGUI as PyGUI
+import tkinter as tk
 import zlib
 from desktopmagic.screengrab_win32 import getDisplaysAsImages
 import cv2
@@ -89,6 +88,7 @@ class DCSWyptEdGUI:
     def __init__(self, editor, software_version):
         self.logger = get_logger("gui")
         self.hkey_pend_q = queue.Queue()
+        self.menu_pend_q = queue.Queue()
         self.editor = editor
         self.software_version = software_version
         self.profile = None
@@ -96,10 +96,13 @@ class DCSWyptEdGUI:
         self.is_dcs_f10_enabled = False
         self.is_dcs_f10_tgt_add = False
         self.is_entering_data = False
+        self.is_profile_dirty = False
+        self.tk_menu_dcswe = None
+        self.tk_menu_profile = None
         self.values = None
         self.selected_wp_type = "WP"
 
-        self.load_new_profile()
+        self.load_profile()
 
         try:
             with open(f"{self.editor.prefs.path_dcs}\\Config\\options.lua", "r") as f:
@@ -124,9 +127,17 @@ class DCSWyptEdGUI:
     # ================ profile support
 
 
-    def load_new_profile(self):
-        self.profile = Profile('')
-        self.profile.aircraft = self.editor.prefs.airframe_default
+    def load_profile(self, name=None):
+        if name is None:
+            self.profile = Profile("")
+            self.profile.aircraft = self.editor.prefs.airframe_default
+        else:
+            self.profile = Profile.load(name)
+        self.is_profile_dirty = False
+
+    def save_profile(self, name):
+        self.profile.save(name)
+        self.is_profile_dirty = False
 
     def profile_names(self):
         return [profile.name for profile in Profile.list_all()]
@@ -169,8 +180,6 @@ class DCSWyptEdGUI:
             if self.selected_wp_type == "MSN":
                 station = int(self.values.get('ux_seq_stn_select', 0))
                 number = len(self.profile.stations_dict.get(station, list()))+1
-                print(f"*** MSN station {station}, number {number}")
-                print(f"station_dict {self.profile.stations_dict}")
                 wp = MSN(position=position, elevation=int(elevation) or 0, name=name,
                          station=station, number=number)
 
@@ -192,7 +201,8 @@ class DCSWyptEdGUI:
                     self.profile.sequences.append(sequence)
 
             self.profile.waypoints.append(wp)
-            self.update_for_waypoint_list_change()
+            self.is_profile_dirty = True
+            self.update_for_profile_change()
         except ValueError:
             PyGUI.Popup("Error: missing data or invalid data format.")
 
@@ -403,18 +413,12 @@ class DCSWyptEdGUI:
         
         is_dcs_f10_disabled = True if self.tesseract_version is None else False
 
-        menu_dcswe = ["DCS WE",
-                      ["Preferences...::ux_menu_prefs",
-                       "---",
-                       "Check for Updates...::ux_menu_update"]]
-        menu_file = ["File",
-                     [[["Import Profile", ["From Clipboard Encoded JSON::ux_menu_imp_clip",
-                                           "From JSON or CombatFlite XML File...::ux_menu_imp_file"]]],
-                        "Export Profile", ["To Clipboard as Encoded JSON::ux_menu_exp_clip_enc",
-                                           "To Clipboard as Text::ux_menu_exp_clip_plain",
-                                           "To JSON File...::ux_menu_exp_file"]]]
-
-        menu_bar = PyGUI.MenuBar([menu_dcswe, menu_file])
+        # HACK: &@#$* PyGUI forces you to rebuild the entire menu to disable a single item. this also
+        # HACK: seems to introduce visual glitches. so, we are going to fall into Tk to do all the
+        # HACK: menu handling. build a menu bar with a single menu to get PySimpleGUI to do the right
+        # HACK: thing on the layout (we'll delete the menu later).
+        #
+        menu_bar = PyGUI.MenuBar(["HACK_ME"], key='ux_menubar')
 
         frame_prof = PyGUI.Frame("Profile",
                                  [[PyGUI.Text("Profile:", size=(8,1), justification="right"),
@@ -426,10 +430,10 @@ class DCSWyptEdGUI:
                                   [PyGUI.Text("Waypoints in Profile:")],
                                   [PyGUI.Listbox(values=list(), size=(48,19),
                                                  enable_events=True, key='ux_prof_wypt_list')],
-                                  [PyGUI.Button("Save", key='ux_prof_save', size=(10,1), pad=(6,(9,6))),
-                                   PyGUI.Button("Delete", key='ux_prof_delete', size=(10,1), pad=(6,(9,6))),
-                                   PyGUI.Button("Enter into Jet", key='ux_prof_enter', size=(12,1),
-                                                pad=((56,6),(9,6)))],
+                                  [PyGUI.Text("Profile has not been modified.", key='ux_prof_state',
+                                              size=(24,1)),
+                                   PyGUI.Button("Enter Profile into Jet", key='ux_prof_enter', size=(17,1),
+                                                pad=((10,6),6))]
                                  ])
 
         frame_coord = PyGUI.Frame("Coordinates",
@@ -513,6 +517,17 @@ class DCSWyptEdGUI:
 
         window = PyGUI.Window('DCS Waypoint Editor', [[col_0, col_1]], finalize=True)
 
+        # HACK: build out the two menus on the DCSWE menu bar and install them. they will be populated
+        # HACK: with commands as we sync the interface with current state. before doing that, blow away
+        # HACK: the hack menu we added for layout purposes.
+        #
+        menu_bar = window['ux_menubar']
+        menu_bar.TKMenu.delete(0,0)
+        self.tk_menu_dcswe = tk.Menu(menu_bar.TKMenu, tearoff=False)
+        menu_bar.TKMenu.add_cascade(label="DCS WE", menu=self.tk_menu_dcswe, underline=0)
+        self.tk_menu_profile = tk.Menu(menu_bar.TKMenu, tearoff=False)
+        menu_bar.TKMenu.add_cascade(label="Profile", menu=self.tk_menu_profile, underline=0)
+
         window['ux_callsign'].bind('<FocusOut>', ':focus_out')
 
         return window
@@ -527,11 +542,15 @@ class DCSWyptEdGUI:
         ac_ui_text = airframe_type_to_ui_text(self.profile.aircraft)
         self.window['ux_prof_afrm_select'].update(value=ac_ui_text)
         self.editor.set_driver(self.profile.aircraft)
+        if self.is_profile_dirty:
+            self.window['ux_prof_state'].update(value="Profile is modified.")
+        else:
+            self.window['ux_prof_state'].update(value="Profile has not been modified.")
         self.update_for_waypoint_list_change(set_to_first=set_to_first, update_enable=False)
         self.update_for_coords_change()
         self.window['ux_prof_wypt_list'].update(set_to_index=[])
         if update_enable:
-            self.update_gui_control_enable_state()
+            self.update_gui_enable_state()
 
     # update state in response to changes to the waypoint list.
     #
@@ -551,7 +570,7 @@ class DCSWyptEdGUI:
         else:
             self.window['ux_prof_wypt_list'].update(values=values)
         if update_enable:
-            self.update_gui_control_enable_state()
+            self.update_gui_enable_state()
 
     # update state in response to changes to the waypoint type.
     #
@@ -621,11 +640,56 @@ class DCSWyptEdGUI:
             self.window['ux_seq_stn_select'].update(value="None")
 
         if update_enable:
-            self.update_gui_control_enable_state()
+            self.update_gui_enable_state()
 
         self.window.Refresh()
 
-    # update gui state for control enables based on current interface state.
+    # update gui state for menu item enables based on current internal state.
+    #
+    # HACK: we still have to rebuild the entire menus for some reason (can't get entryconfig to change
+    # HACK: state of a single item). however, unlike PySimpleGUI, this approach doesn't have a gnarly
+    # HACK: visual artifacts on updates.
+    #
+    def update_gui_menu_enable_state(self):
+        self.tk_menu_dcswe.delete(0, 2)
+        self.tk_menu_dcswe.add_command(label='Preferences...', command=self.menu_preferences)
+        self.tk_menu_dcswe.add('separator')
+        self.tk_menu_dcswe.add_command(label='Check for Updates...', command=self.menu_check_updates)
+
+        named_prof_norm = 'normal' if self.profile.profilename != "" else 'disabled'
+        has_wypt_norm = 'normal' if self.profile.has_waypoints else 'disabled'
+        dirty_norm = 'normal' if self.is_profile_dirty else 'disabled'
+        
+        self.tk_menu_profile.delete(0, 10)
+        self.tk_menu_profile.add_command(label="New", command=self.menu_profile_new, state=named_prof_norm)
+        self.tk_menu_profile.add('separator')
+        self.tk_menu_profile.add_command(label='Save...', command=self.menu_profile_save, state=dirty_norm)
+        self.tk_menu_profile.add_command(label='Save a Copy As...',
+                                         command=self.menu_profile_save_copy, state=named_prof_norm)
+        self.tk_menu_profile.add('separator')
+        self.tk_menu_profile.add_command(label='Delete...',
+                                         command=self.menu_profile_delete, state=named_prof_norm)
+        self.tk_menu_profile.add('separator')
+        self.tk_menu_profile.add_command(label='Revert', command=self.menu_profile_revert, state=dirty_norm)
+        self.tk_menu_profile.add('separator')
+
+        submenu_import = tk.Menu(self.tk_menu_profile, tearoff=False)
+        self.tk_menu_profile.add_cascade(label="Import", menu=submenu_import, underline=0)
+        submenu_import.add_command(label="From Clipboard Encoded JSON",
+                                   command=self.menu_profile_import_from_encoded_string)
+        submenu_import.add_command(label="From JSON or CombatFlite XML File...",
+                                   command=self.menu_profile_import_from_file)
+
+        submenu_export = tk.Menu(self.tk_menu_profile, tearoff=False)
+        self.tk_menu_profile.add_cascade(label="Export", menu=submenu_export, underline=0)
+        submenu_export.add_command(label="To Clipboard as Encoded JSON",
+                                   command=self.menu_profile_export_to_enc_string, state=has_wypt_norm)
+        submenu_export.add_command(label="To Clipboard as Text",
+                                   command=self.menu_profile_export_to_pln_string, state=has_wypt_norm)
+        submenu_export.add_command(label="To JSON File...",
+                                   command=self.menu_profile_export_to_file, state=has_wypt_norm)
+
+    # update gui state for control enables based on current internal state.
     #
     def update_gui_control_enable_state(self):
         if self.is_dcs_f10_enabled == True and self.tesseract_version is not None:
@@ -638,21 +702,12 @@ class DCSWyptEdGUI:
         else:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
-        if self.profile.profilename != '':
-            self.window['ux_prof_save'].update(text="Save As...")
-            self.window['ux_prof_delete'].update(disabled=False)
-        else:
-            self.window['ux_prof_save'].update(text="Save...")
-            self.window['ux_prof_delete'].update(disabled=True)
-
         if self.profile.has_waypoints == True:
-            self.window['ux_prof_save'].update(disabled=False)
             if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
                 self.window['ux_prof_enter'].update(disabled=True)
         else:
-            self.window['ux_prof_save'].update(disabled=True)
             self.window['ux_prof_enter'].update(disabled=True)
 
         posn, elev, _ = self.validate_coords()
@@ -667,6 +722,12 @@ class DCSWyptEdGUI:
         else:
             self.window['ux_wypt_update'].update(disabled=True)
             self.window['ux_wypt_delete'].update(disabled=True)
+
+    # update the gui enable state for changes to internal state
+    #
+    def update_gui_enable_state(self):
+        self.update_gui_control_enable_state()
+        self.update_gui_menu_enable_state()
 
     # update the coordinates elements enable/disable state
     #
@@ -715,7 +776,48 @@ class DCSWyptEdGUI:
     # ================ ui menu item handlers
 
 
-    def do_preferences(self):
+    # HACK: menu items, unlike other handlers, are called directly from Tk outside of PySimpleGUI.
+    # HACK: to keep things kinda like PySimpleGUI, the command handlers will enqueue operations on
+    # HACK: a pending menu command queue so that the main loop can invoke the actual handler.
+
+    def menu_preferences(self):
+        self.menu_pend_q.put(self.do_menu_preferences)
+
+    def menu_check_updates(self):
+        self.menu_pend_q.put(self.do_menu_check_updates)
+
+    def menu_profile_new(self):
+        self.menu_pend_q.put(self.do_menu_profile_new)
+
+    def menu_profile_save(self):
+        self.menu_pend_q.put(self.do_menu_profile_save)
+
+    def menu_profile_save_copy(self):
+        self.menu_pend_q.put(self.do_menu_profile_save_copy)
+
+    def menu_profile_delete(self):
+        self.menu_pend_q.put(self.do_menu_profile_delete)
+
+    def menu_profile_revert(self):
+        self.menu_pend_q.put(self.do_menu_profile_revert)
+
+    def menu_profile_export_to_enc_string(self):
+        self.menu_pend_q.put(self.do_menu_profile_export_to_enc_string)
+
+    def menu_profile_export_to_pln_string(self):
+        self.menu_pend_q.put(self.do_menu_profile_export_to_pln_string)
+
+    def menu_profile_export_to_file(self):
+        self.menu_pend_q.put(self.do_menu_profile_export_to_file)
+
+    def menu_profile_import_from_encoded_string(self):
+        self.menu_pend_q.put(self.do_menu_profile_import_from_encoded_string)
+
+    def menu_profile_import_from_file(self):
+        self.menu_pend_q.put(self.do_menu_profile_import_from_file)
+
+
+    def do_menu_preferences(self):
         prefs = self.editor.prefs
         hotkey_capture = prefs.hotkey_capture
         hotkey_capture_mode = prefs.hotkey_capture_mode
@@ -738,14 +840,56 @@ class DCSWyptEdGUI:
         self.rebind_hotkey(hotkey_enter_profile, prefs.hotkey_enter_profile, self.hkey_profile_enter_in_jet)
         self.rebind_hotkey(hotkey_enter_mission, prefs.hotkey_enter_mission, self.hkey_mission_enter_in_jet)
 
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
     
-    def do_check_updates(self):
+    def do_menu_check_updates(self):
         return check_version(self.software_version)
+
+    def do_menu_profile_new(self):
+        self.load_profile()
+        self.update_for_profile_change()
+
+    def do_menu_profile_save(self):
+        name = self.profile.profilename
+        if name == "":
+            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
+            if name is None or len(name) == 0:
+                name = None
+            elif len([obj for obj in Profile.list_all() if obj.name == name]) != 0:
+                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
+                name = None
+        if name is not None:
+            self.save_profile(name)
+            self.update_for_profile_change()
+
+    def do_menu_profile_save_copy(self):
+        if self.profile.profilename == "":
+            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
+        else:
+            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile")
+        if name is not None and len(name) > 0:
+            if len([obj for obj in Profile.list_all() if obj.name == name]) != 0:
+                self.save_profile(name)
+                self.update_for_profile_change()
+            else:
+                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
+
+    def do_menu_profile_delete(self):
+        if self.profile.profilename != "":
+            result = PyGUI.PopupOKCancel(f"Are you sure you want to delete the profile" +
+                                         f" '{self.profile.profilename}'?", title="Say Intentions")
+            if result == "OK":
+                Profile.delete(self.profile.profilename)
+                self.load_profile()
+                self.update_for_profile_change()
+
+    def do_menu_profile_revert(self):
+        self.load_profile(self.profile.profilename)
+        self.update_for_profile_change()
 
     # exports profile to clipboard as a zip'd JSON encoded in ASCII
     #
-    def do_profile_export_to_encoded_string(self):
+    def do_menu_profile_export_to_enc_string(self):
         name = self.profile_name_for_ui()
         encoded = json_zip(str(self.profile))
         pyperclip.copy(encoded)
@@ -753,7 +897,7 @@ class DCSWyptEdGUI:
 
     # exports profile to clipboard as a human-readable string
     #
-    def do_profile_export_to_plain_string(self):
+    def do_menu_profile_export_to_pln_string(self):
         name = self.profile_name_for_ui()
         profile_string = self.profile.to_readable_string()
         pyperclip.copy(profile_string)
@@ -761,7 +905,7 @@ class DCSWyptEdGUI:
 
     # exports profile to file as JSON
     #
-    def do_profile_export_to_file(self):
+    def do_menu_profile_export_to_file(self):
         name = self.profile_name_for_ui()
         filename = PyGUI.PopupGetFile("File Name", f"Exporting Profile '{name}' from Database",
                                       default_extension=".json", save_as=True,
@@ -773,7 +917,7 @@ class DCSWyptEdGUI:
 
     # imports profile from zip'd JSON encoded as ASCII on clipboard into empty/new profile
     #
-    def do_profile_import_from_encoded_string(self):
+    def do_menu_profile_import_from_encoded_string(self):
         encoded = pyperclip.paste()
         try:
             self.profile = Profile.from_string(json_unzip(encoded))
@@ -793,7 +937,7 @@ class DCSWyptEdGUI:
 
     # imports profile from text JSON or combatflite XML file into empty/new profile
     #
-    def do_profile_import_from_file(self):
+    def do_menu_profile_import_from_file(self):
         filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
         if filename is not None:
             try:
@@ -824,37 +968,17 @@ class DCSWyptEdGUI:
             if profile_name != '':
                 self.profile = Profile.load(profile_name)
             else:
-                self.load_new_profile()
+                self.load_profile()
         except DoesNotExist:
             PyGUI.Popup(f"Profile '{profile_name}'' was not found in the database.", title="Error")
-            self.load_new_profile()
+            self.load_profile()
         self.update_for_profile_change(set_to_first=True)
 
     def do_airframe_select(self):
         airframe_type = airframe_ui_text_to_type(self.values['ux_prof_afrm_select'])
         self.profile.aircraft = airframe_type
-        if self.profile.profilename != "":
-            self.profile.save(self.profile.profilename)
+        self.is_profile_dirty = True
         self.update_for_profile_change()
-
-    def do_profile_save(self):
-        name = self.profile.profilename
-        if name == "":
-            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
-        else:
-            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile")
-        if name and len(name) > 0:
-            if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
-                self.profile.save(name)
-                self.update_for_profile_change()
-            else:
-                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
-
-    def do_profile_delete(self):
-        if self.profile.profilename != "":
-            Profile.delete(self.profile.profilename)
-            self.load_new_profile()
-            self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
@@ -865,7 +989,7 @@ class DCSWyptEdGUI:
                 # TODO: setup callback and so on for progress ui
                 self.editor.enter_all(self.profile)
             self.is_entering_data = False
-            self.update_gui_control_enable_state()
+            self.update_gui_enable_state()
 
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
@@ -948,7 +1072,7 @@ class DCSWyptEdGUI:
         else:
             self.rebind_hotkey(self.editor.prefs.hotkey_capture)
             self.rebind_hotkey(self.editor.prefs.hotkey_capture_mode)
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in elevation (ft)
     #
@@ -958,7 +1082,7 @@ class DCSWyptEdGUI:
             self.window['ux_elev_m'].update(round(elevation/3.281))
         except:
             self.window['ux_elev_m'].update("")
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in elevation (m)
     #
@@ -968,7 +1092,7 @@ class DCSWyptEdGUI:
             self.window['ux_elev_ft'].update(round(elevation*3.281))
         except:
             self.window['ux_elev_ft'].update("")
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in mgrs
     #
@@ -977,7 +1101,7 @@ class DCSWyptEdGUI:
         if position is not None:
             m = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
             self.window['ux_mgrs'].update(m)
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in position (lat/lon)
     #
@@ -1018,6 +1142,7 @@ class DCSWyptEdGUI:
     def hkey_mission_enter_in_jet(self):
         self.hkey_pend_q.put(self.do_hk_mission_enter_in_jet)
 
+
     def do_hk_dcs_f10_capture(self):
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
@@ -1045,7 +1170,7 @@ class DCSWyptEdGUI:
         winsound.PlaySound(UX_SND_F10CAP_TOGGLE_MODE, flags=winsound.SND_FILENAME)
         if self.is_dcs_f10_tgt_add:
             winsound.PlaySound(UX_SND_F10CAP_TOGGLE_MODE, flags=winsound.SND_FILENAME)
-        self.update_gui_control_enable_state()
+        self.update_gui_enable_state()
 
     def do_hk_profile_enter_in_jet(self):
         if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
@@ -1074,7 +1199,7 @@ class DCSWyptEdGUI:
             except:
                 winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
             self.is_entering_data = False
-            self.update_gui_control_enable_state()
+            self.update_gui_enable_state()
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
@@ -1104,19 +1229,11 @@ class DCSWyptEdGUI:
 
         self.update_for_profile_change()
 
-        handler_map = { 'ux_menu_prefs' : self.do_preferences,
-                        'ux_menu_update' : self.do_check_updates,
-                        'ux_menu_exp_clip_enc' : self.do_profile_export_to_encoded_string,
-                        'ux_menu_exp_clip_plain' : self.do_profile_export_to_plain_string,
-                        'ux_menu_exp_file' : self.do_profile_export_to_file,
-                        'ux_menu_imp_clip' : self.do_profile_import_from_encoded_string,
-                        'ux_menu_imp_file' : self.do_profile_import_from_file,
+        # the handler map includes only those controls managed by PySimpleGUI
 
-                        'ux_prof_select' : self.do_profile_select,
+        handler_map = { 'ux_prof_select' : self.do_profile_select,
                         'ux_prof_afrm_select' : self.do_airframe_select,
 
-                        'ux_prof_save' : self.do_profile_save,
-                        'ux_prof_delete' : self.do_profile_delete,
                         'ux_prof_enter' : self.do_profile_enter_in_jet,
 
                         'ux_prof_wypt_list' : self.do_profile_waypoint_list,
@@ -1148,7 +1265,7 @@ class DCSWyptEdGUI:
         validate_map = { 'ux_callsign:focus_out' : self.validate_text_callsign }
 
         while True:
-            event, self.values = self.window.Read(timeout=250, timeout_key='Timeout')
+            event, self.values = self.window.Read(timeout=100, timeout_key='Timeout')
             if event != 'Timeout':
                 self.logger.debug(f"DCSWE Event: {event}")
                 self.logger.debug(f"DCSWE Values: {self.values}")
@@ -1163,28 +1280,31 @@ class DCSWyptEdGUI:
                 self.logger.info("Exiting...")
                 break
 
-            # ======== hotkeys (enqueued from background thread)
+            # ======== hotkeys, menus (enqueued from handler outside PySimpleGUI)
 
             elif event == 'Timeout':
                 while True:
                     try:
                         hkey_callback = self.hkey_pend_q.get(False)
+                        err_msg = hkey_callback()
+                        if err_msg is not None:
+                            PyGUI.Popup(err_msg, title="Error")
+                            with self.hkey_pend_q.mutex:
+                                self.hkey_pend_q.clear()
                     except queue.Empty:
                         break
-                    err_msg = hkey_callback()
-                    if err_msg is not None:
-                        PyGUI.Popup(err_msg, title="Error")
-                        with self.hkey_pend_q.mutex:
-                            self.hkey_pend_q.clear()
+                while True:
+                    try:
+                        menu_callback = self.menu_pend_q.get(False)
+                        menu_callback()
+                    except queue.Empty:
+                        break
 
             # ======== ui handlers
 
             else:
                 try:
-                    if "::" in event:
-                        (handler_map[event.split("::")[1]])()
-                    else:
-                        (handler_map[event])()
+                    (handler_map[event])()
                 except:
                     pass
 
