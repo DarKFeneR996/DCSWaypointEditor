@@ -1,5 +1,5 @@
 from src.cf_xml import CombatFliteXML
-from src.dcs_bios import detect_dcs_bios
+from src.dcs_bios import dcs_bios_vers_install
 from src.objects import Profile, Waypoint, MSN
 from src.logger import get_logger
 from src.prefs_gui import PrefsGUI
@@ -703,7 +703,7 @@ class DCSWyptEdGUI:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
         if self.profile.has_waypoints == True:
-            if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+            if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
                 self.window['ux_prof_enter'].update(disabled=True)
@@ -981,7 +981,7 @@ class DCSWyptEdGUI:
         self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
-        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.is_entering_data = True
             self.window['ux_prof_enter'].update(disabled=True)
@@ -1173,14 +1173,14 @@ class DCSWyptEdGUI:
         self.update_gui_enable_state()
 
     def do_hk_profile_enter_in_jet(self):
-        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             self.do_profile_enter_in_jet(self)
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
-        if detect_dcs_bios(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
             self.window['ux_prof_enter'].update(disabled=True)

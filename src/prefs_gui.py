@@ -1,4 +1,4 @@
-from src.dcs_bios import detect_dcs_bios, install_dcs_bios
+from src.dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_current, is_dcs_bios_current
 from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
 import os
 import PySimpleGUI as PyGUI
@@ -26,6 +26,8 @@ class PrefsGUI:
     def __init__(self, prefs, logger):
         self.prefs = prefs
         self.logger = logger
+        self.values = None
+
         self.window = self.create_gui()
 
     # persist preferences in settings.ini based on values extracted from the prefs window.
@@ -79,11 +81,7 @@ class PrefsGUI:
     def create_gui(self):
         is_auto_upd_check = pref_str_to_bool(self.prefs.is_auto_upd_check)
         is_tesseract_debug = pref_str_to_bool(self.prefs.is_tesseract_debug)
-        dcs_bios_ver = detect_dcs_bios(self.prefs.path_dcs)
-        if dcs_bios_ver is not None:
-            dcs_bios_detected = f"Detected version {dcs_bios_ver}"
-        else:
-            dcs_bios_detected = "Not Detected"
+        dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
 
         layout_paths = [
             [PyGUI.Text("DCS user directory:", (20,1), justification="right"),
@@ -125,8 +123,8 @@ class PrefsGUI:
             PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],
 
             [PyGUI.Text("DCS-BIOS:", (20,1), justification="right"),
-            PyGUI.Text(dcs_bios_detected, key='ux_dcs_bios_stat', size=(19,1)),
-            PyGUI.Button("Install DCS-BIOS", key='ux_install', size=(18,1),
+            PyGUI.Text("Status", key='ux_dcs_bios_stat', size=(19,1)),
+            PyGUI.Button("Install", key='ux_install', size=(18,1),
                          disabled=(dcs_bios_ver is not None))]
         ]
         layout_misc = [
@@ -149,19 +147,40 @@ class PrefsGUI:
                             [PyGUI.Frame("Miscellaneous", layout_misc)],
                             [PyGUI.Button("OK", key='ux_ok', size=(8,1), pad=((254,0),16),
                                           disabled=(dcs_bios_ver is None))]],
-                            modal=True)
+                            modal=True, finalize=True)
+
+    # update gui for changes to the dcs path
+    #
+    def update_gui_for_dcs_path(self):
+        db_ver = dcs_bios_vers_install(self.prefs.path_dcs)
+        if db_ver is None:
+            db_ver_latest = dcs_bios_vers_current()
+            self.window['ux_ok'].update(disabled=True)
+            self.window['ux_ok'].metadata = "true"
+            self.window['ux_dcs_bios_stat'].update(value="Not Detected")
+            self.window['ux_install'].update(text=f"Install v{db_ver_latest}", disabled=False)
+        else:
+            self.window['ux_ok'].update(disabled=False)
+            self.window['ux_ok'].metadata = "false"
+            self.window['ux_dcs_bios_stat'].update(value=f"Version {db_ver} Installed")
+            if is_dcs_bios_current(self.prefs.path_dcs):
+                self.window['ux_install'].update(text=f"Install v{dcs_bios_vers_current()}",
+                                                 disabled=True)
+            else:
+                self.window['ux_install'].update(text=f"Update to v{dcs_bios_vers_current()}",
+                                                 disabled=False)
 
     # run the gui for the preferences window.
     #
     def run(self):
-        self.window.finalize()
-
         is_accepted = True
 
+        self.update_gui_for_dcs_path()
+
         while True:
-            event, values = self.window.Read()
+            event, self.values = self.window.Read()
             self.logger.debug(f"Prefs Event: {event}")
-            self.logger.debug(f"Prefs Values: {values}")
+            self.logger.debug(f"Prefs Values: {self.values}")
 
             if event is None:
                 if (self.window['ux_ok'].metadata == "true"):
@@ -169,46 +188,28 @@ class PrefsGUI:
                 is_accepted = False
                 break
 
-            dcs_path = values.get("dcs_path")
+            dcs_path = self.values['ux_path_dcs']
             if dcs_path is not None and not dcs_path.endswith("\\") and not dcs_path.endswith("/"):
                 dcs_path = dcs_path + "\\"
 
             if event == 'ux_ok':
-                self.prefs_persist(values)
+                self.prefs_persist(self.values)
                 break
 
             elif event == 'ux_install':
-                self.logger.error("TODO: DCS-BIOS installation disabled for now...")
-                '''
                 try:
                     self.logger.info("Installing DCS BIOS...")
-                    install_dcs_bios(dcs_path)
-                    self.window["ux_install").Update(disabled=True)
-                    self.window['ux_ok').Update(disabled=False)
-                    self.window['ux_ok').metadata = "false"
-                    self.window['ux_dcs_bios_stat').Update(value="Installed")
+                    dcs_bios_install(dcs_path)
                 except (FileExistsError, FileNotFoundError, requests.HTTPError) as e:
-                    self.window['ux_dcs_bios_stat').Update(value="Install Failed")
                     self.logger.error("DCS-BIOS failed to install", exc_info=True)
                     PyGUI.Popup(f"DCS-BIOS failed to install:\n{e}", title="Error")
-                '''
+                self.update_gui_for_dcs_path()
     
             elif event == 'ux_path_dcs':
-                dcs_bios_detected = detect_dcs_bios(values['ux_path_dcs'])
-                if dcs_bios_detected:
+                self.update_gui_for_dcs_path()
+                if not os.path.exists(dcs_path):
+                    PyGUI.Popup("Invalid DCS path, unable to install DCS-BIOS.", title="Error")
                     self.window['ux_install'].update(disabled=True)
-                    self.window['ux_ok'].update(disabled=False)
-                    self.window['ux_ok'].metadata = "false"
-                    self.window['ux_dcs_bios_stat'].update(value="Detected")
-                else:
-                    if os.path.exists(values['ux_path_dcs']):
-                        self.window['ux_install'].update(disabled=False)
-                    else:
-                        PyGUI.Popup("Invalid DCS path, unable to install DCS-BIOS.", title="Error")
-                        self.window['ux_install'].update(disabled=True)
-                    self.window['ux_ok'].update(disabled=True)
-                    self.window['ux_ok'].metadata = "true"
-                    self.window['ux_dcs_bios_stat'].update(value="Not Detected")
 
         self.close()
         
