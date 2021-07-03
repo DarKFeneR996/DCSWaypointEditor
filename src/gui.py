@@ -85,12 +85,13 @@ def check_version(cur_version):
 
 
 class DCSWyptEdGUI:
-    def __init__(self, editor, software_version):
+    def __init__(self, editor, software_version, dcs_bios_version):
         self.logger = get_logger("gui")
         self.hkey_pend_q = queue.Queue()
         self.menu_pend_q = queue.Queue()
         self.editor = editor
         self.software_version = software_version
+        self.dcs_bios_version = dcs_bios_version
         self.profile = None
         self.scaled_dcs_gui = False
         self.is_dcs_f10_enabled = False
@@ -707,7 +708,7 @@ class DCSWyptEdGUI:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
         if self.profile.has_waypoints == True:
-            if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+            if self.dcs_bios_version is not None and self.is_entering_data == False:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
                 self.window['ux_prof_enter'].update(disabled=True)
@@ -834,6 +835,8 @@ class DCSWyptEdGUI:
         if self.profile.profilename == "":
             self.profile.aircraft = prefs.airframe_default
             self.update_for_profile_change()
+
+        self.dcs_bios_version = dcs_bios_vers_install(prefs.path_dcs)
 
         if self.is_dcs_f10_enabled:
             self.rebind_hotkey(hotkey_capture, prefs.hotkey_capture, self.hkey_dcs_f10_capture)
@@ -985,7 +988,7 @@ class DCSWyptEdGUI:
         self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
-        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if self.dcs_bios_version is not None and self.is_entering_data == False:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.is_entering_data = True
             self.window['ux_prof_enter'].update(disabled=True)
@@ -1177,7 +1180,7 @@ class DCSWyptEdGUI:
         self.update_gui_enable_state()
 
     def do_hk_profile_enter_in_jet(self):
-        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if self.dcs_bios_version is not None and self.is_entering_data == False:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             self.do_profile_enter_in_jet()
@@ -1185,7 +1188,7 @@ class DCSWyptEdGUI:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
-        if dcs_bios_vers_install(self.editor.prefs.path_dcs) and self.is_entering_data == False:
+        if self.dcs_bios_version is not None and self.is_entering_data == False:
             self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
             self.is_entering_data = True
             self.window['ux_prof_enter'].update(disabled=True)

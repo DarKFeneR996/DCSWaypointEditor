@@ -1,5 +1,6 @@
 from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
+from src.dcs_bios import dcs_bios_vers_install
 from src.gui import DCSWyptEdGUI, exception_gui, check_version
 from src.objects import generate_default_bases
 from src.prefs_gui import PrefsGUI
@@ -8,16 +9,14 @@ import traceback
 import logging
 
 
-version = "v1.0.0-raven_BETA.5"
+software_version = "v1.0.0-raven_BETA.5"
 
 
 def main():
     prefs = PrefsManager()
 
-    if prefs.is_auto_upd_check == "true":
-        update_exit = check_version(version)
-        if update_exit:
-            return
+    if prefs.is_auto_upd_check == "true" and check_version(software_version):
+        return
 
     if prefs.is_new_prefs_file == False:
         setup_completed = True
@@ -30,10 +29,12 @@ def main():
 
     if setup_completed:
         generate_default_bases()
-        log_settings(version)
+        log_settings(software_version)
+
+        dcs_bios_version = dcs_bios_vers_install(prefs.path_dcs)
         editor = WaypointEditor(prefs)
 
-        gui = DCSWyptEdGUI(editor, version)
+        gui = DCSWyptEdGUI(editor, software_version, dcs_bios_version)
 
         try:
             gui.run()
