@@ -635,6 +635,9 @@ class ViperDriver(Driver):
         self.s.sendto(f"ICP_DATA_RTN_SEQ_SW 1\n".replace("OSB", "OS").encode(
             "utf-8"), (self.host, self.port))
 
+        if delay_after is not None:
+            sleep(delay_after)
+
     def enter_number(self, number):
         for num in str(number):
             if num != '.':
@@ -668,8 +671,10 @@ class ViperDriver(Driver):
         self.icp_data("DN")
 
     def enter_waypoints(self, wps):
-        self.icp_btn("4", delay_release=1)
-        self.icp_data("DN", delay_release=1)
+        self.icp_data("RTN")
+
+        self.icp_btn("4", delay_after=1)
+        self.icp_data("DN", delay_after=1)
 
         for wp in wps:
             self.enter_coords(wp.position)
