@@ -4,7 +4,7 @@ from src.logger import get_logger
 
 class DatabaseInterface:
     def __init__(self, db_name):
-        self.logger = get_logger("db")
+        self.logger = get_logger(__name__)
         db.init(db_name)
         db.connect()
         db.create_tables([ProfileModel, WaypointModel, SequenceModel])

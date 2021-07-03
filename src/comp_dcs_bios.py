@@ -1,3 +1,9 @@
+'''
+
+comp_dcs_bios.py: DCS-BIOS component version management
+
+'''
+
 import os
 import requests
 import tempfile
@@ -11,7 +17,7 @@ DCS_BIOS_VERSION = "0.7.40"
 DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/{}/DCS-BIOS_{}.zip"
 DCS_BIOS_EXPORT = "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])"
 
-logger = get_logger("dcs_bios")
+logger = get_logger(__name__)
 
 # back up a file/directory at a path. returns True on success, False on failure
 #
@@ -44,11 +50,13 @@ def is_export_setup(dcs_path):
         export_str = ""
     return True if DCS_BIOS_EXPORT in export_str else False
 
-# get current DCS-BIOS version
+# get current DCS-BIOS version DCSWE expects to be using.
 #
-def dcs_bios_vers_current():
+def dcs_bios_vers_latest():
     return DCS_BIOS_VERSION
 
+# get version of installed DCS-BIOS mod.
+#
 # examine DCS mods to see if DCS-BIOS is installed and returns a version string, None if
 # DCS-BIOS is not installed. we use a non-standard release_version.txt file we'll add to
 # DCS-BIOS on install
@@ -62,13 +70,13 @@ def dcs_bios_vers_install(dcs_path):
 
     is_export = is_export_setup(dcs_path)
     is_db_dir = os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS")
-    logger.debug(f"version: Export.lua {is_export}, DCS-BIOS {is_db_dir}, release_version.txt {relver_str}")
+    logger.debug(f"install state: Export.lua {is_export}, DCS-BIOS {is_db_dir}, release_version.txt {relver_str}")
 
     return relver_str if is_export and is_db_dir else None
 
 # check if DCS-BIOS is up-to-date.
 #
-def is_dcs_bios_current(dcs_path):
+def dcs_bios_is_current(dcs_path):
     return True if dcs_bios_vers_install(dcs_path) == DCS_BIOS_VERSION else False
 
 # install DCS-BIOS

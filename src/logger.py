@@ -15,8 +15,7 @@ def log_settings(version):
 def get_logger(name):
     logger = logging.getLogger(name)
     logger.propagate = False
-    formatter = logging.Formatter(
-        '%(asctime)s:%(name)s: %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s:%(name)s: %(levelname)s - %(message)s')
     s_handler = logging.StreamHandler(stdout)
     s_handler.setFormatter(formatter)
     f_handler = logging.FileHandler('log.txt', encoding="utf-8")

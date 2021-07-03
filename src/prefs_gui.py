@@ -1,8 +1,16 @@
-from src.dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_current, dcs_bios_is_current
-from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
+'''
+
+prefs_gui.py: GUI for preferences window
+
+'''
+
 import os
 import PySimpleGUI as PyGUI
 import requests
+
+from src.comp_dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_is_current
+from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
+from src.logger import get_logger
 
 
 # convert a bool to a pref string
@@ -22,12 +30,12 @@ def pref_str_to_bool(str):
         return False
 
 
-class PrefsGUI:
-    def __init__(self, prefs, logger):
+class DCSWEPreferencesGUI:
+    def __init__(self, prefs):
         self.prefs = prefs
-        self.logger = logger
-        self.values = None
 
+        self.logger = get_logger(__name__)
+        self.values = None
         self.window = self.create_gui()
 
     # persist preferences in settings.ini based on values extracted from the prefs window.
@@ -154,7 +162,7 @@ class PrefsGUI:
     def update_gui_for_dcs_path(self):
         db_ver = dcs_bios_vers_install(self.prefs.path_dcs)
         if db_ver is None:
-            db_ver_latest = dcs_bios_vers_current()
+            db_ver_latest = dcs_bios_vers_latest()
             self.window['ux_ok'].update(disabled=True)
             self.window['ux_ok'].metadata = "true"
             self.window['ux_dcs_bios_stat'].update(value="Not Detected")
@@ -164,10 +172,10 @@ class PrefsGUI:
             self.window['ux_ok'].metadata = "false"
             self.window['ux_dcs_bios_stat'].update(value=f"Version {db_ver} Installed")
             if dcs_bios_is_current(self.prefs.path_dcs):
-                self.window['ux_install'].update(text=f"Install v{dcs_bios_vers_current()}",
+                self.window['ux_install'].update(text=f"Install v{dcs_bios_vers_latest()}",
                                                  disabled=True)
             else:
-                self.window['ux_install'].update(text=f"Update to v{dcs_bios_vers_current()}",
+                self.window['ux_install'].update(text=f"Update to v{dcs_bios_vers_latest()}",
                                                  disabled=False)
 
     # run the gui for the preferences window.
