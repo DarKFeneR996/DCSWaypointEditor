@@ -1,13 +1,17 @@
-from shutil import copytree, copyfile, move
 import os
 import requests
 import tempfile
 import zipfile
 
+from shutil import copytree, copyfile, move
+
+from src.logger import get_logger
+
 DCS_BIOS_VERSION = "0.7.40"
 DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/{}/DCS-BIOS_{}.zip"
-
 DCS_BIOS_EXPORT = "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])"
+
+logger = get_logger("dcs_bios")
 
 # back up a file/directory at a path. returns True on success, False on failure
 #
@@ -17,10 +21,13 @@ def backup_path(src_path, is_move=True):
             dst_path = src_path + f".bak{i}"
             if not os.path.exists(dst_path):
                 if is_move:
+                    logger.debug(f"backup moves {src_path} --> {dst_path}")
                     move(src_path, dst_path)
                 elif os.path.isdir(src_path):
+                    logger.debug(f"backup copy (tree) {src_path} --> {dst_path}")
                     copytree(src_path, dst_path)
                 else:
+                    logger.debug(f"backup copy (file) {src_path} --> {dst_path}")
                     copyfile(src_path, dst_path)
                 return True
     else:
@@ -53,11 +60,11 @@ def dcs_bios_vers_install(dcs_path):
     except:
         relver_str = "?.?.?"
 
-    version = None
-    if is_export_setup(dcs_path) and os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS"):
-        version = relver_str
+    is_export = is_export_setup(dcs_path)
+    is_db_dir = os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS")
+    logger.debug(f"version: Export.lua {is_export}, DCS-BIOS {is_db_dir}, release_version.txt {relver_str}")
 
-    return version
+    return relver_str if is_export and is_db_dir else None
 
 # check if DCS-BIOS is up-to-date.
 #
@@ -78,6 +85,7 @@ def dcs_bios_install(dcs_path):
                 response = requests.get(url, stream=True)
                 response.raise_for_status()
             except:
+                logger.debug(f"request for {url} fails")
                 return None
 
             with tempfile.TemporaryFile() as tmp_file:
@@ -88,13 +96,16 @@ def dcs_bios_install(dcs_path):
                     zip_ref.extractall(tmp_dir)
 
                 copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "\\Scripts\\DCS-BIOS")
+                logger.debug(f"{url} downloaded and extracted")
     
         if not is_export_setup(dcs_path):
             with open(dcs_path + "\\Scripts\\Export.lua", "a") as f:
                 f.write(f"\n{DCS_BIOS_EXPORT}\n")
+            logger.debug(f"updated Export.lua")
 
         with open(dcs_path + "\\Scripts\\DCS-BIOS\\release_version.txt", "w") as f:
             f.write(f"{DCS_BIOS_VERSION}")
+        logger.debug(f"updated release_version.txt")
 
         vers_install = DCS_BIOS_VERSION
 

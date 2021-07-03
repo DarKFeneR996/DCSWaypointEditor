@@ -1,4 +1,4 @@
-from src.dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_current, is_dcs_bios_current
+from src.dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_current, dcs_bios_is_current
 from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
 import os
 import PySimpleGUI as PyGUI
@@ -163,7 +163,7 @@ class PrefsGUI:
             self.window['ux_ok'].update(disabled=False)
             self.window['ux_ok'].metadata = "false"
             self.window['ux_dcs_bios_stat'].update(value=f"Version {db_ver} Installed")
-            if is_dcs_bios_current(self.prefs.path_dcs):
+            if dcs_bios_is_current(self.prefs.path_dcs):
                 self.window['ux_install'].update(text=f"Install v{dcs_bios_vers_current()}",
                                                  disabled=True)
             else:
