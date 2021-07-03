@@ -17,18 +17,18 @@ airframes.
 Assuming edits to the flight plans outside of CF are unnecessary, the expected workflow
 is as follows:
 
-1. Mission designer builds mission in CombatFlite, exports as XML
-2. Pilots enter information from XML into jet via DCSWE “mission load” hotkey
+1. Mission designer builds mission in CombatFlite, exports as XML.
+2. Pilots enter information from XML into jet via DCSWE “mission load” hotkey.
 
 Since there may be situations where further customization of the information in the XML
 export is necessary, there is also a workflow that allows for further editing of the
 information CF exports:
 
 1. Mission designer builds mission in CombatFlite, exports as XML.
-2. Editor (mission designer or pilot) imports CF XML into DCSWE profile
-3. Editor changes DCSWE profile as desired
-4. Editor exports profile as JSON file and provides to pilot(s)
-5. Pilots enter information from JSON into jet via DCSWE “mission load” hotkey
+2. Editor (mission designer or pilot) imports CF XML into DCSWE profile.
+3. Editor changes DCSWE profile as desired.
+4. Editor exports profile as JSON file and provides to pilot(s).
+5. Pilots enter information from JSON into jet via DCSWE “mission load” hotkey.
 
 Exports can use the default settings in the CF XML export dialog. The mission designer
 could elect to do per-flight XML exports if they choose. At minimum, the export should
@@ -50,12 +50,12 @@ DCSWE makes several assumptions about how missions are set up in CF,
 
 1 Case is ignored in all names; that is, “Colt1-1” and “colt1-1” are the same callsign,
   “Enfield1” and “enfield1” refer to the same flight, etc.
-2. Waypoint names include flight information as per the default CF behavior
-3. DMPI reference points names follow the DCSWE convention as discussed later
+2. Waypoint names include flight information as per the default CF behavior.
+3. DMPI reference points names follow the DCSWE convention as discussed later.
 4. Each DMPI waypoint is located at the *same* geographic location as a DMPI reference
    point (i.e., when placing a DMPI waypoint, they should be snapped to a DMPI reference
-   point)
-5. Multiple flights may target the same DMPI reference point
+   point).
+5. Multiple flights may target the same DMPI reference point.
 6. Callsigns follow the “[name][flight_number]-[ship_number]” format; for example,
    “Enfield1-4”, “Colt3-2”, etc.
 
@@ -68,9 +68,9 @@ generates WP and MSN waypoints when importing from CF.
 To build the set of DCSWE WP waypoints for a callsign, DCSWE selects all CF waypoints
 that,
 
-1. Have a waypoint type that is not DMPI
+1. Have a waypoint type that is not DMPI.
 2. Have a waypoint name that contains the callsign’s flight (an empty callsign matches
-   waypoints with any name)
+   waypoints with any name).
 
 For example, the steer point waypoint with the name “Enfield1 PUSH” would be included in
 any import for a ship with a callsign in the Enfield1 flight or in any import where the
@@ -89,16 +89,16 @@ To build the set of DCSWE MSN waypoints for a callsign, DCSWE begins by identify
 relevant candidate CF DMPI waypoints that may be included as DCSWE MSN waypoints. These
 include all CF waypoints that,
 
-1. Have a waypoint type of DMPI
+1. Have a waypoint type of DMPI.
 2. Have a waypoint name that contains the callsign’s flight (an empty callsign matches
-   waypoints with any name)
+   waypoints with any name).
 
 In order to generate the DCSWE MSN waypoint, two further pieces of information are
 needed that are not available in the candidate CF DMPI waypoints,
 
-1. The ship(s) that target the DMPI
+1. The ship(s) that target the DMPI.
 2. The station that provides the weapon to employ on the target (as MSN waypoints are a
-   feature of F/A-18C, the station may be: 8, 7, 3, or 2)
+   feature of F/A-18C, the station may be: 8, 7, 3, or 2).
 
 By convention, DCSWE expects the name of the CF DMPI reference point to provide this
 information. This requires mission designers to ensure that all DMPIs that may appear in
@@ -108,10 +108,10 @@ the waypoint list for a ship have a name with the following format:
 
 where,
 
-- {number} is the DMPI number
+- {number} is the DMPI number.
 - [ss_list] is an optional list of the ship(s) that target the DMPI and the station each
   ship uses, all ships in this list must belong to a flight from a CF DMPI waypoint that
-  targets this DMPI reference point
+  targets this DMPI reference point.
 
 The default format for DMPI reference point names in CF is “DMPI {number}”. DCSWE
 requires the addition of the [ss_list] to further specify how to convert the CF DMPI
@@ -124,17 +124,21 @@ A [ss_list] is an optional list of elements separated by whitespace of the forma
 where,
 
 - {ships} specifies ship(s), either by flight name or callsign, and must match a flight
-  from a CF DMPI waypoint at the same geographic location as the DMPI reference point
+  from a CF DMPI waypoint at the same geographic location as the DMPI reference point.
 - {station} is an optional station number (ignored if {ships} is a flight name), valid
-  values are 8, 7, 3, or 2 with 8 being assumed if the station is not specified
+  values are 8, 7, 3, or 2 with 8 being assumed if the station is not specified.
 
 When specifying {ships}, DCSWE allows the use of “*” to prefix match on the name to cut
 down on typing. Some examples of {ships} include,
 
-- “Enfield1” refers to all ships in the Enfield1 flight
-- “Enfield1-4” refers to ship 4 in Enfield1 flight
-- “En*2” refers to all ships in any flight #2 with a name beginning with “En” (e.g., Enron2-3, Enfield2-3)
-- “En*2-3” refers to ship 3 in any flight #2 with a name beginning with “En” (e.g., Enron2-3, Enfield2-3)
+- “Enfield1” refers to all ships in the Enfield1 flight.
+- “En*2” refers to all ships in any #2 flight with a name beginning with “En” (e.g.,
+  Enron2-3, Enfield2-2), this will not match a callsign like “Enfield12-1”.
+- "En*" refers to all ships in any flight with a name beginning with “En” (e.g.,
+  Enfiled1-1, Enfield2-3).
+- “Enfield1-4” refers to ship 4 in the Enfield1 flight.
+- “En*2-3” refers to ship 3 in any #2 flight with a name beginning with “En” (e.g.,
+  Enron2-3, Enfield2-3), this will not match a callsign like “Enfield12-1”.
 
 With the candidate CF DMPI waypoints and the CF DMPI reference points with appropriate
 information in the name DCSWE can build the set of MSN waypoints for a callsign. First,
@@ -146,10 +150,10 @@ callsign a ship from the ship list in the CF DMPI reference point associated wit
 DMPI waypoint. There are several rules,
 
 - An empty callsign matches any ship in the ship list; in this case, the station is
-  always the default value, 8
+  always the default value, 8.
 - A callsign may only match one element from the ship list, multiple matches constitute
-  an error
-- Callsigns match flights and callsigns from the ship list in the expected ways
+  an error.
+- Callsigns match flights and callsigns from the ship list in the expected ways.
 
 For example, consider the following scenario with two three-ship Enfield1 flight and
 two-ship Enfield2 flight,

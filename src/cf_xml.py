@@ -1,9 +1,17 @@
-import xml.etree.ElementTree as xml
-import re
+'''
+
+cf_xml.py: CombatFlite XML parsing into DCS Waypoint Editor profiles
+
+'''
+
 from src.logger import get_logger
 from src.objects import Profile, Waypoint, MSN
+
 from LatLon23 import LatLon, Longitude, Latitude
 from typing import Any
+
+import re
+import xml.etree.ElementTree as xml
 
 logger = get_logger(__name__)
 
@@ -79,6 +87,42 @@ class CombatFliteXML:
             return True
         except:
             return False
+
+    # match a callsign against a DMPI reference point ship list, returning station.
+    #
+    @staticmethod
+    def find_matching_ship(flight, ship, dmpi_name):
+        flight = flight.lower()
+        ship = ship.lower()
+
+        match = re.match(r"DMPI [\d]+[\s]*(?P<ship_list>.*)", dmpi_name.lower(), flags=re.IGNORECASE)
+        if not match:
+            return None
+
+        tokens = match.group('ship_list').split(" ")
+        if flight == "" or len(match.group('ship_list')) == 0:
+            return "8"
+
+        for token in tokens:
+            tokens_elem = token.split(":")
+            if len(tokens_elem) != 2:
+                tokens_elem.append("8")
+
+            tokens_ship = tokens_elem[0].split("-")
+            if "*" in tokens_ship[0]:
+                if tokens_ship[0][-1].isdigit():
+                    regex = r"^" + tokens_ship[0].replace("*", r"[\D]+")
+                else:
+                    regex = r"^" + tokens_ship[0].replace("*", r"[\D]+[\d]+")
+                if re.match(regex, flight):
+                    tokens_ship[0] = flight
+            if tokens_ship[0] == flight and (len(tokens_ship) == 1 or
+                                             tokens_ship[1] == ship):
+                return tokens_elem[1]
+            elif tokens_ship[0] == flight and len(tokens_ship) == 1:
+                return "8"
+
+        return None
 
     # create a DCSWE profile from an CombatFlite XML string.
     #
@@ -156,18 +200,11 @@ class CombatFliteXML:
                     pos_refp, _ = CombatFliteXML.elem_get_position(elem_r)
                     if pos_wypt.almost_equal(pos_refp, e=0.00001):
                         name = CombatFliteXML.elem_get_name(elem_r)
-                        match = re.match(r"^DMPI [\d]+[\s]+(?P<shp>[\d]+):(?P<sta>[\d]+)?",
-                                         name, flags=re.IGNORECASE)
-                        if match and callsign != "":
-                            dmpi_ship = match.group('shp')
-                            dmpi_station = match.group('sta')
-                        else:
-                            dmpi_ship = ""
-                            dmpi_station = "8"
+                        dmpi_stn = CombatFliteXML.find_matching_ship(flight, ship, name)
+                        if ship is not None:
                             if callsign == "":
                                 name = CombatFliteXML.elem_get_name(elem_w)
-                        if dmpi_ship == "" or dmpi_ship == ship:
-                            msn = MSN(name=name, station=dmpi_station,
+                            msn = MSN(name=name, station=dmpi_stn,
                                       position=pos_wypt, elevation=elv_wypt)
                             logger.info(f"{msn}")
                             msns.append(msn)
@@ -177,3 +214,38 @@ class CombatFliteXML:
 
         except:
             raise ValueError("Failed to parse CombatFlite XML file")
+
+def test_find_matching_ship():
+    print([ 1, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI")])
+    print([ 2, "8", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1")])
+    print([ 3, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "colt1-1:2")])
+    print([ 4, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI colt1-1:2")])
+    print([ 5, "6", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt1-1:6")])
+    print([ 6, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt1-2:2")])
+    print([ 7, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt2-1:2")])
+    print([ 8, "7", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*1-1:7")])
+    print([ 9, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*1-2:2")])
+    print([10, "4", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*1-2:2 co*1-1:4")])
+    print([11, "6", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 en*1-2:2 co*1-1:6")])
+    print([12, "8", CombatFliteXML.find_matching_ship("", "", "DMPI 1 colt1-1:2")])
+    print([13, "8", CombatFliteXML.find_matching_ship("", "", "DMPI 1 colt1-2:2")])
+    print([14, "8", CombatFliteXML.find_matching_ship("", "", "DMPI 1 co*1-1:2")])
+    print([15, "8", CombatFliteXML.find_matching_ship("", "", "DMPI 1 co*1-2:2")])
+    print([16, "2", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt1:2")])
+    print([16, "N", CombatFliteXML.find_matching_ship("Colt2", "1", "DMPI 1 colt1:2")])
+    print([17, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt2:2")])
+    print([18, "2", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*1:2")])
+    print([19, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*2:2")])
+    print([20, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 en*1:2")])
+    print([21, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 en*2:2")])
+    print([22, "2", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*:2")])
+    print([23, "3", CombatFliteXML.find_matching_ship("Colt2", "1", "DMPI 1 co*:3")])
+    print([24, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 en*:2")])
+    print([25, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 en*:2")])
+    print([26, "3", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*-1:3")])
+    print([27, "2", CombatFliteXML.find_matching_ship("Colt2", "1", "DMPI 1 co*-1:2")])
+    print([28, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*-2:2")])
+    print([29, "N", CombatFliteXML.find_matching_ship("Colt2", "1", "DMPI 1 co*-2:2")])
+    print([30, "8", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt1-1")])
+'''
+'''
