@@ -926,6 +926,7 @@ class DCSWEMainGUI:
             self.profile.profilename = ""
             if self.profile.aircraft is None:
                 self.profile.aircraft = self.editor.prefs.airframe_default
+            self.is_profile_dirty = True
             self.window['ux_prof_select'].update(set_to_index=0)
             self.update_for_profile_change(set_to_first=True)
             self.logger.debug(self.profile.to_dict())
@@ -950,6 +951,7 @@ class DCSWEMainGUI:
                 self.profile.profilename = ""
                 if self.profile.aircraft is None:
                     self.profile.aircraft = self.editor.prefs.airframe_default
+                self.is_profile_dirty = True
                 self.window['ux_prof_select'].update(set_to_index=0)
                 self.update_for_profile_change(set_to_first=True)
                 self.logger.debug(self.profile.to_dict())
