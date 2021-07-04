@@ -744,7 +744,9 @@ class DCSWEMainGUI:
             name = self.window['ux_wypt_name'].get()
             return position, elevation, name
         except ValueError as e:
-            self.logger.error(f"Failed to validate coords: {e}")
+            if lat_deg != "" or lat_min != "" or lat_sec != "" or \
+               lon_deg != "" or lon_min != "" or lon_sec != "":
+                self.logger.error(f"Failed to validate coords: {e}")
             return None, None, None
 
 
