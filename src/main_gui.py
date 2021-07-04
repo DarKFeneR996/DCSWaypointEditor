@@ -629,10 +629,12 @@ class DCSWEMainGUI:
     # HACK: visual artifacts on updates.
     #
     def update_gui_menu_enable_state(self):
-        self.tk_menu_dcswe.delete(0, 2)
+        self.tk_menu_dcswe.delete(0, 4)
         self.tk_menu_dcswe.add_command(label='Preferences...', command=self.menu_preferences)
         self.tk_menu_dcswe.add('separator')
         self.tk_menu_dcswe.add_command(label='Check for Updates...', command=self.menu_check_updates)
+        self.tk_menu_dcswe.add('separator')
+        self.tk_menu_dcswe.add_command(label='Quit', command=self.menu_quit)
 
         named_prof_norm = 'normal' if self.profile.profilename != "" else 'disabled'
         has_wypt_norm = 'normal' if self.profile.has_waypoints else 'disabled'
@@ -763,6 +765,9 @@ class DCSWEMainGUI:
 
     def menu_check_updates(self):
         self.menu_pend_q.put(self.do_menu_check_updates)
+    
+    def menu_quit(self):
+        self.menu_pend_q.put(self.do_menu_quit)
 
     def menu_profile_new(self):
         self.menu_pend_q.put(self.do_menu_profile_new)
@@ -842,6 +847,9 @@ class DCSWEMainGUI:
             vers_db_latest = dcs_bios_vers_latest()
             db_install_fn = lambda: dcs_bios_install(path_dcs)
             gui_update_request("DCS-BIOS", vers_db_cur, vers_db_latest, db_install_fn)
+
+    def do_menu_quit(self):
+        self.window.close()
 
     def do_menu_profile_new(self):
         self.load_profile()
