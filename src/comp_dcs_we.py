@@ -9,7 +9,7 @@ import webbrowser
 
 from src.logger import get_logger
 
-DCS_WE_VERSION = "v1.0.0-raven_BETA.5"
+DCS_WE_VERSION = "v1.0.0-raven_BETA.6"
 
 logger = get_logger(__name__)
 
