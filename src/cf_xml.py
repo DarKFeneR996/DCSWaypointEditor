@@ -215,6 +215,7 @@ class CombatFliteXML:
         except:
             raise ValueError("Failed to parse CombatFlite XML file")
 
+'''
 def test_find_matching_ship():
     print([ 1, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI")])
     print([ 2, "8", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1")])
@@ -247,5 +248,4 @@ def test_find_matching_ship():
     print([28, "N", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 co*-2:2")])
     print([29, "N", CombatFliteXML.find_matching_ship("Colt2", "1", "DMPI 1 co*-2:2")])
     print([30, "8", CombatFliteXML.find_matching_ship("Colt1", "1", "DMPI 1 colt1-1")])
-'''
 '''
