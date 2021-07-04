@@ -1,7 +1,14 @@
-import socket
-import re
+'''
+
+drivers.py: Airframe-specific interfaces to avionics.
+
+'''
+
 from time import sleep
-from configparser import NoOptionError
+
+import re
+import socket
+import queue
 
 
 class DriverException(Exception):
@@ -67,6 +74,9 @@ class Driver:
         self.short_delay = float(self.prefs.dcs_btn_rel_delay_short)
         self.medium_delay = float(self.prefs.dcs_btn_rel_delay_medium)
 
+        self.bkgnd_prog_cur = 0
+        self.bkgnd_prog_step = 0
+
     def press_with_delay(self, key, delay_after=None, delay_release=None, raw=False):
         if not key:
             return False
@@ -106,6 +116,25 @@ class Driver:
             if not self.validate_waypoint(waypoint):
                 waypoints.remove(waypoint)
         return sorted(waypoints, key=lambda wp: wp.wp_type)
+
+    def bkgnd_advance(self, command_q, progress_q, is_done=False):
+        if progress_q is not None and is_done:
+            progress_q.put(100)
+            progress_q.put("DONE")
+        elif progress_q is not None:
+            self.bkgnd_prog_cur = self.bkgnd_prog_cur + self.bkgnd_prog_step
+            progress_q.put(self.bkgnd_prog_cur)
+            if self.bkgnd_prog_cur > 100:
+                self.bkgnd_prog_cur = 100
+    
+        if command_q is not None:
+            try:
+                cancel = command_q.get(False)
+                return True
+            except queue.Empty:
+                pass
+
+        return False
 
     def stop(self):
         self.s.close()
@@ -151,7 +180,7 @@ class HornetDriver(Driver):
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
-        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         if not pp:
             if latlong.lat.degree > 0:
@@ -197,9 +226,19 @@ class HornetDriver(Driver):
                 elev = round(float(elev) / 3.2808)
                 self.enter_number(elev)
 
-    def enter_waypoints(self, wps, sequences):
+    def count_steps_enter_wypts(self, wps, sequences):
+        count = 0
+        if wps:
+            count = len(wps)
+            for _, waypointslist in sequences.items():
+                count = count + len(waypointslist)
+        return count
+
+    def enter_waypoints(self, wps, sequences, command_q=None, progress_q=None):
         if not wps:
             return
+
+        canceled = False
 
         self.ampcd("10")
         self.ampcd("19")
@@ -207,6 +246,10 @@ class HornetDriver(Driver):
         self.ufc("CLR")
 
         for i, wp in enumerate(wps):
+            if self.bkgnd_advance(command_q, progress_q):
+                canceled = True
+                break
+
             if not wp.name:
                 self.logger.info(f"Entering waypoint {i+1}")
             else:
@@ -219,6 +262,9 @@ class HornetDriver(Driver):
             self.ufc("CLR")
 
         for sequencenumber, waypointslist in sequences.items():
+            if canceled:
+                break
+
             if sequencenumber != 1:
                 self.ampcd("15")
                 self.ampcd("15")
@@ -228,6 +274,10 @@ class HornetDriver(Driver):
             self.ampcd("1")
 
             for waypoint in waypointslist:
+                if self.bkgnd_advance(command_q, progress_q):
+                    canceled = True
+                    break
+
                 self.ufc("OSB4")
                 self.enter_number(waypoint)
 
@@ -253,7 +303,7 @@ class HornetDriver(Driver):
         self.ufc("CLR")
         self.ufc("CLR")
 
-    def enter_missions(self, missions):
+    def enter_missions(self, missions, command_q=None, progress_q=None):
         def stations_order(x):
             if x == 8:
                 return 0
@@ -277,21 +327,43 @@ class HornetDriver(Driver):
         self.lmdi("19")
         self.lmdi("4")
 
+        canceled = False
         for msns in sorted_stations:
             if not msns:
                 return
 
             n = 1
             for msn in msns:
+                if self.bkgnd_advance(command_q, progress_q):
+                    canceled = True
+                    break
                 self.enter_pp_msn(msn, n)
                 n += 1
 
             self.lmdi("13")
 
-    def enter_all(self, profile):
-        self.enter_missions(self.validate_waypoints(profile.msns_as_list))
-        sleep(1)
-        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list), profile.sequences_dict)
+            if canceled:
+                break
+        
+        return canceled
+
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        missions = self.validate_waypoints(profile.msns_as_list)
+        waypoints = self.validate_waypoints(profile.waypoints_as_list)
+
+        steps = self.count_steps_enter_wypts(waypoints, profile.sequences_dict) + len(missions)
+
+        self.bkgnd_prog_step = (1.0 / (steps + 3)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        if not self.enter_missions(missions, command_q=command_q, progress_q=progress_q) and \
+           not self.bkgnd_advance(command_q, progress_q):
+            sleep(1)
+            self.enter_waypoints(waypoints, profile.sequences_dict, command_q=command_q,
+                                 progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)
+
 
 
 class HarrierDriver(Driver):
@@ -340,7 +412,7 @@ class HarrierDriver(Driver):
 
     def enter_coords(self, latlong, elev):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=3)
-        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
             self.ufc("2", delay_release=self.medium_delay)
@@ -363,10 +435,13 @@ class HarrierDriver(Driver):
             self.odu("3")
             self.enter_number(elev)
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, command_q=None, progress_q=None):
         self.lmpcd("2")
 
         for wp in wps:
+            if self.bkgnd_advance(command_q, progress_q):
+                break
+
             self.ufc("7")
             self.ufc("7")
             self.ufc("ENT")
@@ -376,9 +451,15 @@ class HarrierDriver(Driver):
 
         self.lmpcd("2")
 
-    def enter_all(self, profile):
-        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)
 
 class MirageDriver(Driver):
     def __init__(self, logger, config):
@@ -405,7 +486,7 @@ class MirageDriver(Driver):
 
     def enter_coords(self, latlong):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3)
-        self.logger.debug(f"Entering coords string: {lat_str[:-2]}, {lon_str[:-2]}")
+        self.logger.info(f"Entering coords string: {lat_str[:-2]}, {lon_str[:-2]}")
 
         self.pcn("1")
         if latlong.lat.degree > 0:
@@ -422,17 +503,26 @@ class MirageDriver(Driver):
             self.pcn("4", delay_release=self.medium_delay)
         self.enter_number(lon_str[:-2])
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, command_q=None, progress_q=None):
         for i, wp in enumerate(wps, 1):
+            if self.bkgnd_advance(command_q, progress_q):
+                break
+
             self.pcn("PREP")
             self.pcn("0")
             self.pcn(str(i))
             self.enter_coords(wp.position)
             self.pcn("ENTER")
 
-    def enter_all(self, profile):
-        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)
 
 class TomcatDriver(Driver):
     def __init__(self, logger, config):
@@ -466,7 +556,7 @@ class TomcatDriver(Driver):
 
     def enter_coords(self, latlong, elev):
         lat_str, lon_str = latlon_tostring(latlong, one_digit_seconds=True)
-        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         self.cap("1")
         if latlong.lat.degree > 0:
@@ -487,7 +577,7 @@ class TomcatDriver(Driver):
             self.cap("3")
             self.enter_number(elev)
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, command_q=None, progress_q=None):
         cap_wp_type_buttons = dict(
             FP=4,
             IP=5,
@@ -498,6 +588,9 @@ class TomcatDriver(Driver):
         )
         self.cap("TAC")
         for wp in wps:
+            if self.bkgnd_advance(command_q, progress_q):
+                break
+
             if wp.wp_type == "WP":
                 self.cap(f"BTN_{wp.number}")
             else:
@@ -506,9 +599,15 @@ class TomcatDriver(Driver):
             self.enter_coords(wp.position, wp.elevation)
             self.cap("CLEAR")
 
-    def enter_all(self, profile):
-        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)
 
 class WarthogDriver(Driver):
     def __init__(self, logger, config):
@@ -543,7 +642,7 @@ class WarthogDriver(Driver):
 
     def enter_coords(self, latlong):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
-        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         self.clear_input(repeat=2)
 
@@ -569,11 +668,14 @@ class WarthogDriver(Driver):
         self.cdu("LSK_5L")
         self.clear_input(repeat=2)
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, command_q=None, progress_q=None):
         self.cdu("WP", self.short_delay)
         self.cdu("LSK_3L", self.medium_delay)
         self.logger.debug("Number of waypoints: " + str(len(wps)))
         for wp in wps:
+            if self.bkgnd_advance(command_q, progress_q):
+                break
+
             self.logger.debug(f"Entering WP: {wp}")
             self.cdu("LSK_7R", self.short_delay)
             self.enter_waypoint_name(wp)
@@ -585,9 +687,15 @@ class WarthogDriver(Driver):
             else:
                 self.logger.debug("Not entering elevation because it is 0")
 
-    def enter_all(self, profile):
-        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)
 
 class ViperDriver(Driver):
     def __init__(self, logger, config):
@@ -651,7 +759,7 @@ class ViperDriver(Driver):
 
     def enter_coords(self, latlong):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, zfill_minutes=2, one_digit_seconds=False, precision=3)
-        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
             self.icp_btn("2")
@@ -670,13 +778,16 @@ class ViperDriver(Driver):
         self.icp_btn("ENTR")
         self.icp_data("DN")
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, command_q=None, progress_q=None):
         self.icp_data("RTN")
 
         self.icp_btn("4", delay_after=1)
         self.icp_data("DN", delay_after=1)
 
         for wp in wps:
+            if self.bkgnd_advance(command_q, progress_q):
+                break
+
             self.enter_coords(wp.position)
             if wp.elevation != 0:
                 self.enter_elevation(wp.elevation)
@@ -688,5 +799,12 @@ class ViperDriver(Driver):
         self.icp_ded("DN")
         self.icp_data("RTN")
 
-    def enter_all(self, profile):
-        self.enter_waypoints(self.validate_waypoints(profile.all_waypoints_as_list))
+    def enter_all(self, profile, command_q=None, progress_q=None):
+        waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
+
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_cur = 0
+
+        self.bkgnd_advance(command_q, progress_q)
+        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.bkgnd_advance(command_q, progress_q, is_done=True)

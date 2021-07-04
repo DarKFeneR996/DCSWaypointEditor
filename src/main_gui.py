@@ -1,3 +1,9 @@
+'''
+
+main_gui.py: GUI for DCS Waypoint Editor main window
+
+'''
+
 from desktopmagic.screengrab_win32 import getDisplaysAsImages
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
 from peewee import DoesNotExist
@@ -7,7 +13,8 @@ from slpp import slpp as lua
 from src.cf_xml import CombatFliteXML
 from src.comp_dcs_bios import dcs_bios_is_current, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
-from src.gui_util import gui_update_request, airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
+from src.gui_util import gui_update_request, gui_backgrounded_operation
+from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
 from src.objects import Profile, Waypoint, MSN
 from src.prefs_gui import DCSWEPreferencesGUI
@@ -406,7 +413,7 @@ class DCSWEMainGUI:
                                    PyGUI.Combo(values=airframe_list(), default_value=arfm_ui_text,
                                                enable_events=True, key='ux_prof_afrm_select', size=(37,1))],
                                   [PyGUI.Text("Waypoints in Profile:")],
-                                  [PyGUI.Listbox(values=list(), size=(48,19),
+                                  [PyGUI.Listbox(values=list(), size=(48,15),
                                                  enable_events=True, key='ux_prof_wypt_list')],
                                   [PyGUI.Text("Profile has not been modified.", key='ux_prof_state',
                                               size=(24,1)),
@@ -474,18 +481,11 @@ class DCSWEMainGUI:
                                    PyGUI.Button("Remove", key='ux_wypt_delete', size=(14, 1), pad=((16,6),(12,6)))]
                                  ])
 
-        frame_stat = PyGUI.Frame("Status",
-                                 [[PyGUI.Text("Progress:", size=(8,1), pad=(6,(2,6)), justification="right"),
-                                   PyGUI.ProgressBar(1.0, size=(24,12), pad=(6,10)),
-                                   PyGUI.Button("Cancel", size=(8,1), pad=((6,7),10), disabled=True)]
-                                 ])
-        
         col_0 = PyGUI.Column([[menu_bar],
                               [frame_prof],
                               [PyGUI.Text(f"Version: {self.dcs_we_version}", pad=(6,12))]],
                              vertical_alignment="top")
         col_1 = PyGUI.Column([[frame_wypt],
-                              [frame_stat],
                               [PyGUI.Text("Callsign:", size=(8,1), pad=((12,10),12),
                                           justification="right"),
                                PyGUI.InputText(default_text=self.editor.prefs.callsign_default,
@@ -866,7 +866,7 @@ class DCSWEMainGUI:
         else:
             name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile")
         if name is not None and len(name) > 0:
-            if len([obj for obj in Profile.list_all() if obj.name == name]) != 0:
+            if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
                 self.save_profile(name)
                 self.update_for_profile_change()
             else:
@@ -981,6 +981,14 @@ class DCSWEMainGUI:
         self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
+        if self.dcs_bios_version is not None and self.profile.has_waypoints:
+            self.window['ux_prof_enter'].update(disabled=True)
+            gui_backgrounded_operation(f"Entering Profile '{self.profile_name_for_ui()}' into Jet...",
+                                       bop_fn=self.editor.enter_all, bop_args=(self.profile,))
+            self.window['ux_prof_enter'].update(disabled=False)
+            self.update_gui_enable_state()
+
+        '''
         if self.dcs_bios_version is not None and self.is_entering_data == False:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.is_entering_data = True
@@ -990,6 +998,7 @@ class DCSWEMainGUI:
                 self.editor.enter_all(self.profile)
             self.is_entering_data = False
             self.update_gui_enable_state()
+        '''
 
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
@@ -1040,7 +1049,7 @@ class DCSWEMainGUI:
         else:
             PyGUI.Popup("Cannot add waypoint without coordinates.")
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
-        self.update_for_waypoint_list_change()
+        self.update_for_profile_change()
 
     def do_waypoint_update(self):
         if self.values['ux_prof_wypt_list']:
@@ -1050,10 +1059,11 @@ class DCSWEMainGUI:
                 waypoint.position = position
                 waypoint.elevation = elevation
                 waypoint.name = name
+                self.is_profile_dirty = True
             else:
                 PyGUI.Popup("Cannot update waypoint without coordinates.")
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
-        self.update_for_waypoint_list_change()
+        self.update_for_profile_change()
 
     def do_waypoint_delete(self):
         if self.values['ux_prof_wypt_list']:
@@ -1061,7 +1071,8 @@ class DCSWEMainGUI:
             for wp in self.profile.waypoints:
                 if str(wp) == valuestr:
                     self.profile.waypoints.remove(wp)
-            self.update_for_waypoint_list_change()
+                    self.is_profile_dirty = True
+            self.update_for_profile_change()
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
 
     def do_dcs_f10_enable(self):
@@ -1279,7 +1290,7 @@ class DCSWEMainGUI:
                 except:
                     pass
 
-            if event is None or event == 'Exit':
+            if event is None or event == 'Exit' or event == PyGUI.WIN_CLOSED:
                 self.logger.info("Exiting...")
                 break
 
@@ -1330,6 +1341,6 @@ class DCSWEMainGUI:
         self.rebind_hotkey(self.editor.prefs.hotkey_enter_profile)
         self.rebind_hotkey(self.editor.prefs.hotkey_enter_mission)
 
-        self.window.Close()
+        self.window.close()
 
         self.editor.stop()
