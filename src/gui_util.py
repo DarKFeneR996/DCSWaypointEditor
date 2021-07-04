@@ -83,39 +83,38 @@ import time
 def gui_backgrounded_operation(title, bop_fn=None, bop_args=None):
     layout = [[PyGUI.Text("Progress:", size=(8,1), justification="right"),
                PyGUI.ProgressBar(100, key='ux_progress', size=(25,16)),
-               PyGUI.Button("Cancel", key='ux_cancel', size=(8,1), pad=(6,16))]]
+               PyGUI.Button("Cancel", key='ux_cancel', size=(10,1), pad=(6,16))]]
     window = PyGUI.Window(title, layout, modal=True, finalize=True, disable_close=True)
 
     progress_q = queue.Queue()
     command_q = queue.Queue()
     bop_kwargs={ 'progress_q' : progress_q, 'command_q' : command_q }
 
-    logger.info("launching background op thread")
-
     bop_thread = threading.Thread(target=bop_fn, args=bop_args, kwargs=bop_kwargs)
     bop_thread.start()
 
-    logger.info(f"starting progress ui for backgrounded op on thread {bop_thread.ident}")
+    logger.debug(f"Starting progress ui for backgrounded op, thread {bop_thread.ident}")
 
     while True:
         event, _ = window.Read(timeout=500, timeout_key='Timeout')
         if event == 'Timeout':
             try:
                 progress = progress_q.get(False)
-                logger.info(f"backgrounded op progress: {progress}")
                 window['ux_progress'].update(progress)
                 if progress == "DONE":
+                    logger.debug(f"Backgrounded op progress: DONE")
                     break
+                else:
+                    logger.debug(f"Backgrounded op progress: {progress:.2f}")
             except queue.Empty:
                 pass
         elif event == 'ux_cancel':
-            logger.info("sending cancel to backgrounded op, waiting for join")
+            logger.debug("Sending cancel to backgrounded op, waiting for join")
+            window['ux_cancel'].update(text="Cancelling...", disabled=True)
             window['ux_cancel'].update(disabled=True)
             command_q.put("CANCEL")
+        if not bop_thread.is_alive():
+            logger.debug("Backgrounded op thread has passed beyond the veil")
             break
-    window['ux_cancel'].update(disabled=True)
-    bop_thread.join()
-
-    logger.info("backgrounded op joined, tearing down progress ui")
 
     window.close()
