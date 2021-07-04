@@ -4,7 +4,6 @@ gui_util.py: helpful utilities for the GUI
 
 '''
 
-from logging import disable
 import PySimpleGUI as PyGUI
 import threading
 import queue
@@ -43,6 +42,21 @@ def airframe_type_to_ui_text(type):
     if (len(hits) == 0):
         hits = ["F-16C Viper"]
     return hits[0]
+
+# add strike-through in gui-text
+#
+def gui_text_strike(text):
+    result = '\u0336'
+    for i, c in enumerate(text):
+        result = result + c
+        if i != len(text)-1:
+            result = result + '\u0336'
+    return result
+
+# remove strike-through in gui text
+#
+def gui_text_unstrike(text):
+    return text.replace('\u0336', '')
 
 # ui for exceptions.
 #

@@ -14,6 +14,7 @@ from src.cf_xml import CombatFliteXML
 from src.comp_dcs_bios import dcs_bios_is_current, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
 from src.gui_util import gui_update_request, gui_backgrounded_operation
+from src.gui_util import gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
 from src.objects import Profile, Waypoint, MSN
@@ -51,17 +52,6 @@ def json_zip(j):
 
 def json_unzip(j):
     return zlib.decompress(base64.b64decode(j)).decode('utf-8')
-
-def strike(text):
-    result = '\u0336'
-    for i, c in enumerate(text):
-        result = result + c
-        if i != len(text)-1:
-            result = result + '\u0336'
-    return result
-
-def unstrike(text):
-    return text.replace('\u0336', '')
 
 class DCSWEMainGUI:
     def __init__(self, editor, dcs_we_version, dcs_bios_version):
@@ -152,7 +142,7 @@ class DCSWEMainGUI:
 
 
     def find_selected_waypoint(self):
-        valuestr = unstrike(self.values['ux_prof_wypt_list'][0])
+        valuestr = gui_text_unstrike(self.values['ux_prof_wypt_list'][0])
         for wp in self.profile.waypoints:
             if str(wp) == valuestr:
                 return wp
@@ -540,7 +530,7 @@ class DCSWEMainGUI:
                          key=lambda waypoint: waypoint.wp_type if waypoint.wp_type != "MSN" else str(waypoint.station)):
             namestr = str(wp)
             if not self.editor.driver.validate_waypoint(wp):
-                namestr = strike(namestr)
+                namestr = gui_text_strike(namestr)
             values.append(namestr)
 
         if set_to_first:
@@ -1075,7 +1065,7 @@ class DCSWEMainGUI:
 
     def do_waypoint_delete(self):
         if self.values['ux_prof_wypt_list']:
-            valuestr = unstrike(self.values['ux_prof_wypt_list'][0])
+            valuestr = gui_text_unstrike(self.values['ux_prof_wypt_list'][0])
             for wp in self.profile.waypoints:
                 if str(wp) == valuestr:
                     self.profile.waypoints.remove(wp)
