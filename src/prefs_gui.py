@@ -155,7 +155,7 @@ class DCSWEPreferencesGUI:
                             [PyGUI.Frame("Miscellaneous", layout_misc)],
                             [PyGUI.Button("OK", key='ux_ok', size=(8,1), pad=((254,0),16),
                                           disabled=(dcs_bios_ver is None))]],
-                            modal=True, finalize=True)
+                            modal=True, disable_close=True, finalize=True)
 
     # update gui for changes to the dcs path
     #
