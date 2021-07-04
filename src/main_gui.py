@@ -66,7 +66,6 @@ class DCSWEMainGUI:
         self.scaled_dcs_gui = False
         self.is_dcs_f10_enabled = False
         self.is_dcs_f10_tgt_add = False
-        self.is_entering_data = False
         self.is_profile_dirty = False
         self.tk_menu_dcswe = None
         self.tk_menu_profile = None
@@ -673,7 +672,7 @@ class DCSWEMainGUI:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
         if self.profile.has_waypoints == True:
-            if self.dcs_bios_version is not None and self.is_entering_data == False:
+            if self.dcs_bios_version is not None:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
                 self.window['ux_prof_enter'].update(disabled=True)
@@ -980,23 +979,12 @@ class DCSWEMainGUI:
 
     def do_profile_enter_in_jet(self):
         if self.dcs_bios_version is not None and self.profile.has_waypoints:
+            self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.window['ux_prof_enter'].update(disabled=True)
             gui_backgrounded_operation(f"Entering Profile '{self.profile_name_for_ui()}' into Jet...",
                                        bop_fn=self.editor.enter_all, bop_args=(self.profile,))
             self.window['ux_prof_enter'].update(disabled=False)
             self.update_gui_enable_state()
-
-        '''
-        if self.dcs_bios_version is not None and self.is_entering_data == False:
-            self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
-            self.is_entering_data = True
-            self.window['ux_prof_enter'].update(disabled=True)
-            if self.profile.has_waypoints == True:
-                # TODO: setup callback and so on for progress ui
-                self.editor.enter_all(self.profile)
-            self.is_entering_data = False
-            self.update_gui_enable_state()
-        '''
 
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
@@ -1139,6 +1127,10 @@ class DCSWEMainGUI:
     # might not have widgets), we pend hotkeys onto hkey_pend_q via hkey_<foo> and do the work on
     # the main thread via do_hk_<foo>.
 
+    def hkey_clear_pendings(self):
+        with self.menu_pend_q.mutex:
+            self.menu_pend_q.queue.clear()
+
     def hkey_dcs_f10_capture(self):
         self.hkey_pend_q.put(self.do_hk_dcs_f10_capture)
     
@@ -1182,17 +1174,21 @@ class DCSWEMainGUI:
         self.update_gui_enable_state()
 
     def do_hk_profile_enter_in_jet(self):
-        if self.dcs_bios_version is not None and self.is_entering_data == False:
+        if self.dcs_bios_version is not None:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             self.do_profile_enter_in_jet()
+            #
+            # ditch hotkeys that came in while we were away.
+            #
+            self.hkey_clear_pendings()
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
-        if self.dcs_bios_version is not None and self.is_entering_data == False:
-            self.logger.info(f"Entering mission '{self.editor.prefs.path_mission}' into jet...")
-            self.is_entering_data = True
+        if self.dcs_bios_version is not None:
+            mission_name = (os.path.split(self.editor.prefs.path_mission))[1]
+            self.logger.info(f"Entering mission '{mission_name}' into jet...")
             self.window['ux_prof_enter'].update(disabled=True)
             try:
                 self.validate_text_callsign('ux_callsign')
@@ -1203,14 +1199,17 @@ class DCSWEMainGUI:
                 if tmp_profile.has_waypoints:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
-                    # TODO: setup callback and so on for progress ui
-                    self.editor.enter_all(tmp_profile)
+                    gui_backgrounded_operation(f"Entering Mission '{mission_name}' into Jet...",
+                                               bop_fn=self.editor.enter_all, bop_args=(tmp_profile,))
                     self.editor.set_driver(self.profile.aircraft)
+                    #
+                    # ditch hotkeys that came in while we were away.
+                    #
+                    self.hkey_clear_pendings()
                 else:
                     winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
             except:
                 winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
-            self.is_entering_data = False
             self.update_gui_enable_state()
         else:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
