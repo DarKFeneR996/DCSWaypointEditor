@@ -4,7 +4,10 @@ gui_util.py: helpful utilities for the GUI
 
 '''
 
+from logging import disable
 import PySimpleGUI as PyGUI
+import threading
+import queue
 
 from src.logger import get_logger
 
@@ -48,8 +51,8 @@ def gui_exception(exc_info):
 
 # handle an update request if the current and new version of a component are not the same.
 #
-# installation function should return version string on success (notified), empty string on error
-# (notified), or None on no result (quiet).
+# installation function should return version string on success (user is notified via ui), empty
+# string on error (user is notified via ui), or None on no result (user is not notified).
 #
 def gui_update_request(comp, cur_vers, new_vers, install_fn):
     message = f"A new version of {comp} is available ({new_vers}).\nDo you want to update from {cur_vers}?"
@@ -64,3 +67,55 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
     else:
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} declined")
     return False
+
+import time
+
+# run a background operation with a modal progress ui.
+#
+# the backgrounded operation (bop_fn) must take two named args: progress_q and cancel_q in
+# addition to any unamed arguments given by the tuple in bop_args.
+#
+#   progress_q (queue)  operation puts numbers on [0,100] representing the completion
+#                       percentage, "DONE" when the operation has finished or is cancelled
+#   command_q (queue)   gui puts "CANCEL" in this queue to indicate the operation should
+#                       stop processing, clean up, and exit
+#
+def gui_backgrounded_operation(title, bop_fn=None, bop_args=None):
+    layout = [[PyGUI.Text("Progress:", size=(8,1), justification="right"),
+               PyGUI.ProgressBar(100, key='ux_progress', size=(25,16)),
+               PyGUI.Button("Cancel", key='ux_cancel', size=(8,1), pad=(6,16))]]
+    window = PyGUI.Window(title, layout, modal=True, finalize=True, disable_close=True)
+
+    progress_q = queue.Queue()
+    command_q = queue.Queue()
+    bop_kwargs={ 'progress_q' : progress_q, 'command_q' : command_q }
+
+    logger.info("launching background op thread")
+
+    bop_thread = threading.Thread(target=bop_fn, args=bop_args, kwargs=bop_kwargs)
+    bop_thread.start()
+
+    logger.info(f"starting progress ui for backgrounded op on thread {bop_thread.ident}")
+
+    while True:
+        event, _ = window.Read(timeout=500, timeout_key='Timeout')
+        if event == 'Timeout':
+            try:
+                progress = progress_q.get(False)
+                logger.info(f"backgrounded op progress: {progress}")
+                window['ux_progress'].update(progress)
+                if progress == "DONE":
+                    break
+            except queue.Empty:
+                pass
+        elif event == 'ux_cancel':
+            logger.info("sending cancel to backgrounded op, waiting for join")
+            window['ux_cancel'].update(disabled=True)
+            command_q.put("CANCEL")
+            break
+    window['ux_cancel'].update(disabled=True)
+    bop_thread.join()
+
+    logger.info("backgrounded op joined, tearing down progress ui")
+
+    window.close()
