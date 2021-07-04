@@ -67,6 +67,7 @@ class DCSWEMainGUI:
         self.is_dcs_f10_enabled = False
         self.is_dcs_f10_tgt_add = False
         self.is_profile_dirty = False
+        self.is_waypoint_dirty = False
         self.tk_menu_dcswe = None
         self.tk_menu_profile = None
         self.values = None
@@ -176,7 +177,9 @@ class DCSWEMainGUI:
 
             self.profile.waypoints.append(wp)
             self.is_profile_dirty = True
-            self.update_for_profile_change()
+            self.is_waypoint_dirty = False
+            # TODO is this right here? should be confined to waypoint list?
+            self.update_for_waypoint_list_change()
         except ValueError:
             PyGUI.Popup("Error: missing data or invalid data format.")
 
@@ -454,7 +457,7 @@ class DCSWEMainGUI:
                                                key='ux_poi_wypt_select', size=(20,1), pad=(6,(0,16))),
                                    PyGUI.Button(button_text="Filter", size=(6,1), key='ux_poi_filter', pad=(6,(0,16)))],
                                   [PyGUI.Text("Name:", size=(8,1), justification="right"),
-                                   PyGUI.InputText(size=(49, 1), key='ux_wypt_name')],
+                                   PyGUI.InputText(size=(49, 1), key='ux_wypt_name', enable_events=True)],
                                   [PyGUI.Text("Type:", size=(8,1), justification="right"),
                                     PyGUI.Combo(values=["WP", "MSN", "FP", "ST", "IP", "DP", "HA", "HB"],
                                                default_value="WP", enable_events=True, readonly=True,
@@ -686,7 +689,10 @@ class DCSWEMainGUI:
             self.window['ux_wypt_add'].update(disabled=True)
 
         if len(self.window['ux_prof_wypt_list'].get()) > 0:
-            self.window['ux_wypt_update'].update(disabled=False)
+            if self.is_waypoint_dirty:
+                self.window['ux_wypt_update'].update(disabled=False)
+            else:
+                self.window['ux_wypt_update'].update(disabled=True)
             self.window['ux_wypt_delete'].update(disabled=False)
         else:
             self.window['ux_wypt_update'].update(disabled=True)
@@ -995,6 +1001,7 @@ class DCSWEMainGUI:
                 seq_stn = wypt.Sequence
             else:
                 seq_stn = None
+            self.is_waypoint_dirty = False
             self.update_for_coords_change(wypt.position, wypt.elevation, wypt.name, wypt_type=wypt.wp_type,
                                           wypt_seq_sta=seq_stn)
 
@@ -1002,16 +1009,24 @@ class DCSWEMainGUI:
     # ================ ui waypoint panel handlers
 
 
+    def do_wypt_name(self):
+        self.is_waypoint_dirty = True
+        self.update_gui_control_enable_state()
+
     def do_wypt_type_select(self):
         self.selected_wp_type = self.values['ux_wypt_type_select']
+        self.is_waypoint_dirty = True
         self.update_for_waypoint_type_change()
+        self.update_gui_control_enable_state()
 
     def do_seq_stn_select(self):
-        return
+        self.is_waypoint_dirty = True
+        self.update_gui_control_enable_state()
 
     def do_poi_wypt_select(self):
         poi = self.editor.default_bases.get(self.values['ux_poi_wypt_select'])
         if poi is not None:
+            self.is_waypoint_dirty = True
             self.update_for_coords_change(poi.position, poi.elevation, poi.name)
 
     def do_dcs_f10_tgt_select(self):
@@ -1032,9 +1047,11 @@ class DCSWEMainGUI:
         position, elevation, name = self.validate_coords()
         if position is not None:
             self.add_waypoint(position, elevation, name)
+            self.is_waypoint_dirty = False
         else:
             PyGUI.Popup("Cannot add waypoint without coordinates.")
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
+        # TODO is this right here? should be confined to waypoint list?
         self.update_for_profile_change()
 
     def do_waypoint_update(self):
@@ -1045,11 +1062,12 @@ class DCSWEMainGUI:
                 waypoint.position = position
                 waypoint.elevation = elevation
                 waypoint.name = name
+                self.is_waypoint_dirty = False
                 self.is_profile_dirty = True
             else:
                 PyGUI.Popup("Cannot update waypoint without coordinates.")
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
-        self.update_for_profile_change()
+        self.update_for_waypoint_list_change()
 
     def do_waypoint_delete(self):
         if self.values['ux_prof_wypt_list']:
@@ -1057,6 +1075,7 @@ class DCSWEMainGUI:
             for wp in self.profile.waypoints:
                 if str(wp) == valuestr:
                     self.profile.waypoints.remove(wp)
+                    self.is_waypoint_dirty = False
                     self.is_profile_dirty = True
             self.update_for_profile_change()
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
@@ -1079,6 +1098,7 @@ class DCSWEMainGUI:
             self.window['ux_elev_m'].update(round(elevation/3.281))
         except:
             self.window['ux_elev_m'].update("")
+        self.is_waypoint_dirty = True
         self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in elevation (m)
@@ -1089,6 +1109,7 @@ class DCSWEMainGUI:
             self.window['ux_elev_ft'].update(round(elevation*3.281))
         except:
             self.window['ux_elev_ft'].update("")
+        self.is_waypoint_dirty = True
         self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in mgrs
@@ -1098,6 +1119,7 @@ class DCSWEMainGUI:
         if position is not None:
             m = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
             self.window['ux_mgrs'].update(m)
+            self.is_waypoint_dirty = True
         self.update_gui_enable_state()
 
     # update ui state of widgets linked to a change in position (lat/lon)
@@ -1108,6 +1130,7 @@ class DCSWEMainGUI:
             try:
                 decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_str.replace(" ", "")))
                 position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+                self.is_waypoint_dirty = True
                 self.update_for_coords_change(position, update_mgrs=False)
             except (TypeError, ValueError, UnboundLocalError) as e:
                 PyGUI.Popup(f"Cannot decode MGRS '{mgrs_str}', {e}")
@@ -1249,6 +1272,7 @@ class DCSWEMainGUI:
 
                         'ux_prof_wypt_list' : self.do_profile_waypoint_list,
 
+                        'ux_wypt_name' : self.do_wypt_name,
                         'ux_wypt_type_select' : self.do_wypt_type_select,
                         'ux_seq_stn_select' : self.do_seq_stn_select,
                         'ux_poi_wypt_select' : self.do_poi_wypt_select,
