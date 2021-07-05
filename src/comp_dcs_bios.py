@@ -62,6 +62,7 @@ def dcs_bios_vers_latest():
 # DCS-BIOS on install
 #
 def dcs_bios_vers_install(dcs_path):
+    relver_str = None
     try:
         with open(dcs_path + "\\Scripts\\DCS-BIOS\\release_version.txt") as f:
             relver_str = f.read()
@@ -70,9 +71,11 @@ def dcs_bios_vers_install(dcs_path):
 
     is_export = is_export_setup(dcs_path)
     is_db_dir = os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS")
-    logger.debug(f"install state: Export.lua {is_export}, DCS-BIOS {is_db_dir}, release_version.txt {relver_str}")
+    status = relver_str if is_export and is_db_dir else None
+    logger.debug(f"install state: Export.lua {is_export}, DCS-BIOS {is_db_dir}," +
+                 f" release_version.txt {relver_str} --> '{status}'")
 
-    return relver_str if is_export and is_db_dir else None
+    return status
 
 # check if DCS-BIOS is up-to-date.
 #
