@@ -118,7 +118,7 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
     #
     # NOTE: regex handles tesseract mistake where fields run together; e.g., "TFJ" in place of "T FJ"
     #
-    res = re.match(r"^(\d+[.\s]*[A-Z][.\s]*[A-Z][A-Z][.\s]*\d+[.\s]*\d+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+    res = re.match(r"^(\d+[.\s]*[A-Z][.\s]*[A-Z][A-Z][.\s]*\d+[.\s]*\d+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                    coords_string)
     if res is not None:
         mgrs_string = res.group(1).replace(" ", "")
@@ -133,7 +133,7 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         return position, elevation
 
     # "N43°10.244 E40°40.204, 477 ft" -- Degrees and decimal minutes
-    res = re.match(r"^([NS])(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+    res = re.match(r"^([NS])(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+([.\d]+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
         lat_str = res.group(2) + " " + res.group(3) + " " + res.group(1)
@@ -148,7 +148,7 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         return position, elevation
 
     # "N42-43-17.55 E40-38-21.69, 0 ft" -- Degrees, minutes and decimal seconds
-    res = re.match(r"^([NS])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
+    res = re.match(r"^([NS])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
         lat_str = res.group(2) + " " + res.group(3) + " " + res.group(4) + " " + res.group(1)
@@ -163,7 +163,7 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         return position, elevation
 
     # "43°34'37"N 29°11'18"E, 0 ft" -- Degrees minutes and seconds
-    res = re.match(r"^(\d+)[\D]+(\d+)[\D]+(\d+)[^NS]+([NS])[\D]+(\d+)[\D]+(\d+)[\D]+(\d+)[^EW]+([EW])[\D]+([-]?\d+)[^FTM]+(FT|M)",
+    res = re.match(r"^(\d+)[\D]+(\d+)[\D]+(\d+)[^NS]+([NS])[\D]+(\d+)[\D]+(\d+)[\D]+(\d+)[^EW]+([EW])[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
         lat_str = res.group(1) + " " + res.group(2) + " " + res.group(3) + " " + res.group(4)
