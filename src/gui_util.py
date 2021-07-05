@@ -72,10 +72,13 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
     message = f"A new version of {comp} is available ({new_vers}).\nDo you want to update from {cur_vers}?"
     if cur_vers != new_vers and PyGUI.PopupYesNo(message, title="New Version Available") == "Yes":
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} accepted")
-        version = install_fn()
+        try:
+            version = install_fn()
+        except Exception as e:
+            version = None
         if version is not None and version != "":
             PyGUI.Popup(f"{comp} {new_vers} was successfully installed.", title="Success")
-        elif version is not None:
+        elif version is None:
             PyGUI.Popup(f"{comp} {new_vers} installation failed.", title="Error")
         return True
     else:
