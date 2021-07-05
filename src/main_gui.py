@@ -1051,7 +1051,7 @@ class DCSWEMainGUI:
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         try:
-            is_debug = True if self.editor.prefs.is_tesseract_debug == "true" else False
+            is_debug = True if self.editor.prefs.is_tesseract_debug_bool else False
             captured_coords = dcs_f10_capture_map_coords(scaled_dcs_gui=self.scaled_dcs_gui,
                                                          is_debug=is_debug)
             position, elevation = dcs_f10_parse_map_coords_string(captured_coords)

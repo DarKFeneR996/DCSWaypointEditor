@@ -178,16 +178,28 @@ class PrefsManager:
     def is_auto_upd_check(self):
         return self._is_auto_upd_check
 
+    @property
+    def is_auto_upd_check_bool(self):
+        return True if self._is_auto_upd_check == "true" else False
+
     @is_auto_upd_check.setter
     def is_auto_upd_check(self, value):
+        if type(value) == bool or type(value) == int or type(value) == float:
+            value = "true" if value == True else "false"
         self._is_auto_upd_check = value
 
     @property
     def is_tesseract_debug(self):
         return self._is_tesseract_debug
 
+    @property
+    def is_tesseract_debug_bool(self):
+        return True if self._is_tesseract_debug == "true" else False
+
     @is_tesseract_debug.setter
     def is_tesseract_debug(self, value):
+        if type(value) == bool or type(value) == int or type(value) == float:
+            value = "true" if value else "false"
         self._is_tesseract_debug = value
 
     @property

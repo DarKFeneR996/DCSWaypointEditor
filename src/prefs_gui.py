@@ -13,23 +13,6 @@ from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_
 from src.logger import get_logger
 
 
-# convert a bool to a pref string
-#
-def bool_to_pref_str(value):
-    if value == True:
-        return "true"
-    else:
-        return "false"
-
-# convert a bool to a pref string
-#
-def pref_str_to_bool(str):
-    if str == "true":
-        return True
-    else:
-        return False
-
-
 class DCSWEPreferencesGUI:
     def __init__(self, prefs):
         self.prefs = prefs
@@ -80,15 +63,15 @@ class DCSWEPreferencesGUI:
             errors = errors + ", enter mission hotkey"
         if len(errors) > 0:
             PyGUI.Popup(f"Invalid value(s) for {errors}, change ignored.", title="Error")
-        self.prefs.is_auto_upd_check = bool_to_pref_str(values.get('ux_is_auto_upd_check'))
-        self.prefs.is_tesseract_debug = bool_to_pref_str(values.get('ux_is_tesseract_debug'))
+        self.prefs.is_auto_upd_check = values.get('ux_is_auto_upd_check')
+        self.prefs.is_tesseract_debug = values.get('ux_is_tesseract_debug')
         self.prefs.persist_prefs()
 
     # build the ui for the preferences window.
     #
     def create_gui(self):
-        is_auto_upd_check = pref_str_to_bool(self.prefs.is_auto_upd_check)
-        is_tesseract_debug = pref_str_to_bool(self.prefs.is_tesseract_debug)
+        is_auto_upd_check = self.prefs.is_auto_upd_check_bool
+        is_tesseract_debug = self.prefs.is_tesseract_debug_bool
         dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
 
         layout_paths = [
