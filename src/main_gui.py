@@ -4,15 +4,26 @@ main_gui.py: GUI for DCS Waypoint Editor main window
 
 '''
 
-from desktopmagic.screengrab_win32 import getDisplaysAsImages
-from LatLon23 import LatLon, Longitude, Latitude, string2latlon
+import base64
+import keyboard
+import os
+import pyperclip
+import pytesseract
+import PySimpleGUI as PyGUI
+import queue
+import src.pymgrs as mgrs
+import tkinter as tk
+import winsound
+import zlib
+
+from LatLon23 import LatLon, Longitude, Latitude
 from peewee import DoesNotExist
-from PIL import ImageEnhance, ImageOps
 from slpp import slpp as lua
 
 from src.cf_xml import CombatFliteXML
 from src.comp_dcs_bios import dcs_bios_is_current, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
+from src.dcs_f10_capture import dcs_f10_capture_map_coords, dcs_f10_parse_map_coords_string
 from src.gui_util import gui_update_request, gui_backgrounded_operation
 from src.gui_util import gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
@@ -20,22 +31,6 @@ from src.logger import get_logger
 from src.mission_package import dcswe_install_mpack
 from src.objects import Profile, Waypoint, MSN
 from src.prefs_gui import DCSWEPreferencesGUI
-
-import base64
-import cv2
-import datetime
-import keyboard
-import numpy
-import os
-import pyperclip
-import pytesseract
-import PySimpleGUI as PyGUI
-import queue
-import re
-import src.pymgrs as mgrs
-import tkinter as tk
-import winsound
-import zlib
 
 UX_SND_ERROR = "data/ux_error.wav"
 UX_SND_INJECT_TO_JET = "data/ux_action.wav"
@@ -186,197 +181,6 @@ class DCSWEMainGUI:
             PyGUI.Popup("Error: missing data or invalid data format.")
 
         return True
-
-
-    # ================ dcs f10 map coordinate capture
-
-
-    # capture coordinates from the DCS F10 map using tesseract to perform OCR on the screen. returns
-    # a string with the extracted coordinates.
-    #
-    def capture_map_coords(self, x_start=101, x_width=269, y_start=5, y_height=27):
-        self.logger.debug("Attempting to capture map coords")
-        gui_mult = 2 if self.scaled_dcs_gui else 1
-
-        dt = datetime.datetime.now()
-        debug_dirname = dt.strftime("%Y-%m-%d-%H-%M-%S")
-
-        if self.editor.prefs.is_tesseract_debug == "true":
-            os.mkdir(debug_dirname)
-
-        map_image = cv2.imread("data/map.bin")
-        arrow_image = cv2.imread("data/arrow.bin")
-
-        for display_number, image in enumerate(getDisplaysAsImages(), 1):
-            self.logger.debug("Looking for map on screen " + str(display_number))
-
-            if self.editor.prefs.is_tesseract_debug == "true":
-                image.save(debug_dirname + "/screenshot-"+str(display_number)+".png")
-
-            # convert screenshot to OpenCV format and search for the "MAP" text. matchTemplate returns a
-            # new greyscale image wherethe brightness of each pixel corresponds to how good a match there
-            # was at that point so now we search for the 'whitest' pixel.
-            #
-            screen_image = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
-            search_result = cv2.matchTemplate(screen_image, map_image, cv2.TM_CCOEFF_NORMED)  
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(search_result)
-            self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) +
-                              " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
-            start_x = max_loc[0] + map_image.shape[0]
-            start_y = max_loc[1]
-
-            if max_val > 0.9:  # better than a 90% match means we are on to something
-
-                # now we search for the arrow icon
-                #
-                search_result = cv2.matchTemplate(screen_image, arrow_image, cv2.TM_CCOEFF_NORMED)
-                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(search_result)
-                self.logger.debug("Minval: " + str(min_val) + " Maxval: " + str(max_val) +
-                                  " Minloc: " + str(min_loc) + " Maxloc: " + str(max_loc))
-
-                end_x = max_loc[0]
-                end_y = max_loc[1] + map_image.shape[1]
-
-                self.logger.debug("Capturing " + str(start_x) + "x" + str(start_y) + " to " + str(end_x) +
-                                  "x" + str(end_y))
-
-                lat_lon_image = image.crop([start_x, start_y, end_x, end_y])
-
-                if self.editor.prefs.is_tesseract_debug == "true":
-                    lat_lon_image.save(debug_dirname + "/lat_lon_image.png")
-
-                enhancer = ImageEnhance.Contrast(lat_lon_image)
-                enhanced = enhancer.enhance(2)
-                if self.editor.prefs.is_tesseract_debug == "true":
-                    enhanced.save(debug_dirname + "/lat_lon_image_enhanced.png")
-
-                inverted = ImageOps.invert(enhanced)
-                if self.editor.prefs.is_tesseract_debug == "true":
-                    inverted.save(debug_dirname + "/lat_lon_image_inverted.png")
-
-                captured_map_coords = pytesseract.image_to_string(inverted).replace("\x0A\x0C", "")
-
-                self.logger.debug(f"Raw captured text: {captured_map_coords}")
-
-                # HACK: tesseract sometimes recognizes "E" as "£" and "J" as ")", "]", or "}". since
-                # HACK: "£", ")", "]", and "}" symbols cannot appear in the coordinate formats that
-                # HACK: DCS uses, we'll assume any occurance of "£", ")", and "]" are something else
-                # HACK: and fix up the string here.
-                #
-                captured_map_coords = captured_map_coords.replace(")", "J")
-                captured_map_coords = captured_map_coords.replace("]", "J")
-                captured_map_coords = captured_map_coords.replace("}", "J")
-                return captured_map_coords.replace("£", "E")
-
-        self.logger.debug("Raise exception (could not find the map anywhere i guess?)")
-
-        raise ValueError("DCS F10 map not found")
-
-    # parse the coordinate string extracted from the screen via capture_map_coords. returns a tuple
-    # with position and elevation (which may be negative).
-    #
-    def parse_map_coords_string(self, coords_string, tomcat_mode=False):
-        coords_string = coords_string.upper()
-
-        self.logger.info(f"Parsing captured coordinate string: {coords_string}")
-
-        # tesseract recognition is not 100% (see, for example, the issues with "E" and "£" above).
-        # as a result, we will tend to use regex's below that allow latitude in the non-critical
-        # parts of the string (e.g., for a "°" delimiter).
-
-        # "37 T FJ 36255 11628, 5300 ft" -- MGRS
-        #
-        # NOTE: regex handles tesseract mistake where fields run together; e.g., "TFJ" in place of "T FJ"
-        #
-        res = re.match(r"^(\d+[.\s]*[A-Z][.\s]*[A-Z][A-Z][.\s]*\d+[.\s]*\d+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
-                       coords_string)
-        if res is not None:
-            mgrs_string = res.group(1).replace(" ", "")
-            decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
-            position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
-            elevation = float(res.group(2))
-
-            if res.group(3) == "M":
-                elevation = elevation * 3.281
-
-            return position, elevation
-
-        # "N43°10.244 E40°40.204, 477 ft" -- Degrees and decimal minutes
-        res = re.match(r"^([NS])(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
-                       coords_string)
-        if res is not None:
-            lat_str = res.group(2) + " " + res.group(3) + " " + res.group(1)
-            lon_str = res.group(5) + " " + res.group(6) + " " + res.group(4)
-            position = string2latlon(lat_str, lon_str, "d% %M% %H")
-            elevation = float(res.group(7))
-
-            if res.group(8) == "M":
-                elevation = elevation * 3.281
-
-            return position, elevation
-
-        # "N42-43-17.55 E40-38-21.69, 0 ft" -- Degrees, minutes and decimal seconds
-        res = re.match(r"^([NS])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+(\d+)[\D]+([.\d]+)[\D]+([-]?\d+)[^FTM]+(FT|M)",
-                       coords_string)
-        if res is not None:
-            lat_str = res.group(2) + " " + res.group(3) + " " + res.group(4) + " " + res.group(1)
-            lon_str = res.group(6) + " " + res.group(7) + " " + res.group(8) + " " + res.group(5)
-            position = string2latlon(lat_str, lon_str, "d% %m% %S% %H")
-            elevation = float(res.group(9))
-
-            if res.group(10) == "M":
-                elevation = elevation * 3.281
-
-            return position, elevation
-
-        # "43°34'37"N 29°11'18"E, 0 ft" -- Degrees minutes and seconds
-        res = re.match(r"^(\d+)[\D]+(\d+)[\D]+(\d+)[^NS]+([NS])[\D]+(\d+)[\D]+(\d+)[\D]+(\d+)[^EW]+([EW])[\D]+([-]?\d+)[^FTM]+(FT|M)",
-                       coords_string)
-        if res is not None:
-            lat_str = res.group(1) + " " + res.group(2) + " " + res.group(3) + " " + res.group(4)
-            lon_str = res.group(5) + " " + res.group(6) + " " + res.group(7) + " " + res.group(8)
-            position = string2latlon(lat_str, lon_str, "d% %m% %S% %H")
-            elevation = float(res.group(9))
-
-            if res.group(10) == "M":
-                elevation = elevation * 3.281
-
-            return position, elevation
-
-        # "X-00199287 Z+00523070, 0 ft" -- X/Y
-        # 
-        # Not sure how to convert this yet, just fall through with an error.
-
-        self.logger.info("Unable to parse captured text")
-        return None, None
-    
-        '''
-        TODO: taking this code out temporarily, not clear we should ever hit it. there is no use of
-        TODO: tomcat_mode in the file and position is not parsed in non-tomcat_mode.
-
-        split_string = coords_string.split(',')
-
-        if tomcat_mode:
-            latlon_string = coords_string.replace("\\", "").replace("F", "")
-            split_string = latlon_string.split(' ')
-            lat_string = split_string[1]
-            lon_string = split_string[3]
-            position = string2latlon(lat_string, lon_string, format_str="d%°%m%'%S")
-
-        if not tomcat_mode:
-            elevation = split_string[1].replace(' ', '')
-            if "FT" in elevation:
-                elevation = int(elevation.replace("FT", ""))
-            elif "M" in elevation:
-                elevation = round(int(elevation.replace("M", ""))*3.281)
-            else:
-                raise ValueError("Unable to parse elevation: " + elevation)
-        else:
-            elevation = self.capture_map_coords(2074, 97, 966, 32)
-
-        self.logger.info("Parsed captured text: " + str(position))
-        return position, elevation
-        '''
 
 
     # ================ ui/ux support
@@ -1247,11 +1051,12 @@ class DCSWEMainGUI:
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         try:
-            captured_coords = self.capture_map_coords()
-            position, elevation = self.parse_map_coords_string(captured_coords)
+            is_debug = True if self.editor.prefs.is_tesseract_debug == "true" else False
+            captured_coords = dcs_f10_capture_map_coords(scaled_dcs_gui=self.scaled_dcs_gui,
+                                                         is_debug=is_debug)
+            position, elevation = dcs_f10_parse_map_coords_string(captured_coords)
             if position is None:
                 raise ValueError("Capture or parse fails")
-            self.logger.debug("Parsed text as coords succesfully: " + str(position))
             if self.is_dcs_f10_tgt_add:
                 if self.add_waypoint(position, elevation) is None:
                     raise ValueError("Adding captured waypoint fails")
