@@ -87,37 +87,47 @@ def dcs_bios_is_current(dcs_path):
 def dcs_bios_install(dcs_path):
     vers_install = None
 
-    if (backup_path(dcs_path + "\\Scripts\\DCS-BIOS", is_move=True) and \
-        (is_export_setup(dcs_path) or \
-         backup_path(dcs_path + "\\Scripts\\Export.lua", is_move=False))):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            url = DCS_BIOS_URL.format(DCS_BIOS_VERSION, DCS_BIOS_VERSION)
-            try:
-                response = requests.get(url, stream=True)
-                response.raise_for_status()
-            except:
-                logger.debug(f"request for {url} fails")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        url = DCS_BIOS_URL.format(DCS_BIOS_VERSION, DCS_BIOS_VERSION)
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+        except:
+            logger.debug(f"request for {url} fails")
+            return None
+
+        with tempfile.TemporaryFile() as tmp_file:
+            for block in response.iter_content(1024):
+                tmp_file.write(block)
+
+            with zipfile.ZipFile(tmp_file) as zip_ref:
+                zip_ref.extractall(tmp_dir)
+
+            logger.debug(f"{url} downloaded and extracted")
+
+            if (not is_export_setup(dcs_path) and
+                not backup_path(dcs_path + "\\Scripts\\Export.lua", is_move=False)) or \
+               not backup_path(dcs_path + "\\Scripts\\DCS-BIOS", is_move=True):
+                logger.debug(f"backup of DCS-BIOS and/or Export.lua fail")
                 return None
 
-            with tempfile.TemporaryFile() as tmp_file:
-                for block in response.iter_content(1024):
-                    tmp_file.write(block)
-
-                with zipfile.ZipFile(tmp_file) as zip_ref:
-                    zip_ref.extractall(tmp_dir)
-
+            try:
                 copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "\\Scripts\\DCS-BIOS")
-                logger.debug(f"{url} downloaded and extracted")
+                logger.debug(f"copied new DCS-BIOS in place")
     
-        if not is_export_setup(dcs_path):
-            with open(dcs_path + "\\Scripts\\Export.lua", "a") as f:
-                f.write(f"\n{DCS_BIOS_EXPORT}\n")
-            logger.debug(f"updated Export.lua")
+                if not is_export_setup(dcs_path):
+                    with open(dcs_path + "\\Scripts\\Export.lua", "a") as f:
+                        f.write(f"\n{DCS_BIOS_EXPORT}\n")
+                    logger.debug(f"updated Export.lua")
 
-        with open(dcs_path + "\\Scripts\\DCS-BIOS\\release_version.txt", "w") as f:
-            f.write(f"{DCS_BIOS_VERSION}")
-        logger.debug(f"updated release_version.txt")
+                with open(dcs_path + "\\Scripts\\DCS-BIOS\\release_version.txt", "w") as f:
+                    f.write(f"{DCS_BIOS_VERSION}")
+                logger.debug(f"updated release_version.txt")
 
-        vers_install = DCS_BIOS_VERSION
+                vers_install = DCS_BIOS_VERSION
+
+            except:
+                logger.debug(f"failure during installation")
+                return None
 
     return vers_install
