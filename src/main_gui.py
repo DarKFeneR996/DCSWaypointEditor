@@ -17,6 +17,7 @@ from src.gui_util import gui_update_request, gui_backgrounded_operation
 from src.gui_util import gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
+from src.mission_package import dcswe_install_mpack
 from src.objects import Profile, Waypoint, MSN
 from src.prefs_gui import DCSWEPreferencesGUI
 
@@ -70,6 +71,7 @@ class DCSWEMainGUI:
         self.is_waypoint_dirty = False
         self.tk_menu_dcswe = None
         self.tk_menu_profile = None
+        self.tk_menu_mission = None
         self.values = None
         self.selected_wp_type = "WP"
 
@@ -409,7 +411,7 @@ class DCSWEMainGUI:
                                                  enable_events=True, key='ux_prof_wypt_list')],
                                   [PyGUI.Text("Profile has not been modified.", key='ux_prof_state',
                                               size=(24,1)),
-                                   PyGUI.Button("Enter Profile into Jet", key='ux_prof_enter', size=(17,1),
+                                   PyGUI.Button("Load Profile into Jet", key='ux_prof_enter', size=(17,1),
                                                 pad=((10,6),6))]
                                  ])
 
@@ -497,6 +499,8 @@ class DCSWEMainGUI:
         menu_bar.TKMenu.add_cascade(label="DCS WE", menu=self.tk_menu_dcswe, underline=0)
         self.tk_menu_profile = tk.Menu(menu_bar.TKMenu, tearoff=False)
         menu_bar.TKMenu.add_cascade(label="Profile", menu=self.tk_menu_profile, underline=0)
+        self.tk_menu_mission = tk.Menu(menu_bar.TKMenu, tearoff=False)
+        menu_bar.TKMenu.add_cascade(label="Mission", menu=self.tk_menu_mission, underline=0)
 
         window['ux_callsign'].bind('<FocusOut>', ':focus_out')
 
@@ -631,8 +635,16 @@ class DCSWEMainGUI:
         named_prof_norm = 'normal' if self.profile.profilename != "" else 'disabled'
         has_wypt_norm = 'normal' if self.profile.has_waypoints else 'disabled'
         dirty_norm = 'normal' if self.is_profile_dirty else 'disabled'
+        if self.dcs_bios_version is not None:
+            mission_norm = 'normal' if os.path.exists(self.editor.prefs.path_mission) else 'disabled'
+            load_prof_norm = 'normal' if self.profile.has_waypoints else 'disabled'
+            install_norm = 'normal'
+        else:
+            mission_norm = 'disabled'
+            load_prof_norm = 'disabled'
+            install_norm = 'disabled'
         
-        self.tk_menu_profile.delete(0, 10)
+        self.tk_menu_profile.delete(0, 11)
         self.tk_menu_profile.add_command(label="New", command=self.menu_profile_new, state=named_prof_norm)
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Save...', command=self.menu_profile_save, state=dirty_norm)
@@ -646,20 +658,29 @@ class DCSWEMainGUI:
         self.tk_menu_profile.add('separator')
 
         submenu_import = tk.Menu(self.tk_menu_profile, tearoff=False)
+        self.tk_menu_profile.add_command(label="Load Profile into Jet",
+                                         command=self.menu_profile_load_jet, state=load_prof_norm)
         self.tk_menu_profile.add_cascade(label="Import", menu=submenu_import, underline=0)
-        submenu_import.add_command(label="From Clipboard Encoded JSON",
+        submenu_import.add_command(label="From Clipboard as Encoded DCSWE JSON",
                                    command=self.menu_profile_import_from_encoded_string)
-        submenu_import.add_command(label="From JSON or CombatFlite XML File...",
+        submenu_import.add_command(label="From CombatFlite XML or DCSWE JSON File...",
                                    command=self.menu_profile_import_from_file)
 
         submenu_export = tk.Menu(self.tk_menu_profile, tearoff=False)
         self.tk_menu_profile.add_cascade(label="Export", menu=submenu_export, underline=0)
-        submenu_export.add_command(label="To Clipboard as Encoded JSON",
+        submenu_export.add_command(label="To Clipboard as Encoded DCSWE JSON",
                                    command=self.menu_profile_export_to_enc_string, state=has_wypt_norm)
         submenu_export.add_command(label="To Clipboard as Text",
                                    command=self.menu_profile_export_to_pln_string, state=has_wypt_norm)
-        submenu_export.add_command(label="To JSON File...",
+        submenu_export.add_command(label="To DCSWE JSON File...",
                                    command=self.menu_profile_export_to_file, state=has_wypt_norm)
+
+        self.tk_menu_mission.delete(0,2)
+        self.tk_menu_mission.add_command(label="Install Mission Package...",
+                                         command=self.menu_mission_install_package, state=install_norm)
+        self.tk_menu_mission.add('separator')
+        self.tk_menu_mission.add_command(label="Load Mission File into Jet",
+                                         command=self.menu_mission_load_jet, state=mission_norm)
 
     # update gui state for control enables based on current internal state.
     #
@@ -781,6 +802,9 @@ class DCSWEMainGUI:
     def menu_profile_revert(self):
         self.menu_pend_q.put(self.do_menu_profile_revert)
 
+    def menu_profile_load_jet(self):
+        self.menu_pend_q.put(self.do_hk_profile_enter_in_jet)
+
     def menu_profile_export_to_enc_string(self):
         self.menu_pend_q.put(self.do_menu_profile_export_to_enc_string)
 
@@ -795,6 +819,12 @@ class DCSWEMainGUI:
 
     def menu_profile_import_from_file(self):
         self.menu_pend_q.put(self.do_menu_profile_import_from_file)
+
+    def menu_mission_install_package(self):
+        self.menu_pend_q.put(self.do_menu_mission_install_package)
+    
+    def menu_mission_load_jet(self):
+        self.menu_pend_q.put(self.do_hk_mission_enter_in_jet)
 
 
     def do_menu_preferences(self):
@@ -910,7 +940,8 @@ class DCSWEMainGUI:
     #
     def do_menu_profile_export_to_file(self):
         name = self.profile_name_for_ui()
-        filename = PyGUI.PopupGetFile("File Name", f"Exporting Profile '{name}' from Database",
+        filename = PyGUI.PopupGetFile("Specify a File to Export To",
+                                      f"Exporting Profile '{name}' from Database",
                                       default_extension=".json", save_as=True,
                                       file_types=(("JSON File", "*.json"),))
         if filename is not None:
@@ -942,7 +973,7 @@ class DCSWEMainGUI:
     # imports profile from text JSON or combatflite XML file into empty/new profile
     #
     def do_menu_profile_import_from_file(self):
-        filename = PyGUI.PopupGetFile("File Name", "Importing Profile from File")
+        filename = PyGUI.PopupGetFile("Select a File to Import From", "Importing Profile from File")
         if filename is not None:
             try:
                 self.validate_text_callsign('ux_callsign')
@@ -963,6 +994,40 @@ class DCSWEMainGUI:
             except:
                 PyGUI.Popup(f"Unable to parse the file '{filename}'", title="Error")
 
+    def do_menu_mission_install_package(self):
+        try:
+            self.validate_text_callsign('ux_callsign')
+            callsign = self.editor.prefs.callsign_default
+            if callsign == "":
+                raise ValueError("Empty callsign")
+        except:
+            PyGUI.Popup(f"Mission package installation requires a valid, non-empty callsign.",
+                        title="Error")
+            return
+        airframe_ui = self.window['ux_prof_afrm_select'].get()
+        airframe = airframe_ui_text_to_type(airframe_ui)
+        mpack_path = PyGUI.PopupGetFile("Select a Mission Package to Install",
+                                        f"Installing Package for {airframe_ui} {callsign}")
+        if mpack_path is not None:
+            mpack_name, _ = os.path.splitext(mpack_path)
+            mpack_name = ((os.path.split(mpack_name))[1]).replace(" ", "-")
+
+            if mpack_name in self.profile_names() and \
+               PyGUI.PopupOKCancel(f"There is already a profile named '{mpack_name}'. Replace it?",
+                                   title="Duplicate Profile Name") == "Cancel":
+                return
+
+            try:
+                dcs_path = self.editor.prefs.path_dcs
+                profile = dcswe_install_mpack(mpack_path, mpack_name, airframe, callsign, dcs_path)
+                profile.save(profile.profilename)
+                self.load_profile(profile.profilename)
+                self.window['ux_prof_select'].update(value=profile.profilename)
+                self.update_for_profile_change(set_to_first=True)
+            except Exception as e:
+                filename = (os.path.split(mpack_path))[1]
+                PyGUI.Popup(f"Unable to install the mission package '{filename}': {e}", title="Error")
+
 
     # ================ ui profile panel handlers
 
@@ -970,12 +1035,9 @@ class DCSWEMainGUI:
     def do_profile_select(self):
         try:
             profile_name = self.values['ux_prof_select']
-            if profile_name != '':
-                self.profile = Profile.load(profile_name)
-            else:
-                self.load_profile()
+            self.load_profile(profile_name)
         except DoesNotExist:
-            PyGUI.Popup(f"Profile '{profile_name}'' was not found in the database.", title="Error")
+            PyGUI.Popup(f"Profile '{profile_name}' was not found in the database.", title="Error")
             self.load_profile()
         self.update_for_profile_change(set_to_first=True)
 
