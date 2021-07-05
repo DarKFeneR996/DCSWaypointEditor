@@ -644,7 +644,7 @@ class DCSWEMainGUI:
             load_prof_norm = 'disabled'
             install_norm = 'disabled'
         
-        self.tk_menu_profile.delete(0, 11)
+        self.tk_menu_profile.delete(0, 12)
         self.tk_menu_profile.add_command(label="New", command=self.menu_profile_new, state=named_prof_norm)
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Save...', command=self.menu_profile_save, state=dirty_norm)
@@ -653,6 +653,8 @@ class DCSWEMainGUI:
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Delete...',
                                          command=self.menu_profile_delete, state=named_prof_norm)
+        self.tk_menu_profile.add_command(label='Reset Profile Database...',
+                                         command=self.menu_profile_reset_db)
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Revert', command=self.menu_profile_revert, state=dirty_norm)
         self.tk_menu_profile.add('separator')
@@ -798,6 +800,9 @@ class DCSWEMainGUI:
 
     def menu_profile_delete(self):
         self.menu_pend_q.put(self.do_menu_profile_delete)
+    
+    def menu_profile_reset_db(self):
+        self.menu_pend_q.put(self.do_menu_profile_reset_db)
 
     def menu_profile_revert(self):
         self.menu_pend_q.put(self.do_menu_profile_revert)
@@ -915,6 +920,13 @@ class DCSWEMainGUI:
                 Profile.delete(self.profile.profilename)
                 self.load_profile()
                 self.update_for_profile_change()
+
+    def do_menu_profile_reset_db(self):
+        if PyGUI.PopupOKCancel(f"Are you sure you want to delete the profile database? This will" +
+                               " remove all profiles.", title="Say Intentions") == "OK":
+            self.editor.reset_db()
+            self.load_profile()
+            self.update_for_profile_change()
 
     def do_menu_profile_revert(self):
         self.load_profile(self.profile.profilename)

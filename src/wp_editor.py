@@ -3,9 +3,10 @@
 wp_editor.py: Waypoint editor base object
 
 '''
+import os
 
 from time import sleep
-from src.objects import default_bases
+from src.objects import Profile, default_bases
 from src.db import DatabaseInterface
 from src.logger import get_logger
 from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException
@@ -37,6 +38,11 @@ class WaypointEditor:
         self.logger.info(f"Entering waypoints for aircraft: {profile.aircraft}")
         sleep(int(self.prefs.dcs_grace_period))
         self.driver.enter_all(profile, command_q=command_q, progress_q=progress_q)
+
+    def reset_db(self):
+        self.db.close()
+        os.remove(self.prefs.profile_db_name)
+        self.db = DatabaseInterface(self.prefs.profile_db_name)
 
     def stop(self):
         self.db.close()
