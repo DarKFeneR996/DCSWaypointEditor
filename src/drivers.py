@@ -73,6 +73,7 @@ class Driver:
 
         self.short_delay = float(self.prefs.dcs_btn_rel_delay_short)
         self.medium_delay = float(self.prefs.dcs_btn_rel_delay_medium)
+        self.long_delay = float(2.00 * self.medium_delay)
 
         self.bkgnd_prog_cur = 0
         self.bkgnd_prog_step = 0
@@ -164,19 +165,17 @@ class HornetDriver(Driver):
         for num in str(number):
             if num == ".":
                 break
+            else:
+                self.ufc(num)
 
-            self.ufc(num)
-
-        self.ufc("ENT", delay_release=self.medium_delay)
+        self.ufc("ENT", delay_release=self.long_delay, delay_after=self.medium_delay)
 
         i = str(number).find(".")
+        if two_enters and i > 0:
+            for num in str(number)[i + 1:]:
+                self.ufc(num)
 
-        if two_enters:
-            if i > 0:
-                for num in str(number)[str(number).find(".") + 1:]:
-                    self.ufc(num)
-
-            self.ufc("ENT", delay_release=self.medium_delay)
+            self.ufc("ENT", delay_release=self.long_delay, delay_after=self.medium_delay)
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
@@ -195,6 +194,7 @@ class HornetDriver(Driver):
             else:
                 self.ufc("4", delay_release=self.medium_delay)
             self.enter_number(lon_str, two_enters=True)
+            sleep(0.5)
 
             if elev:
                 self.ufc("OSB3")
