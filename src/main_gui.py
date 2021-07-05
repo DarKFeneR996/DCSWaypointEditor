@@ -1136,6 +1136,9 @@ class DCSWEMainGUI:
 
 
     def run(self):
+        if self.dcs_bios_version is None:
+            PyGUI.Popup("DCS-BIOS not detected. Some functionality will not be available.", title="Note")
+
         if self.is_dcs_f10_enabled:
             self.rebind_hotkey(None, self.editor.prefs.hotkey_capture, self.hkey_dcs_f10_capture)
             self.rebind_hotkey(None, self.editor.prefs.hotkey_capture_mode, self.hkey_dcs_f10_capture_tgt_toggle)
