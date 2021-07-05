@@ -2,6 +2,9 @@
 
 cf_xml.py: CombatFlite XML parsing into DCS Waypoint Editor profiles
 
+See documentation/CF_Integration.md for further details on the expectations DCS Waypoint
+Editor places on CombatFlite missions that it can import.
+
 '''
 
 from src.logger import get_logger
@@ -124,7 +127,7 @@ class CombatFliteXML:
 
         return None
 
-    # create a DCSWE profile from an CombatFlite XML string.
+    # create and populate a DCSWE profile from an CombatFlite XML string.
     #
     # callsign, if given, should be in the format "<name><number>-<ship>", e.g., "Enfield1-2"
     #
