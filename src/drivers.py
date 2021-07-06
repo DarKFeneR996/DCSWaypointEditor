@@ -308,11 +308,11 @@ class HornetDriver(Driver):
             if x == 8:
                 return 0
             elif x == 7:
-                return 1
-            elif x == 3:
                 return 2
-            elif x == 2:
+            elif x == 3:
                 return 3
+            elif x == 2:
+                return 1
 
         sorted_stations = list()
         stations = dict()
