@@ -867,7 +867,9 @@ class DCSWEMainGUI:
         if self.dcs_bios_version is not None and self.profile.has_waypoints:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.window['ux_prof_enter'].update(disabled=True)
-            gui_backgrounded_operation(f"Entering Profile '{self.profile_name_for_ui()}' into Jet...",
+            profile_name = self.profile_name_for_ui()
+            airframe = self.window['ux_prof_afrm_select'].get()
+            gui_backgrounded_operation(f"Entering Profile '{profile_name}' into {airframe}...",
                                        bop_fn=self.editor.enter_all, bop_args=(self.profile,))
             self.window['ux_prof_enter'].update(disabled=False)
             self.update_gui_enable_state()
@@ -1103,7 +1105,8 @@ class DCSWEMainGUI:
                 if tmp_profile.has_waypoints:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
-                    gui_backgrounded_operation(f"Entering Mission '{mission_name}' into Jet...",
+                    airframe = airframe_type_to_ui_text(tmp_profile.aircraft)
+                    gui_backgrounded_operation(f"Entering Mission '{mission_name}' into {airframe}...",
                                                bop_fn=self.editor.enter_all, bop_args=(tmp_profile,))
                     self.editor.set_driver(self.profile.aircraft)
                     #
