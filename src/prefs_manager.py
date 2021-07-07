@@ -18,7 +18,7 @@ class PrefsManager:
         self.path_tesseract = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
         self.path_mission = f"{str(Path.home())}\\Desktop\\dcs_mission.xml"
         self.dcs_grace_period = "4"
-        self.dcs_btn_rel_delay_short = "0.20"
+        self.dcs_btn_rel_delay_short = "0.15"
         self.dcs_btn_rel_delay_medium = "0.40"
         self.hotkey_capture = "ctrl+t"
         self.hotkey_capture_mode = "ctrl+shift+t"
