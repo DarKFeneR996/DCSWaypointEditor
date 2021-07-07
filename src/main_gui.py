@@ -823,7 +823,8 @@ class DCSWEMainGUI:
         airframe_ui = self.window['ux_prof_afrm_select'].get()
         airframe = airframe_ui_text_to_type(airframe_ui)
         mpack_path = PyGUI.PopupGetFile("Select a Mission Package to Install",
-                                        f"Installing Package for {airframe_ui} {callsign}")
+                                        f"Installing Package for {airframe_ui} {callsign}",
+                                        file_types=(("Zip File", "*.zip"),))
         if mpack_path is not None:
             mpack_name, _ = os.path.splitext(mpack_path)
             mpack_name = ((os.path.split(mpack_name))[1]).replace(" ", "-")
