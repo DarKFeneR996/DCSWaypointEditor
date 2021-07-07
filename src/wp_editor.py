@@ -26,7 +26,7 @@ class WaypointEditor:
                             tomcat=TomcatDriver(self.logger, self.prefs),
                             warthog=WarthogDriver(self.logger, self.prefs),
                             viper=ViperDriver(self.logger, self.prefs))
-        self.driver = self.drivers["hornet"]
+        self.driver = self.drivers["viper"]
 
     def set_driver(self, driver_name):
         try:
@@ -36,7 +36,6 @@ class WaypointEditor:
 
     def enter_all(self, profile, command_q=None, progress_q=None):
         self.logger.info(f"Entering waypoints for aircraft: {profile.aircraft}")
-        sleep(int(self.prefs.dcs_grace_period))
         self.driver.enter_all(profile, command_q=command_q, progress_q=progress_q)
 
     def reset_db(self):

@@ -34,10 +34,6 @@ class DCSWEPreferencesGUI:
         except:
             errors = "default airframe"
         try:
-            self.prefs.dcs_grace_period = values.get('ux_dcs_grace_period')
-        except:
-            errors = errors + "grace period"
-        try:
             self.prefs.dcs_btn_rel_delay_short = values.get('ux_dcs_btn_rel_delay_short')
         except:
             errors = errors + ", short release"
@@ -101,10 +97,6 @@ class DCSWEPreferencesGUI:
              PyGUI.Input(self.prefs.hotkey_enter_mission, key='ux_hotkey_enter_mission')]
         ]
         layout_dcsbios = [
-            [PyGUI.Text("Grace period:", (21,1), justification="right"),
-             PyGUI.Input(self.prefs.dcs_grace_period, key='ux_dcs_grace_period'),
-             PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],
-
             [PyGUI.Text("Button release (short):", (21,1), justification="right"),
              PyGUI.Input(self.prefs.dcs_btn_rel_delay_short, key='ux_dcs_btn_rel_delay_short'),
              PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],

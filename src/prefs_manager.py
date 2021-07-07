@@ -17,7 +17,6 @@ class PrefsManager:
         self.path_dcs = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
         self.path_tesseract = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
         self.path_mission = f"{str(Path.home())}\\Desktop\\dcs_mission.xml"
-        self.dcs_grace_period = "4"
         self.dcs_btn_rel_delay_short = "0.15"
         self.dcs_btn_rel_delay_medium = "0.40"
         self.hotkey_capture = "ctrl+t"
@@ -83,16 +82,6 @@ class PrefsManager:
     @path_mission.setter
     def path_mission(self, value):
         self._path_mission = value
-
-    @property
-    def dcs_grace_period(self):
-        return self._dcs_grace_period
-
-    @dcs_grace_period.setter
-    def dcs_grace_period(self, value):
-        if float(value) < 0.0:
-            raise ValueError("Grace period must be a positive number")
-        self._dcs_grace_period = value
 
     @property
     def dcs_btn_rel_delay_short(self):
@@ -242,9 +231,8 @@ class PrefsManager:
         self.path_dcs = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
         self.path_tesseract = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
         self.path_mission = f"{str(Path.home())}\\Desktop\\cf_mission.xml"
-        self.dcs_grace_period = "4"
         self.dcs_btn_rel_delay_short = "0.15"
-        self.dcs_btn_rel_delay_medium = "0.30"
+        self.dcs_btn_rel_delay_medium = "0.40"
         self.hotkey_capture = "ctrl+t"
         self.hotkey_capture_mode = "ctrl+shift+t"
         self.hotkey_enter_profile = "ctrl+alt+t"
@@ -264,7 +252,6 @@ class PrefsManager:
         self.path_dcs = self.prefs["PREFERENCES"]["path_dcs"]
         self.path_tesseract = self.prefs["PREFERENCES"]["path_tesseract"]
         self.path_mission = self.prefs["PREFERENCES"]["path_mission"]
-        self.dcs_grace_period = self.prefs["PREFERENCES"]["dcs_grace_period"]
         self.dcs_btn_rel_delay_short = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_short"]
         self.dcs_btn_rel_delay_medium = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_medium"]
         self.hotkey_capture = self.prefs["PREFERENCES"]["hotkey_capture"]
@@ -283,7 +270,6 @@ class PrefsManager:
         self.prefs["PREFERENCES"]["path_dcs"] = self.path_dcs
         self.prefs["PREFERENCES"]["path_tesseract"] = self.path_tesseract
         self.prefs["PREFERENCES"]["path_mission"] = self.path_mission
-        self.prefs["PREFERENCES"]["dcs_grace_period"] = self.dcs_grace_period
         self.prefs["PREFERENCES"]["dcs_btn_rel_delay_short"] = self.dcs_btn_rel_delay_short
         self.prefs["PREFERENCES"]["dcs_btn_rel_delay_medium"] = self.dcs_btn_rel_delay_medium
         self.prefs["PREFERENCES"]["hotkey_capture"] = self.hotkey_capture
