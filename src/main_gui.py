@@ -873,6 +873,8 @@ class DCSWEMainGUI:
                                        bop_fn=self.editor.enter_all, bop_args=(self.profile,))
             self.window['ux_prof_enter'].update(disabled=False)
             self.update_gui_enable_state()
+        else:
+            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
