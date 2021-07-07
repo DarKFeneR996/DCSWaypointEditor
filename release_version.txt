@@ -1,1 +1,1 @@
-v1.0.0-raven_BETA.7
+v1.0.0-raven_BETA.8
