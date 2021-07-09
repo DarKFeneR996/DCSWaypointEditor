@@ -1,7 +1,23 @@
 '''
-
-dcs_f10_capture.py: Coordinate capture from DCS F10 map based on Tesseract OCR library
-
+*
+*  dcs_f10_capture.py: Coordinate capture from DCS F10 map based on Tesseract OCR library
+*
+*  Copyright (C) 2020 Santi871
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
 '''
 
 import cv2
@@ -19,14 +35,15 @@ from PIL import ImageEnhance, ImageOps
 
 from src.logger import get_logger
 
+
 logger = get_logger(__name__)
 
 
-# capture coordinates from the DCS F10 map using tesseract to perform OCR on the screen. returns
-# an uppercase string with the extracted coordinates.
+# capture coordinates from the DCS F10 map using tesseract to perform OCR on the screen.
+# returns an uppercase string with the extracted coordinates.
 #
-def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27, scaled_dcs_gui=None,
-                              is_debug=False):
+def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
+                               scaled_dcs_gui=None, is_debug=False):
     logger.debug("Attempting to capture map coords")
     gui_mult = 2 if scaled_dcs_gui else 1
 
@@ -45,9 +62,9 @@ def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
         if is_debug:
             image.save(debug_dirname + "/screenshot-"+str(display_number)+".png")
 
-        # convert screenshot to OpenCV format and search for the "MAP" text. matchTemplate returns a
-        # new greyscale image wherethe brightness of each pixel corresponds to how good a match there
-        # was at that point so now we search for the 'whitest' pixel.
+        # convert screenshot to OpenCV format and search for the "MAP" text. matchTemplate
+        # returns a new greyscale image wherethe brightness of each pixel corresponds to how
+        # good a match there was at that point so now we search for the 'whitest' pixel.
         #
         screen_image = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)
         search_result = cv2.matchTemplate(screen_image, map_image, cv2.TM_CCOEFF_NORMED)  
@@ -90,10 +107,10 @@ def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
 
             logger.info(f"Raw captured text: {captured_map_coords}")
 
-            # HACK: tesseract sometimes recognizes "E" as "£" and "J" as ")", "]", or "}". since
-            # HACK: "£", ")", "]", and "}" symbols cannot appear in the coordinate formats that
-            # HACK: DCS uses, we'll assume any occurance of "£", ")", and "]" are something else
-            # HACK: and fix up the string here.
+            # HACK: tesseract sometimes recognizes "E" as "£" and "J" as ")", "]", or "}".
+            # HACK: since "£", ")", "]", and "}" symbols cannot appear in the coordinate
+            # HACK: formats that DCS uses, we'll assume any occurance of "£", ")", and "]"
+            # HACK: are something else and fix up the string here.
             #
             captured_map_coords = captured_map_coords.replace(")", "J")
             captured_map_coords = captured_map_coords.replace("]", "J")
@@ -105,34 +122,38 @@ def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
 
     raise ValueError("DCS F10 map not found")
 
-# parse the coordinate string extracted from the screen via capture_map_coords. returns a tuple
-# with position and elevation (which may be negative).
+# parse the coordinate string extracted from the screen via capture_map_coords. returns a
+# tuple with position and elevation (which may be negative).
 #
 def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
 
-    # tesseract recognition is not 100% (see, for example, the issues with "E" and "£" above).
-    # as a result, we will tend to use regex's below that allow latitude in the non-critical
-    # parts of the string (e.g., for a "°" delimiter).
+    # tesseract recognition is not 100% (see, for example, the issues with "E" and "£"
+    # above in the capture code). as a result, we will tend to use regex's below that allow
+    # latitude in the non-critical parts of the string (e.g., for a "°" delimiter).
 
     # "37 T FJ 36255 11628, 5300 ft" -- MGRS
     #
-    # NOTE: regex handles tesseract mistake where fields run together; e.g., "TFJ" in place of "T FJ"
+    # NOTE: regex handles tesseract mistake where fields run together; e.g., "TFJ" in place
+    # NOTE: of "T FJ"
     #
     res = re.match(r"^(\d+[.\s]*[A-Z][.\s]*[A-Z][A-Z][.\s]*\d+[.\s]*\d+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                    coords_string)
     if res is not None:
         mgrs_string = res.group(1).replace(" ", "")
         decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
-        position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+        position = LatLon(Latitude(degree=decoded_mgrs["lat"]),
+                          Longitude(degree=decoded_mgrs["lon"]))
         elevation = float(res.group(2))
 
         if res.group(3) == "M":
             elevation = elevation * 3.281
 
-        logger.info(f"Parsed '{coords_string}' as MGRS, coords: {str(position)}, {elevation:.2f} FT")
+        logger.info(
+            f"Parsed '{coords_string}' as MGRS, coords: {str(position)}, {elevation:.2f} FT")
         return position, elevation
 
     # "N43°10.244 E40°40.204, 477 ft" -- Degrees and decimal minutes
+    #
     res = re.match(r"^([NS])(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+([.\d]+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
@@ -144,10 +165,12 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         if res.group(8) == "M":
             elevation = elevation * 3.281
 
-        logger.info(f"Parsed '{coords_string}' as DDM, coords: {str(position)}, {elevation:.2f} FT")
+        logger.info(
+            f"Parsed '{coords_string}' as DDM, coords: {str(position)}, {elevation:.2f} FT")
         return position, elevation
 
     # "N42-43-17.55 E40-38-21.69, 0 ft" -- Degrees, minutes and decimal seconds
+    #
     res = re.match(r"^([NS])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^EW]+([EW])(\d+)[\D]+(\d+)[\D]+([.\d]+)[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
@@ -159,10 +182,12 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         if res.group(10) == "M":
             elevation = elevation * 3.281
 
-        logger.info(f"Parsed '{coords_string}' as DMDS, coords: {str(position)}, {elevation:.2f} FT")
+        logger.info(
+            f"Parsed '{coords_string}' as DMDS, coords: {str(position)}, {elevation:.2f} FT")
         return position, elevation
 
     # "43°34'37"N 29°11'18"E, 0 ft" -- Degrees minutes and seconds
+    #
     res = re.match(r"^(\d+)[\D]+(\d+)[\D]+(\d+)[^NS]+([NS])[\D]+(\d+)[\D]+(\d+)[\D]+(\d+)[^EW]+([EW])[^-\d]+([-]?\d+)[^FTM]+(FT|M)",
                     coords_string)
     if res is not None:
@@ -174,7 +199,8 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
         if res.group(10) == "M":
             elevation = elevation * 3.281
 
-        logger.info(f"Parsed '{coords_string}' as DMS, coords: {str(position)}, {elevation:.2f} FT")
+        logger.info(
+            f"Parsed '{coords_string}' as DMS, coords: {str(position)}, {elevation:.2f} FT")
         return position, elevation
 
     # "X-00199287 Z+00523070, 0 ft" -- X/Y
@@ -185,8 +211,8 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
     return None, None
 
     '''
-    TODO: taking this code out temporarily, not clear we should ever hit it. there is no use of
-    TODO: tomcat_mode in the file and position is not parsed in non-tomcat_mode.
+    TODO: taking this code out temporarily, not clear we should ever hit it. there is no
+    TODO: use of tomcat_mode in the code and position is not parsed in non-tomcat_mode.
 
     split_string = coords_string.split(',')
 
