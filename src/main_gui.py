@@ -24,7 +24,7 @@ from src.cf_xml import CombatFliteXML
 from src.comp_dcs_bios import dcs_bios_is_current, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
 from src.dcs_f10_capture import dcs_f10_capture_map_coords, dcs_f10_parse_map_coords_string
-from src.gui_util import gui_update_request, gui_backgrounded_operation
+from src.gui_util import gui_update_request, gui_backgrounded_operation, gui_verify_dcs_running
 from src.gui_util import gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
@@ -865,7 +865,8 @@ class DCSWEMainGUI:
         self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
-        if self.dcs_bios_version is not None and self.profile.has_waypoints:
+        if gui_verify_dcs_running("Unable to enter the profile into the jet. ") and \
+           self.dcs_bios_version is not None and self.profile.has_waypoints:
             self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
             self.window['ux_prof_enter'].update(disabled=True)
             profile_name = self.profile_name_for_ui()
@@ -1095,7 +1096,8 @@ class DCSWEMainGUI:
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
     def do_hk_mission_enter_in_jet(self):
-        if self.dcs_bios_version is not None:
+        if gui_verify_dcs_running("Unable to enter the mission into the jet. ") and \
+           self.dcs_bios_version is not None:
             mission_name = (os.path.split(self.editor.prefs.path_mission))[1]
             self.logger.info(f"Entering mission '{mission_name}' into jet...")
             self.window['ux_prof_enter'].update(disabled=True)

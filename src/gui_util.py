@@ -150,3 +150,15 @@ def gui_backgrounded_operation(title, bop_fn=None, bop_args=None):
             break
 
     window.close()
+
+# use tasklist to figure out if DCS is running, potentially notifing user if not.
+#
+def gui_verify_dcs_running(message=None, is_notify=True):
+    try:
+        output = str(subprocess.check_output("tasklist /fi \"IMAGENAME eq DCS.exe\" /fo csv /nh"))
+    except:
+        output = ""
+    is_running = True if "DCS.exe" in output else False
+    if not is_running and is_notify:
+        PyGUI.Popup(f"{message}DCS is not currently running.", title="Error")
+    return is_running
