@@ -1,10 +1,26 @@
 '''
-
-gui_util.py: helpful utilities for the GUI
-
+*
+*  gui_util.py: GUI utilities and support
+*
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
 '''
 
 import PySimpleGUI as PyGUI
+import subprocess
 import threading
 import queue
 
@@ -21,6 +37,7 @@ airframe_map = { "A-10C Warthog" : "warthog",
                  "F/A-18C Hornet" : "hornet",
                  "M-2000C Mirage" : "mirage"
 }
+
 
 # return list of supported airframes. second token (" " separated) of items is internal name.
 #
@@ -84,8 +101,6 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
     else:
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} declined")
     return False
-
-import time
 
 # run a background operation with a modal progress ui.
 #

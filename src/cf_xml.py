@@ -1,11 +1,29 @@
 '''
-
-cf_xml.py: CombatFlite XML parsing into DCS Waypoint Editor profiles
-
-See documentation/CF_Integration.md for further details on the expectations DCS Waypoint
-Editor places on CombatFlite missions that it can import.
-
+*
+*  cf_xml.py: CombatFlite XML parsing into DCS Waypoint Editor profiles
+*
+*  See documentation/CF_Integration.md for further details on the expectations DCS Waypoint
+*  Editor places on CombatFlite missions that it can import.
+*
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
 '''
+
+import re
+import xml.etree.ElementTree as xml
 
 from src.logger import get_logger
 from src.objects import Profile, Waypoint, MSN
@@ -13,10 +31,9 @@ from src.objects import Profile, Waypoint, MSN
 from LatLon23 import LatLon, Longitude, Latitude
 from typing import Any
 
-import re
-import xml.etree.ElementTree as xml
 
 logger = get_logger(__name__)
+
 
 # class to import DCSWE profiles from CombatFlite XML exports.
 #

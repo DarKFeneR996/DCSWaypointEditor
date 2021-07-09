@@ -1,10 +1,25 @@
 '''
-
-mission_package.py: Mission pack installation for DCS Waypoint Editor
-
-See documentation/Mission_Packs.md for further information on the format and expectations
-around mission packs.
-
+*
+*  mission_package.py: Mission pack installation for DCS Waypoint Editor
+*
+*  See documentation/Mission_Packs.md for further information on the format and expectations
+*  around mission packs.
+*
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
 '''
 
 import os
@@ -60,7 +75,8 @@ def dcswe_install_mpack(mpack_path, mpack_name, airframe, callsign, dcs_path):
             with os.scandir(tmp_dir) as files:
                 for entry in files:
                     file = entry.name.lower()
-                    if mission_top_path is None and file.endswith(".json") or file.endswith(".xml"):
+                    if mission_top_path is None and (file.endswith(".json") or
+                                                     file.endswith(".xml")):
                         mission_top_path = f"{tmp_dir}\\{entry.name}"
                     if file == flight.lower():
                         flight_path = f"{tmp_dir}\\{flight}"
@@ -72,7 +88,8 @@ def dcswe_install_mpack(mpack_path, mpack_name, airframe, callsign, dcs_path):
             with os.scandir(flight_path) as files:
                 for entry in files:
                     file = entry.name.lower()
-                    if mission_path == mission_top_path and file.endswith(".json") or file.endswith(".xml"):
+                    if mission_path == mission_top_path and (file.endswith(".json") or
+                                                             file.endswith(".xml")):
                         mission_path = f"{flight_path}\\{entry.name}"
                     elif file.endswith(".png") or file.endswith(".jpg"):
                         kb_pages.append(entry.name)

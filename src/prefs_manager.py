@@ -1,8 +1,30 @@
+'''
+*
+*  prefs_manager.py: DCS Waypoint Editor preferences model/object
+*
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+'''
+
+import os
+import re
+
 from configparser import ConfigParser
 from pathlib import Path
 from src.gui_util import airframe_list, airframe_type_to_ui_text
-import os
-import re
 
 
 # preferences object to abstract preferences storage. preference values are always strings.
