@@ -1,6 +1,6 @@
 '''
 
-main_gui.py: GUI for DCS Waypoint Editor main window
+wp_editor_gui.py: GUI for DCS Waypoint Editor main window
 
 '''
 
@@ -49,7 +49,7 @@ def json_zip(j):
 def json_unzip(j):
     return zlib.decompress(base64.b64decode(j)).decode('utf-8')
 
-class DCSWEMainGUI:
+class WaypointEditorGUI:
     def __init__(self, editor, dcs_we_version, dcs_bios_version):
         self.editor = editor
         self.dcs_we_version = dcs_we_version

@@ -11,11 +11,11 @@ from src.comp_dcs_bios import dcs_bios_vers_install, dcs_bios_vers_latest, dcs_b
 from src.comp_dcs_we import dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
 from src.gui_util import gui_update_request, gui_exception
 from src.logger import get_logger, log_settings
-from src.main_gui import DCSWEMainGUI
 from src.objects import generate_default_bases
 from src.prefs_gui import DCSWEPreferencesGUI
 from src.prefs_manager import PrefsManager
 from src.wp_editor import WaypointEditor
+from src.wp_editor_gui import WaypointEditorGUI
 
 
 def main(logger):
@@ -51,7 +51,7 @@ def main(logger):
 
         editor = WaypointEditor(prefs)
 
-        gui = DCSWEMainGUI(editor, vers_sw_cur, vers_db_cur)
+        gui = WaypointEditorGUI(editor, vers_sw_cur, vers_db_cur)
 
         try:
             gui.run()
