@@ -9,9 +9,9 @@ import traceback
 
 from src.comp_dcs_bios import dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
+from src.db_objects import generate_default_bases
 from src.gui_util import gui_update_request, gui_exception
 from src.logger import get_logger, log_settings
-from src.objects import generate_default_bases
 from src.prefs import Preferences
 from src.prefs_gui import PreferencesGUI
 from src.wp_editor import WaypointEditor

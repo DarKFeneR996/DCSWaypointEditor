@@ -8,7 +8,7 @@ import xml.etree.ElementTree as xml
 from os import altsep, walk, path
 from src.logger import get_logger
 
-from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
+from src.db_models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
 
 
 default_bases = dict()

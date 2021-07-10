@@ -1,4 +1,4 @@
-from src.models import ProfileModel, WaypointModel, SequenceModel, db
+from src.db_models import ProfileModel, WaypointModel, SequenceModel, db
 from src.logger import get_logger
 
 

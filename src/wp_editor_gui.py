@@ -29,7 +29,7 @@ from src.gui_util import gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
 from src.mission_package import dcswe_install_mpack
-from src.objects import Profile, Waypoint, MSN
+from src.db_objects import Profile, Waypoint, MSN
 from src.prefs_gui import PreferencesGUI
 
 UX_SND_ERROR = "data/ux_error.wav"

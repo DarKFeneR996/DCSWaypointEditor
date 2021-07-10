@@ -5,9 +5,8 @@ wp_editor.py: Waypoint editor base object
 '''
 import os
 
-from time import sleep
-from src.objects import Profile, default_bases
 from src.db import DatabaseInterface
+from src.db_objects import default_bases
 from src.logger import get_logger
 from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException
 from src.drivers import WarthogDriver, ViperDriver

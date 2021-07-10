@@ -25,8 +25,8 @@
 import re
 import xml.etree.ElementTree as xml
 
+from src.db_objects import Profile, Waypoint, MSN
 from src.logger import get_logger
-from src.objects import Profile, Waypoint, MSN
 
 from LatLon23 import LatLon, Longitude, Latitude
 from typing import Any

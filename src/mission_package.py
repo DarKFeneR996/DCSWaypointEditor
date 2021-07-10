@@ -31,7 +31,7 @@ from shutil import move
 from peewee import Value
 
 from src.cf_xml import CombatFliteXML
-from src.objects import Profile
+from src.db_objects import Profile
 from src.logger import get_logger
 
 logger = get_logger(__name__)
