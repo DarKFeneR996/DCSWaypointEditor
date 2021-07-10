@@ -1,6 +1,6 @@
 '''
 *
-*  prefs_manager.py: DCS Waypoint Editor preferences model/object
+*  prefs.py: DCS Waypoint Editor preferences model/object
 *
 *  Copyright (C) 2021 twillis/ilominar
 *

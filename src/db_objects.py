@@ -1,14 +1,35 @@
-from dataclasses import dataclass, asdict
-from operator import pos
-from typing import Any
-from LatLon23 import LatLon, Longitude, Latitude
+'''
+*
+*  db_objects.py: DCS Waypoint Editor profile database objects
+*
+*  Copyright (C) 2020 Santi871
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+'''
+
 import json
 import urllib.request
-import xml.etree.ElementTree as xml
-from os import altsep, walk, path
-from src.logger import get_logger
+
+from dataclasses import dataclass, asdict
+from LatLon23 import LatLon, Longitude, Latitude
+from os import walk, path
+from typing import Any
 
 from src.db_models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
+from src.logger import get_logger
 
 
 default_bases = dict()
@@ -100,8 +121,7 @@ class Waypoint:
                 raise ValueError("Base name not found in default bases list")
 
         elif not type(self.position) == LatLon:
-            raise ValueError(
-                "Waypoint position must be a LatLon object or base name string")
+            raise ValueError("Waypoint position must be a LatLon object or base name string")
 
         self.latitude = self.position.lat.decimal_degree
         self.longitude = self.position.lon.decimal_degree

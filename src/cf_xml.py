@@ -35,7 +35,7 @@ from typing import Any
 logger = get_logger(__name__)
 
 
-# class to import DCSWE profiles from CombatFlite XML exports.
+# class to build DCSWE profiles from CombatFlite XML exports.
 #
 class CombatFliteXML:
 

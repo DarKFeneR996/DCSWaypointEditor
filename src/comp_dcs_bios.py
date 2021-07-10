@@ -1,7 +1,26 @@
 '''
-
-comp_dcs_bios.py: DCS-BIOS component version management
-
+*
+*  comp_dcs_bios.py: DCS-BIOS component version management and update support
+*
+*  See documentation/CF_Integration.md for further details on the expectations DCS Waypoint
+*  Editor places on CombatFlite missions that it can import.
+*
+*  Copyright (C) 2020 Santi871
+*  Copyright (C) 2021 twillis/ilominar
+*
+*  This program is free software: you can redistribute it and/or modify
+*  it under the terms of the GNU General Public License as published by
+*  the Free Software Foundation, either version 3 of the License, or
+*  (at your option) any later version.
+*
+*  This program is distributed in the hope that it will be useful,
+*  but WITHOUT ANY WARRANTY; without even the implied warranty of
+*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*  GNU General Public License for more details.
+*
+*  You should have received a copy of the GNU General Public License
+*  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
 '''
 
 import os
@@ -13,11 +32,13 @@ from shutil import copytree, copyfile, move
 
 from src.logger import get_logger
 
+
 DCS_BIOS_VERSION = "0.7.40"
 DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/{}/DCS-BIOS_{}.zip"
 DCS_BIOS_EXPORT = "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])"
 
 logger = get_logger(__name__)
+
 
 # back up a file/directory at a path. returns True on success, False on failure
 #
