@@ -12,14 +12,14 @@ from src.comp_dcs_we import dcs_we_vers_install, dcs_we_vers_latest, dcs_we_inst
 from src.gui_util import gui_update_request, gui_exception
 from src.logger import get_logger, log_settings
 from src.objects import generate_default_bases
-from src.prefs_gui import DCSWEPreferencesGUI
-from src.prefs_manager import PrefsManager
+from src.prefs import Preferences
+from src.prefs_gui import PreferencesGUI
 from src.wp_editor import WaypointEditor
 from src.wp_editor_gui import WaypointEditorGUI
 
 
 def main(logger):
-    prefs = PrefsManager()
+    prefs = Preferences()
     vers_sw_cur = dcs_we_vers_install()
     vers_sw_latest = dcs_we_vers_latest()
 
@@ -32,7 +32,7 @@ def main(logger):
         setup_completed = True
     else:
         logger.info("Running first time setup...")
-        prefs_gui = DCSWEPreferencesGUI(prefs)
+        prefs_gui = PreferencesGUI(prefs)
         setup_completed = prefs_gui.run()
         logger.info("First time setup returns {setup_completed}")
 

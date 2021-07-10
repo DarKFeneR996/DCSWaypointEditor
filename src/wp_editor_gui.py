@@ -30,7 +30,7 @@ from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_te
 from src.logger import get_logger
 from src.mission_package import dcswe_install_mpack
 from src.objects import Profile, Waypoint, MSN
-from src.prefs_gui import DCSWEPreferencesGUI
+from src.prefs_gui import PreferencesGUI
 
 UX_SND_ERROR = "data/ux_error.wav"
 UX_SND_INJECT_TO_JET = "data/ux_action.wav"
@@ -643,7 +643,7 @@ class WaypointEditorGUI:
         hk_enter_profile = prefs.hotkey_enter_profile
         hk_enter_mission = prefs.hotkey_enter_mission
 
-        prefs_gui = DCSWEPreferencesGUI(prefs)
+        prefs_gui = PreferencesGUI(prefs)
         prefs_gui.run()
 
         if self.profile.profilename == "":

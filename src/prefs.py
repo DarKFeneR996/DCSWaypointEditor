@@ -29,7 +29,7 @@ from src.gui_util import airframe_list, airframe_type_to_ui_text
 
 # preferences object to abstract preferences storage. preference values are always strings.
 #
-class PrefsManager:
+class Preferences:
     def __init__(self, file="settings.ini"):
         self.bs_file = file
 

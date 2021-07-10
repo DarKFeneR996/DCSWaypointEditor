@@ -23,12 +23,13 @@ import os
 import PySimpleGUI as PyGUI
 import requests
 
-from src.comp_dcs_bios import dcs_bios_install, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_is_current
+from src.comp_dcs_bios import dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_is_current
+from src.comp_dcs_bios import dcs_bios_install
 from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
 from src.logger import get_logger
 
 
-class DCSWEPreferencesGUI:
+class PreferencesGUI:
     def __init__(self, prefs):
         self.prefs = prefs
 
