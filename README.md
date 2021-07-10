@@ -1,153 +1,189 @@
 # DCS Waypoint Editor
 
-Simple configurable script to input preplanned missions and waypoints coordinates into DCS aircraft. 
+DCS Waypoint Editor (DCSWE) is an application that allows you to input waypoints
+(including airframe-specific waypoints such as the MSN preplanned missions waypoints in
+the F/A-18C Hornet) and other data into DCS aircraft. Currently DCSWE supports the following
+airframes,
 
-Currently supported aircraft:
+* A-10C Warthog
+* AV-8B Harrier
+* F-14A/B Tomcat
+* F-16C Viper
+* F/A-18C Hornet
+* M-2000C Mirage
 
-* F/A-18C
-* AV-8B
-* M-2000C
-* F-14A/B
-* A-10C
+This document provides a quick overview of DCSWE.
 
+## Installilng & Building
 
-## Installation
+To install DCS Waypoint Editor,
 
 1. Download and install [Google Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
-2. Unzip the contents of the DCS-Waypoint-Editor ZIP to a folder
-3. Run `dcs_wp_editor.exe` and perform the first time setup.
+2. Download and install [DCS-BIOS](https://github.com/DCSFlightpanels/dcs-bios), this
+   can also be done through the first time setup (noe that DCSWE is *not* compatible with
+   the HUB version of DCS-BIOS)
+2. Unzip the contents of the dcs_wp_editor.zip to a folder
+3. Run `dcs_wp_editor.exe` and perform the first time setup
 
-## Usage
+See the
+[build documentation](https://github.com/51st-Vfw/DCSWaypointEditor/tree/master/documentation/build.md)
+for details on how to build DCSWE from its Python source code.
 
-Waypoints and JDAM preplanned missions can be added by either manually entering a set of coordinates or capturing them
-from the DCS F10 map via optical text recognition. 
+## Where to Go Next
 
-#### Manual coordinates entry
+This reaminder of this README provides a brief overview of some basic features of DCSWE.
+This is not an exhaustive look, but instead it focuses on basic operations. More involved
+capabilities, such as Mission Packs, are not covered here. For further details on the
+complete operation of DCSWE, see the material in the
+[documentation](https://github.com/51st-Vfw/DCSWaypointEditor/tree/master/documentation)
+directory of the repository.
 
-1. Choose a waypoint type (WP = regular waypoint, MSN = JDAM preplanned mission)
+## Profiles Overview
 
-2. Enter the latitude and longitude. Decimal seconds are supported.
+DCSWE creates "profiles" that contain mission information such as waypoints. Waypoints
+and similar items (e.g., F/A-18 JDAM preplanned missions) can be added to a profile
+through a variety of approaches,
 
-3. Enter the elevation in feet (optional for regular waypoints, mandatory for JDAM preplanned missions)
+- Manually entering coordinates
+- Capturing coordinates from the DCS F10 map via optical text recognition
+- Entering coordinates from pre-defined points of interest
+- Importing coordinates from a CombatFlite mission XML export
+- Importing coordiantes from a DCSWE JSON file
 
-5. (Optional) Choose a sequence to assign the waypoint to.
+These profiles are stored in a database local to the DCSWE installation. You can save,
+copy, delete, or revert profiles using the commands on the "Profiles" menu. The drop-down
+list at the top of the profiles panel lists the currently defined profiles from which you
+can select.
 
-6. (Optional) Assign a name to the waypoint.
+DCSWE can import and export from and to profiles in a variety of formats. The import and
+export commands can be found in the "Import" and "Export" items on the "Profiles" menu.
+The formats include JSON, encoded JSON, and CombatFlite mission XML export. Depending
+on the operation, the target can be a file or the clipboard.
 
-7. Click `Add` to add the waypoint to the list of active waypoints
+You may add more preset locations by adding more JSON formatted files in the `data` folder.
+Such files should follow the format in the `pg.json` and `cauc.json` files that come with
+the distribution.
 
-#### F10 map captured coordinates entry
+### _Entering Coordinates Manually_
 
-1. Make sure your F10 map is in [DD MM SS.ss](https://i.imgur.com/9GIU7pJ.png) or [MGRS](https://i.imgur.com/T7lBvlx.png) coordinate format.
- You may cycle coordinate formats with `LAlt+Y`.
+To manually enter a waypoint,
 
-2. Click `Capture from DCS F10 map`
+1. Choose a waypoint type (e.g., WP for a regular waypoint, MSN for a JDAM preplanned mission)
 
-3. In the DCS F10 map, hover your mouse over your desired position
+2. Enter the latitude and longitude (decimal seconds are supported)
 
-5. Press the key you bound to F10 map capture during first time setup (default is `LCtrl+T`). The results will be indicated
-in the capture status textbox.
+3. Enter the elevation in feet (optional for regular waypoints, mandatory for JDAM
+   preplanned missions)
 
-6. (Optional) Assign a name to the waypoint.
+4. (Optional) Choose a sequence to assign the waypoint to
 
-7. Click `Add` to add the waypoint to the list of active waypoints
+5. (Optional) Assign a name to the waypoint
 
-#### F10 map quick capture
+6. Click `Add` to add the waypoint to the list of waypoints in the active profile
 
-Quick capture works in a similar way to regular coordinates capturing, except it will automatically add a waypoint
-at the desired position every time the F10 map capture keybind is pressed.  This can be toggled on/off with a
-hotkey (default is `LCtrl+LShift+T`).
+### _Entering Coordinates from the DCS F10 Map_
 
-#### Preset coordinates
+To capture the coordinates for a waypoint from the DCS F10 map,
 
-You may select a position from a list of preset coordinates. Coordinates for all Caucasus and PG airfields and BlueFlag
-FARPS are included.
+1. Enable coordinate capture in DCSWE by clicking the "Enable capture from DCS F10 map..."
+   checkbox
 
-#### Hornet JDAM preplanned missions
+2. Select the desired destination of the coordinates from the pop-up menu:
+    1. "Coordinate Panel" to place the captured coordinates in the coordinate panel of the UI.
+    2. "New Waypoint" places the captured coordinates in a newly-created waypoint in the
+       current profile.
 
-Hornet JDAM preplanned missions work in a similar way to waypoints, however, you **must** select the correct station
-for the mission to be assigned using the station selector.
+3. Make sure your F10 map is in [DD MM SS.ss](https://i.imgur.com/9GIU7pJ.png) or
+   [MGRS](https://i.imgur.com/T7lBvlx.png) coordinate format.
+   You cycle coordinate formats with `<LALT>+Y` in the DCS F10 map.
 
-#### Entering a list of waypoints into your aircraft
+4. In the DCS F10 map, hover your mouse over your desired position
 
-An optional hotkey can be assigned to enter coordinates into the aircraft.  This is done during initial setup
-of the application.
+5. Press the key you bound to DCS F10 map capture in the preferences (default is `<CTRL>+T`),
+   DCSWE will beep and save the coordinates based on the destination set earlier
 
-##### F/A-18C
+If you are capturing to the coordiante panel, you must explicitly add the waypoint to the
+current profile using the "Add" button. Subsequent captures will over-write the coordinates
+in the panel.
 
-1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
- 
-2. If you are entering JDAM preplanned missions, make sure the JDAM preplanned missions page is on the left DDI
+You can toggle between the capture destinations with the key you bound to toggle capture mode
+in the preferences (default is `<CTRL>+<SHIFT>+T`). DCSWE will provide audio feedback on the
+toggle and capture actions so you do necessarily need to switch back to the DCSWE UI.
 
-![pages](https://i.imgur.com/Nxr9qKX.png)
+The key bindings may be changed through the preferences and should not conflict with any DCS
+key bindings.
 
-3. With a list of active waypoints and/or JDAM preplanned missions, click `Enter into aircraft`
+DCSWE does not currently support capture from the DCS F10 map in VR.
 
-4. Tab back into DCS and let it enter everything
+### _Point-of-Interest Coordinates_
 
-##### AV-8B
+You may select a position from a list of preset coordinates. Coordinates for all Caucasus and
+PG airfields and BlueFlag FARPS are included. Typing in the pop-up menu and then clicking on
+the "Filter" button allows you to filter the list of points of interest.
+
+### _Hornet JDAM Pre-Planned Missions_
+
+Hornet JDAM preplanned missions work in a similar way to waypoints, however, you **must**
+select the correct station for the mission to be assigned using the station selector.
+
+### _Loading Data into Your Aircraft_
+
+DCSWE can directly drive the clickable cockpits in a DCS jet to enter data into a jet.
+When entering data, DCSWE uses the airframe selected by the "Airframe" pop-up menu in the
+profiles panel to determine which cockpit it will need to operate (if the pop-up does not
+match the jet in DCS, data will not be entered correctly). DCSWE can enter data from one of
+two sources:
+
+- The current profile selected and displayed in the DCSWE UI.
+- A mission file at a known location (set through preferences) in a format DCSWE supports
+  (JSON or an XML export of a CombatFlite mission)
+
+Entering data can be triggered from either the DCSWE UI directly or from a hotkey in DCS. By
+default, the current profile is loaded with `<CTRL>+<ALT>+T` and the mission file is loaded
+with `<CTRL>+<ALT>+<SHIFT>+T`. The bindings may be changed through DCSWE preferences and
+should not conflict with any DCS keys. With hotkeys, it is possible to setup your jet from
+DCS without switching out of DCS.
+
+The steps for entering data are similar for all airframes. Once the sequence is started, it
+can be cancelled if necessary. The airframe in the profile should match the aircraft you are
+trying to enter data into. Further, to avoid issues, you should aovid interacting with the
+cockpit while DCSWE is entering data. The following sections provide some airframe-specific
+pointers.
+
+#### _AV-8B Harrier_
 
 1. Make sure the main EHSD page is on the left AMPCD (left screen).
 
-2. With a list of active waypoints, click `Enter into aircraft`
+2. Trigger entry as described above.
 
-3. Tab back into DCS and let it enter everything
+#### _F-16C Viper_
 
-##### M-2000C
+For the Viper, the sequence will first reset the DED to the main page before using the
+steerpoint DED page to enter each waypoint. There is no specific state the jet needs to
+be in prior to triggering entry as described above.
 
-1. With a list of active waypoints, click `Enter into aircraft`
+#### _F/A-18C Hornet_
 
-2. Tab back into DCS and let it enter everything
+1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
+ 
+2. If you are entering JDAM preplanned missions, make sure the JDAM preplanned missions page
+   is on the left DDI
 
-#### Profile saving
+![pages](https://i.imgur.com/Nxr9qKX.png)
 
-You may save your current list of waypoints as a profile and then load it later. Clicking `save` with a profile active
-will overwrite it with the current list.
+3. Trigger entry as described above.
 
-#### Export to file
+#### _M-2000C Mirage_
 
-If you wish to share your current profile, click `Export to file` and give it a descriptive name.
-
-#### Import from file
-
-Profiles may be imported from a file that was previously exported.
-
-#### Creating your own preset locations
-
-You may add more preset locations by adding more JSON formatted files in the data folder,
-following the format in `pg.json` and `cauc.json`.
-
-#### Exporting to encoded string
-
-Support for exporting current profile to an encoded string has been implemented to allow for quick sharing
-of waypoint and mission data to other people.  Once you have created a mission, click the `Encode to String`
-button.  This will copy an encoded string to your clipboard to share with other users.
-
-#### Importing from encoded string
-
-Once another user has sent their encoded string to yourself, just copy the string to your clipboard (default `LCtrl+C`)
-and press the `Decode from String` button in the application.  If successful, their mission data should be imported into
-a new profile and a pop-up should appear letting you know import was successful.
+For the Mirage, there is no specific state the jet needs to be in prior to triggering entry
+as described above.
 
 ## Known issues
 
 * Attempting to enter sequence #2 or #3 without sequence #1 will not work.
 
-## Donate
+## Other Credits
 
-If you'd like to support my work, it is very much appreciated!
-
-[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=U6ZGEE7PF6KAG&source=url)
-
-## About DCS-BIOS
-DCS-BIOS is redistributed under GPLv3 license.
-
-DCS-BIOS: https://github.com/DCSFlightpanels/dcs-bios
-
-## Other credits
-
-[PyMGRS](https://github.com/aydink/pymgrs) by aydink
-
-
-## Build
-[Build](./documentation/build.md)
+- [DCSWaypointEditor](https://github.com/Santi871/DCSWaypointEditor) Baseline source code
+- [DCS-BIOS](https://github.com/DCSFlightpanels/dcs-bios) is redistributed under the GPLv3 license
+- [PyMGRS](https://github.com/aydink/pymgrs) by aydink
