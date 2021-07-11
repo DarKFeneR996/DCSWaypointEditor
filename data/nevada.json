@@ -1,0 +1,89 @@
+{
+    "waypoints" : [
+        { "latitude"  : 36.22566194,
+          "longitude" : -115.04380750,
+          "elevation" : 1841.56543281,
+          "name"      : "Nellis AFB"
+        },
+        { "latitude"  : 37.79338972,
+          "longitude" : -114.41923694,
+          "elevation" : 4815.25572059,
+          "name"      : "Lincoln County"
+        },
+        { "latitude"  : 37.09483139,
+          "longitude" : -116.31539972,
+          "elevation" : 5056.96695451,
+          "name"      : "Pahute Mesa Airstrip"
+        },
+        { "latitude"  : 37.21913889,
+          "longitude" : -115.78531056,
+          "elevation" : 4494.31652842,
+          "name"      : "Groom Lake AFB"
+        },
+        { "latitude"  : 35.77378556,
+          "longitude" : -115.32570278,
+          "elevation" : 2824.39585236,
+          "name"      : "Jean Airport"
+        },
+        { "latitude"  : 35.96746889,
+          "longitude" : -115.13347111,
+          "elevation" : 2491.59084909,
+          "name"      : "Henderson Executive Airport"
+        },
+        { "latitude"  : 36.07667000,
+          "longitude" : -115.16219000,
+          "elevation" : 2169.86909330,
+          "name"      : "McCarran International Airport"
+        },
+        { "latitude"  : 36.31047139,
+          "longitude" : -114.46933778,
+          "elevation" : 1548.66696891,
+          "name"      : "Echo Bay"
+        },
+        { "latitude"  : 36.82734528,
+          "longitude" : -114.06033528,
+          "elevation" : 1858.55435231,
+          "name"      : "Mesquite"
+        },
+        { "latitude"  : 38.05802444,
+          "longitude" : -117.07591722,
+          "elevation" : 5394.15895977,
+          "name"      : "Tonopah Airport"
+        },
+        { "latitude"  : 36.21336444,
+          "longitude" : -115.18673750,
+          "elevation" : 2228.60842265,
+          "name"      : "North Las Vegas"
+        },
+        { "latitude"  : 36.86839417,
+          "longitude" : -116.78608306,
+          "elevation" : 3173.01072330,
+          "name"      : "Beatty Airport"
+        },
+        { "latitude"  : 37.78403944,
+          "longitude" : -116.77330278,
+          "elevation" : 5534.16776122,
+          "name"      : "Tonopah Test Range Airfield"
+        },
+        { "latitude"  : 35.94368167,
+          "longitude" : -114.86055167,
+          "elevation" : 2121.59985642,
+          "name"      : "Boulder City Airport"
+        },
+        { "latitude"  : 36.58443000,
+          "longitude" : -115.68681056,
+          "elevation" : 3126.45860081,
+          "name"      : "Creech AFB"
+        },
+        { "latitude"  : 38.37454694,
+          "longitude" : -118.09349944,
+          "elevation" : 4562.04793027,
+          "name"      : "Mina Airport 3Q0"
+        },
+        { "latitude"  : 35.16590528,
+          "longitude" : -114.55986444,
+          "elevation" : 656.16863080,
+          "name"      : "Laughlin Airport"
+        }
+    ]
+}

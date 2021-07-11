@@ -1,0 +1,259 @@
+{
+    "waypoints" : [
+        { "latitude"  : 36.18937444,
+          "longitude" : 37.57043944,
+          "elevation" : 1200.78860488,
+          "name"      : "Kuweires"
+        },
+        { "latitude"  : 33.27950972,
+          "longitude" : 36.44698111,
+          "elevation" : 2160.74205462,
+          "name"      : "Marj Ruhayyil"
+        },
+        { "latitude"  : 33.21237194,
+          "longitude" : 35.59241972,
+          "elevation" : 306.70321253,
+          "name"      : "Kiryat Shmona"
+        },
+        { "latitude"  : 33.50042278,
+          "longitude" : 36.46632167,
+          "elevation" : 2007.34837154,
+          "name"      : "Marj as Sultan North"
+        },
+        { "latitude"  : 32.44179139,
+          "longitude" : 35.00189972,
+          "elevation" : 93.75338181,
+          "name"      : "Eyn Shemer"
+        },
+        { "latitude"  : 36.99425417,
+          "longitude" : 35.41271333,
+          "elevation" : 156.06911500,
+          "name"      : "Incirlik"
+        },
+        { "latitude"  : 33.41534000,
+          "longitude" : 36.50425472,
+          "elevation" : 2007.87602127,
+          "name"      : "Damascus"
+        },
+        { "latitude"  : 35.41159000,
+          "longitude" : 35.95003278,
+          "elevation" : 93.05585415,
+          "name"      : "Bassel Al-Assad"
+        },
+        { "latitude"  : 32.97928167,
+          "longitude" : 35.57265111,
+          "elevation" : 865.85498050,
+          "name"      : "Rosh Pina"
+        },
+        { "latitude"  : 36.18221139,
+          "longitude" : 37.21038333,
+          "elevation" : 1253.90761358,
+          "name"      : "Aleppo"
+        },
+        { "latitude"  : 34.56687722,
+          "longitude" : 36.58541472,
+          "elevation" : 1729.00442952,
+          "name"      : "Al Qusayr"
+        },
+        { "latitude"  : 34.28696056,
+          "longitude" : 35.68399028,
+          "elevation" : 619.00872352,
+          "name"      : "Wujah Al Hajar"
+        },
+        { "latitude"  : 33.60465750,
+          "longitude" : 36.73583278,
+          "elevation" : 2066.93113947,
+          "name"      : "Al-Dumayr"
+        },
+        { "latitude"  : 36.37127000,
+          "longitude" : 36.29809028,
+          "elevation" : 253.20068158,
+          "name"      : "Hatay"
+        },
+        { "latitude"  : 35.15072278,
+          "longitude" : 33.27596028,
+          "elevation" : 716.59704002,
+          "name"      : "Nicosia"
+        },
+        { "latitude"  : 35.27833472,
+          "longitude" : 33.26701417,
+          "elevation" : 770.99812742,
+          "name"      : "Pinarbashi"
+        },
+        { "latitude"  : 34.72239333,
+          "longitude" : 32.47180167,
+          "elevation" : 40.37100505,
+          "name"      : "Paphos"
+        },
+        { "latitude"  : 35.01662111,
+          "longitude" : 33.72165583,
+          "elevation" : 270.58173393,
+          "name"      : "Kingsfield"
+        },
+        { "latitude"  : 32.69812722,
+          "longitude" : 36.40273917,
+          "elevation" : 2381.07095915,
+          "name"      : "Tha'lah"
+        },
+        { "latitude"  : 32.80645306,
+          "longitude" : 35.04502083,
+          "elevation" : 19.68506130,
+          "name"      : "Haifa"
+        },
+        { "latitude"  : 33.06361028,
+          "longitude" : 36.55978472,
+          "elevation" : 2337.05235634,
+          "name"      : "Khalkhalah"
+        },
+        { "latitude"  : 32.59757861,
+          "longitude" : 35.22020361,
+          "elevation" : 180.44636972,
+          "name"      : "Megiddo"
+        },
+        { "latitude"  : 35.10631167,
+          "longitude" : 33.32167056,
+          "elevation" : 757.87481789,
+          "name"      : "Lakatamia"
+        },
+        { "latitude"  : 33.84290194,
+          "longitude" : 35.97693194,
+          "elevation" : 2934.32241170,
+          "name"      : "Rayak"
+        },
+        { "latitude"  : 34.86561972,
+          "longitude" : 33.61358444,
+          "elevation" : 16.40421514,
+          "name"      : "Larnaca"
+        },
+        { "latitude"  : 33.48271361,
+          "longitude" : 36.23506417,
+          "elevation" : 2355.94381856,
+          "name"      : "Mezzeh"
+        },
+        { "latitude"  : 35.23640389,
+          "longitude" : 33.70727778,
+          "elevation" : 147.63794568,
+          "name"      : "Gecitkale"
+        },
+        { "latitude"  : 34.59406556,
+          "longitude" : 32.97481833,
+          "elevation" : 62.15900270,
+          "name"      : "Akrotiri"
+        },
+        { "latitude"  : 33.10790528,
+          "longitude" : 35.12728583,
+          "elevation" : 378.21176541,
+          "name"      : "Naqoura"
+        },
+        { "latitude"  : 36.95139722,
+          "longitude" : 37.46451278,
+          "elevation" : 2287.43906444,
+          "name"      : "Gaziantep"
+        },
+        { "latitude"  : 36.29782306,
+          "longitude" : 32.28606861,
+          "elevation" : 36.43353160,
+          "name"      : "Gazipasa"
+        },
+        { "latitude"  : 33.68005222,
+          "longitude" : 37.20406889,
+          "elevation" : 2273.62425341,
+          "name"      : "Sayqal"
+        },
+        { "latitude"  : 34.52253139,
+          "longitude" : 37.64576500,
+          "elevation" : 1797.90206742,
+          "name"      : "Tiyas"
+        },
+        { "latitude"  : 34.49464028,
+          "longitude" : 36.89446861,
+          "elevation" : 2637.70777185,
+          "name"      : "Shayrat"
+        },
+        { "latitude"  : 35.97322333,
+          "longitude" : 36.78589417,
+          "elevation" : 1020.34221013,
+          "name"      : "Taftanaz"
+        },
+        { "latitude"  : 32.53685111,
+          "longitude" : 38.20637611,
+          "elevation" : 2257.22005391,
+          "name"      : "H4"
+        },
+        { "latitude"  : 32.34879389,
+          "longitude" : 36.27021361,
+          "elevation" : 2204.72661551,
+          "name"      : "King Hussein Air College"
+        },
+        { "latitude"  : 34.58395333,
+          "longitude" : 35.99868722,
+          "elevation" : 14.47127093,
+          "name"      : "Rene Mouawad"
+        },
+        { "latitude"  : 36.09448722,
+          "longitude" : 37.95108611,
+          "elevation" : 1170.33090043,
+          "name"      : "Jirah"
+        },
+        { "latitude"  : 32.66605528,
+          "longitude" : 35.16545583,
+          "elevation" : 105.77213123,
+          "name"      : "Ramat David"
+        },
+        { "latitude"  : 33.45860667,
+          "longitude" : 36.35688083,
+          "elevation" : 2134.41864098,
+          "name"      : "Qabr as Sitt"
+        },
+        { "latitude"  : 36.52281222,
+          "longitude" : 37.03362250,
+          "elevation" : 1614.17493290,
+          "name"      : "Minakh"
+        },
+        { "latitude"  : 36.98828111,
+          "longitude" : 35.29137222,
+          "elevation" : 55.77433462,
+          "name"      : "Adana Sakirpasa"
+        },
+        { "latitude"  : 34.55823556,
+          "longitude" : 38.33112306,
+          "elevation" : 1267.13920646,
+          "name"      : "Palmyra"
+        },
+        { "latitude"  : 35.11609944,
+          "longitude" : 36.72547333,
+          "elevation" : 984.25297123,
+          "name"      : "Hama"
+        },
+        { "latitude"  : 35.15924972,
+          "longitude" : 33.49011056,
+          "elevation" : 383.85864376,
+          "name"      : "Ercan"
+        },
+        { "latitude"  : 33.48748333,
+          "longitude" : 36.47505083,
+          "elevation" : 2007.76328244,
+          "name"      : "Marj as Sultan South"
+        },
+        { "latitude"  : 35.75561389,
+          "longitude" : 38.55125083,
+          "elevation" : 1099.08246786,
+          "name"      : "Tabqa"
+        },
+        { "latitude"  : 33.83646556,
+          "longitude" : 35.48741667,
+          "elevation" : 39.37011948,
+          "name"      : "Beirut-Rafic Hariri"
+        },
+        { "latitude"  : 33.92656611,
+          "longitude" : 36.87534444,
+          "elevation" : 2746.59625293,
+          "name"      : "An Nasiriyah"
+        },
+        { "latitude"  : 35.73146250,
+          "longitude" : 37.11880167,
+          "elevation" : 820.21077599,
+          "name"      : "Abu al-Duhur"
+        }
+    ]
+}

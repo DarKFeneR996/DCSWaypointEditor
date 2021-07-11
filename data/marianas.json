@@ -1,0 +1,34 @@
+{
+    "waypoints" : [
+        { "latitude"  : 14.17490500,
+          "longitude" : 145.23248556,
+          "elevation" : 568.83258856,
+          "name"      : "Rota International"
+        },
+        { "latitude"  : 13.57604694,
+          "longitude" : 144.91745889,
+          "elevation" : 545.02016686,
+          "name"      : "Andersen AFB"
+        },
+        { "latitude"  : 13.47956944,
+          "longitude" : 144.78477472,
+          "elevation" : 255.22334721,
+          "name"      : "Antonio B. Won Pat International"
+        },
+        { "latitude"  : 15.11512167,
+          "longitude" : 145.71879833,
+          "elevation" : 213.25481878,
+          "name"      : "Saipan International"
+        },
+        { "latitude"  : 14.99742944,
+          "longitude" : 145.60830611,
+          "elevation" : 240.00743592,
+          "name"      : "Tinian International"
+        },
+        { "latitude"  : 13.43646944,
+          "longitude" : 144.64137306,
+          "elevation" : 93.05848238,
+          "name"      : "Olf Orote"
+        }
+    ]
+}
