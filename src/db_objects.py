@@ -37,20 +37,7 @@ default_bases = dict()
 logger = get_logger(__name__)
 
 
-def update_base_data(url, file):
-    with urllib.request.urlopen(url) as response:
-        if response.code == 200:
-            html = response.read()
-        else:
-            return False
-
-    if path.isfile(file):
-        with open(file, "w") as f2:
-            f2.write(html.decode('utf-8'))
-    return True
-
-
-def load_base_data(basedata, basedict):
+def base_data_load(basedata, basedict):
     waypoints_list = basedata.get("waypoints")
 
     if type(waypoints_list) == list:
@@ -72,29 +59,16 @@ def load_base_data(basedata, basedict):
 
 
 def generate_default_bases():
-    default_bases_builder_logger = get_logger("default_bases_builder")
-
-    pgdata = update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
-                              "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", f".\\data\\pg.json")
-
-    caucdata = update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
-                                "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", f".\\data\\cauc.json")
-
-    if pgdata and caucdata:
-        default_bases_builder_logger.info("PG and Caucasus default bases updated succesfully")
-    else:
-        default_bases_builder_logger.warning("Failed to update PG and Caucasus default bases")
-
     for _, _, files in walk(".\\data"):
         for filename in files:
             if ".json" in filename:
                 with open(".\\data\\" + filename, "r") as f:
                     try:
-                        load_base_data(json.load(f), default_bases)
-                        default_bases_builder_logger.info(
+                        base_data_load(json.load(f), default_bases)
+                        logger.info(
                             f"Default base data built succesfully from file: {filename}")
                     except AttributeError:
-                        default_bases_builder_logger.warning(
+                        logger.warning(
                             f"Failed to build default base data from file: {filename}", exc_info=True)
 
 
