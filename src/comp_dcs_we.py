@@ -39,9 +39,7 @@ logger = get_logger(__name__)
 # latest version is pulled from master branch on github.
 #
 def dcs_we_vers_latest():
-    # TODO: put this back when we merge back to master
-    #version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/master/release_version.txt"
-    version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/ilominar-ux-v2-xml/release_version.txt"
+    version_url = "https://raw.githubusercontent.com/51st-Vfw/DCSWaypointEditor/master/release_version.txt"
 
     try:
         with urllib.request.urlopen(version_url) as response:
