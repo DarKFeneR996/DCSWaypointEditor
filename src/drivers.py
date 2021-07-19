@@ -177,6 +177,11 @@ class HornetDriver(Driver):
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
 
+    def ensure_decimal(self, number):
+        if str(number).find(".") == -1:
+            number = number + ".0"
+        return number
+
     def enter_number(self, number, two_enters=False):
         for num in str(number):
             if num == ".":
@@ -195,9 +200,10 @@ class HornetDriver(Driver):
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
-        self.logger.info(f"Entering coords string: {lat_str}, {lon_str}")
 
         if not pp:
+            self.logger.info(f"Entering coords string (W): {lat_str}, {lon_str}")
+
             if latlong.lat.degree > 0:
                 self.ufc("2", delay_release=self.medium_delay)
             else:
@@ -217,6 +223,14 @@ class HornetDriver(Driver):
                 self.ufc("OSB1")
                 self.enter_number(elev if elev>=0 else 0)
         else:
+
+            # lat/lon without decimal can confuse enter_number, avoid that situation...
+            #
+            lat_str = self.ensure_decimal(lat_str)
+            lon_str = self.ensure_decimal(lon_str)
+
+            self.logger.info(f"Entering coords string (M): {lat_str}, {lon_str}")
+
             self.ufc("OSB1")
             if latlong.lat.degree > 0:
                 self.ufc("2", delay_release=self.medium_delay)
