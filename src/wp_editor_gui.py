@@ -387,13 +387,23 @@ class WaypointEditorGUI:
     def update_for_coords_change(self, position=None, elevation=None, name=None, update_mgrs=True,
                                  wypt_type=None, wypt_seq_sta=None, update_enable=True):
         if position is not None:
+            min = round(position.lat.minute)
+            sec = round(position.lat.second, 2)
+            if sec == 60.0:
+                min = min + 1
+                sec = 0.0
             self.window['ux_lat_deg'].update(round(position.lat.degree))
-            self.window['ux_lat_min'].update(round(position.lat.minute))
-            self.window['ux_lat_sec'].update(round(position.lat.second, 2))
+            self.window['ux_lat_min'].update(f"{min:d}")
+            self.window['ux_lat_sec'].update(f"{sec:0.2f}")
 
+            min = round(position.lon.minute)
+            sec = round(position.lon.second, 2)
+            if sec == 60.0:
+                min = min + 1
+                sec = 0.0
             self.window['ux_lon_deg'].update(round(position.lon.degree))
-            self.window['ux_lon_min'].update(round(position.lon.minute))
-            self.window['ux_lon_sec'].update(round(position.lon.second, 2))
+            self.window['ux_lon_min'].update(f"{min:d}")
+            self.window['ux_lon_sec'].update(f"{sec:0.2f}")
 
             mgrs_val = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
 
