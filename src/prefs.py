@@ -47,7 +47,7 @@ class Preferences:
         self.hotkey_enter_mission = "ctrl+alt+shift+t"
         self.hotkey_dgft_dogfight = "ctrl+3"
         self.hotkey_dgft_center = "ctrl+4"
-        self.airframe_default = airframe_list()[0]
+        self.airframe_default = "viper"
         self.av_setup_default = "DCS Default"
         self.callsign_default = "Colt1-1"
         self.is_auto_upd_check = "true"
@@ -308,7 +308,7 @@ class Preferences:
         self.hotkey_enter_mission = "ctrl+alt+shift+t"
         self.hotkey_dgft_dogfight = "ctrl+3"
         self.hotkey_dgft_center = "ctrl+4"
-        self.airframe_default = airframe_list()[0]
+        self.airframe_default = "viper"
         self.av_setup_default = "DCS Default"
         self.callsign_default = "Colt1-1"
         self.is_auto_upd_check = "true"
