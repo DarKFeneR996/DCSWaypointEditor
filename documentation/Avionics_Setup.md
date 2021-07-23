@@ -79,18 +79,19 @@ The initial state of the Viper when powered on should match these requirements.
 
 There are four preferences that control the behavior of the avionics setup functionality.
 
-- Default Avionics Setup: Specifies the default avionics setup to use when creating new
+- *Default Avionics Setup:* Specifies the default avionics setup to use when creating new
   profiles, the setup "DCS Default" corresponds to the default setup of the jet in DCS.
   For airframes other than the Viper, this setting is effectively always "DCS Default".
-- Use When Setup Unknown: When set, this preference causes DCSWE to use the default
+- *Use When Setup Unknown:* When set, this preference causes DCSWE to use the default
   avionics setup in situations where it does not have information on the avionics setup.
   For example, if this is set, a profile created from CombatFlite would use the default
   setup. When not set, DCSWE does not change avionics setup (i.e., it behaves as if the
   default were "DCS Default")
-- F-16 HOTAS DOGFIGHT Dogfight: Specifies the keybind for the "Dogfight" position on the
-  HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
-- F-16 HOTAS DOGFIGHT Center: Specifies the keybind for the "Center" position on the
+- *F-16 HOTAS DOGFIGHT Dogfight:* Specifies the keybind for the `DOGFIGHT` position on
+  the HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
+- *F-16 HOTAS DOGFIGHT Center:* Specifies the keybind for the `CENTER` position on the
   HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
 
-These can be set throught the DCSWE preferences, strangely enough. Note that the DOGFIGHT
-hotkeys will need to also be set up through the DCS control setup in DCS.
+These can be set throught the DCSWE preferences, strangely enough. Note that the
+`DOGFIGHT` and `CENTER` hotkeys will need to also be set up through the DCS control
+setup in DCS.
