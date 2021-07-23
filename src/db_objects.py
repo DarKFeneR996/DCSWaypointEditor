@@ -250,7 +250,8 @@ class Profile:
         return dict(
             waypoints=[waypoint.as_dict for waypoint in self.waypoints],
             name=self.profilename,
-            aircraft=self.aircraft
+            aircraft=self.aircraft,
+            av_setup_name=self.av_setup_name
         )
 
     def update_waypoint_numbers(self):
@@ -271,7 +272,7 @@ class Profile:
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
 
-        readable_string += "\nPreplanned missions:\n\n"
+        readable_string += "\nPreplanned Missions:\n\n"
 
         for wp in sorted(self.waypoints_of_type("MSN"), key=lambda waypoint: waypoint.station):
             if wp.wp_type == "MSN":
@@ -279,6 +280,9 @@ class Profile:
                                   Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
+
+        readable_string += f"\nAvionics Setup:\n\n{self.av_setup_name}\n"
+
         return readable_string
 
     @staticmethod
@@ -290,7 +294,9 @@ class Profile:
             wps = [Waypoint.to_object(w) for w in waypoints if w['wp_type'] != 'MSN']
             msns = [MSN.to_object(w) for w in waypoints if w['wp_type'] == 'MSN']
             aircraft = profile_data["aircraft"]
-            profile = Profile(profile_name, waypoints=wps+msns, aircraft=aircraft)
+            av_setup_name = profile_data["av_setup_name"]
+            profile = Profile(profile_name, waypoints=wps+msns, aircraft=aircraft,
+                              av_setup_name=av_setup_name)
             if profile.profilename:
                 profile.save()
             return profile
