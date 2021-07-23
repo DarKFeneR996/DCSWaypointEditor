@@ -88,6 +88,7 @@ class WaypointEditorGUI:
         self.tk_menu_mission = None
         self.values = None
         self.selected_wp_type = "WP"
+        self.selected_profile = None
 
         self.load_profile()
 
@@ -154,6 +155,14 @@ class WaypointEditorGUI:
         else:
             return Profile.from_string(str)
 
+    def approve_profile_change(self, action="Switching the"):
+        if self.is_profile_dirty:
+            action = PyGUI.PopupOKCancel(f"You have unsaved changes to the current profile." +
+                                         f" {action} profile will discard these changes.",
+                                         title="Unsaved Changes")
+            if action == "Cancel":
+                return False
+        return True
 
     # ================ waypoint support
 
@@ -346,6 +355,7 @@ class WaypointEditorGUI:
         profiles = [ "" ] + ProfileModel.list_all_names()
         self.window['ux_prof_select'].update(values=profiles,
                                              set_to_index=profiles.index(self.profile.profilename))
+        self.selected_profile = self.profile.profilename
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
         ac_ui_text = airframe_type_to_ui_text(self.profile.aircraft)
         self.window['ux_prof_afrm_select'].update(value=ac_ui_text)
@@ -744,8 +754,9 @@ class WaypointEditorGUI:
         self.window.close()
 
     def do_menu_profile_new(self):
-        self.load_profile()
-        self.update_for_profile_change()
+        if self.approve_profile_change(action="Creating a new"):
+            self.load_profile()
+            self.update_for_profile_change()
 
     def do_menu_profile_save(self):
         name = self.profile.profilename
@@ -773,7 +784,7 @@ class WaypointEditorGUI:
                 PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
 
     def do_menu_profile_delete(self):
-        if self.profile.profilename != "":
+        if self.profile.profilename != "" and self.approve_profile_change(action="Deleting the"):
             result = PyGUI.PopupOKCancel(f"Are you sure you want to delete the profile" +
                                          f" '{self.profile.profilename}'?", title="Say Intentions")
             if result == "OK":
@@ -824,37 +835,13 @@ class WaypointEditorGUI:
     # imports profile from zip'd JSON encoded as ASCII on clipboard into empty/new profile
     #
     def do_menu_profile_import_from_encoded_string(self):
-        encoded = pyperclip.paste()
-        try:
-            self.profile = Profile.from_string(json_unzip(encoded))
-            #
-            # note that encoded JSON may carry profile name, we will force the name to the name of
-            # the empty slot, "" here.
-            #
-            self.profile.profilename = ""
-            if self.profile.aircraft is None:
-                self.profile.aircraft = self.editor.prefs.airframe_default
-            self.is_profile_dirty = True
-            self.window['ux_prof_select'].update(set_to_index=0)
-            self.update_for_profile_change(set_to_first=True)
-            self.logger.debug(self.profile.to_dict())
-        except Exception as e:
-            PyGUI.Popup("Failed to parse encoded profile from clipboard.")
-            self.logger.error(e, exc_info=True)
-
-    # imports profile from text JSON or combatflite XML file into empty/new profile
-    #
-    def do_menu_profile_import_from_file(self):
-        filename = PyGUI.PopupGetFile("Select a File to Import From", "Importing Profile from File")
-        if filename is not None:
+        if self.approve_profile_change(action="Importing a new"):
+            encoded = pyperclip.paste()
             try:
-                self.validate_text_callsign('ux_callsign')
-                self.profile = self.import_profile(filename, warn=True,
-                                                   csign=self.editor.prefs.callsign_default,
-                                                   aircraft=self.editor.prefs.airframe_default)
+                self.profile = Profile.from_string(json_unzip(encoded))
                 #
-                # note that text JSON may carry profile name, we will force the name to the name of the
-                # empty slot, "" here.
+                # note that encoded JSON may carry profile name, we will force the name to the name
+                # of the empty slot, "" here.
                 #
                 self.profile.profilename = ""
                 if self.profile.aircraft is None:
@@ -863,8 +850,34 @@ class WaypointEditorGUI:
                 self.window['ux_prof_select'].update(set_to_index=0)
                 self.update_for_profile_change(set_to_first=True)
                 self.logger.debug(self.profile.to_dict())
-            except:
-                PyGUI.Popup(f"Unable to parse the file '{filename}'", title="Error")
+            except Exception as e:
+                PyGUI.Popup("Failed to parse encoded profile from clipboard.")
+                self.logger.error(e, exc_info=True)
+
+    # imports profile from text JSON or combatflite XML file into empty/new profile
+    #
+    def do_menu_profile_import_from_file(self):
+        if self.approve_profile_change(action="Importing a new"):
+            filename = PyGUI.PopupGetFile("Select a File to Import From", "Importing Profile from File")
+            if filename is not None:
+                try:
+                    self.validate_text_callsign('ux_callsign')
+                    self.profile = self.import_profile(filename, warn=True,
+                                                    csign=self.editor.prefs.callsign_default,
+                                                    aircraft=self.editor.prefs.airframe_default)
+                    #
+                    # note that text JSON may carry profile name, we will force the name to the name
+                    # of the empty slot, "" here.
+                    #
+                    self.profile.profilename = ""
+                    if self.profile.aircraft is None:
+                        self.profile.aircraft = self.editor.prefs.airframe_default
+                    self.is_profile_dirty = True
+                    self.window['ux_prof_select'].update(set_to_index=0)
+                    self.update_for_profile_change(set_to_first=True)
+                    self.logger.debug(self.profile.to_dict())
+                except:
+                    PyGUI.Popup(f"Unable to parse the file '{filename}'", title="Error")
 
     def do_menu_mission_install_package(self):
         try:
@@ -906,13 +919,17 @@ class WaypointEditorGUI:
 
 
     def do_profile_select(self):
-        try:
-            profile_name = self.values['ux_prof_select']
-            self.load_profile(profile_name)
-        except DoesNotExist:
-            PyGUI.Popup(f"Profile '{profile_name}' was not found in the database.", title="Error")
-            self.load_profile()
-        self.update_for_profile_change(set_to_first=True)
+        if self.approve_profile_change(action="Changing the"):
+            try:
+                profile_name = self.values['ux_prof_select']
+                self.load_profile(profile_name)
+            except DoesNotExist:
+                PyGUI.Popup(f"Profile '{profile_name}' was not found in the database.", title="Error")
+                self.load_profile()
+            self.update_for_profile_change(set_to_first=True)
+        else:
+            self.window['ux_prof_select'].update(value=self.selected_profile)
+
 
     def do_airframe_select(self):
         airframe_type = airframe_ui_text_to_type(self.values['ux_prof_afrm_select'])
