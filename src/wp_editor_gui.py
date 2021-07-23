@@ -774,9 +774,10 @@ class WaypointEditorGUI:
 
     def do_menu_profile_save_copy(self):
         if self.profile.profilename == "":
-            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
+            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile", default_text="New Profile")
         else:
-            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile")
+            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile",
+                                      default_text=f"{self.profile.profilename} Copy")
         if name is not None and len(name) > 0:
             if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
                 self.save_profile(name)
