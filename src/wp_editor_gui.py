@@ -116,7 +116,7 @@ class WaypointEditorGUI:
 
 
     def load_profile(self, name=None):
-        if name is None or name is "":
+        if name is None or name == "":
             self.profile = Profile("")
             self.profile.aircraft = self.editor.prefs.airframe_default
             self.profile.av_setup_name = self.editor.prefs.av_setup_default
