@@ -1175,6 +1175,8 @@ class WaypointEditorGUI:
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             self.do_profile_enter_in_jet()
+            winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
+            winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
             #
             # ditch hotkeys that came in while we were away.
             #
@@ -1193,8 +1195,8 @@ class WaypointEditorGUI:
                 tmp_profile = self.import_profile(self.editor.prefs.path_mission,
                                                   csign=self.editor.prefs.callsign_default,
                                                   aircraft=self.editor.prefs.airframe_default)
-                winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
                 if tmp_profile.has_waypoints or tmp_profile.av_setup_name is not None:
+                    winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
                     airframe = airframe_type_to_ui_text(tmp_profile.aircraft)
@@ -1205,6 +1207,7 @@ class WaypointEditorGUI:
                     # ditch hotkeys that came in while we were away.
                     #
                     self.hkey_clear_pendings()
+                    winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
                 else:
                     winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
             except:
