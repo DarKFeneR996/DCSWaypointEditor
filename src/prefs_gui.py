@@ -92,6 +92,7 @@ class PreferencesGUI:
             PyGUI.Popup(f"Invalid value(s) for {errors}, changes ignored.", title="Error")
         self.prefs.is_auto_upd_check = values.get('ux_is_auto_upd_check')
         self.prefs.is_tesseract_debug = values.get('ux_is_tesseract_debug')
+        self.prefs.is_av_setup_for_unk = values.get('ux_av_setup_unknown')
         self.prefs.persist_prefs()
 
     # build the ui for the preferences window.
@@ -99,6 +100,7 @@ class PreferencesGUI:
     def create_gui(self):
         is_auto_upd_check = self.prefs.is_auto_upd_check_bool
         is_tesseract_debug = self.prefs.is_tesseract_debug_bool
+        is_av_setup_for_unk = self.prefs.is_av_setup_for_unk_bool
         dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
         as_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
 
@@ -162,18 +164,20 @@ class PreferencesGUI:
              PyGUI.Combo(values=airframe_list(),
                          default_value=airframe_type_to_ui_text(self.prefs.airframe_default),
                          key='ux_airframe_default', readonly=True, enable_events=True,
-                         size=(30,1), pad=((5,172),0))],
+                         size=(27,1), pad=((5,194),0))],
 
             [PyGUI.Text("Default avionics setup:", (21,1), key='ux_av_setup_txt', justification="right"),
              PyGUI.Combo(values=as_tmplts, default_value=self.prefs.av_setup_default,
-                         key='ux_av_setup_default', readonly=True,
-                         size=(30,1), pad=((5,172),0))],
+                         key='ux_av_setup_default', readonly=True, enable_events=True,
+                         size=(27,1), pad=((6,2),8)),
+             PyGUI.Checkbox("Use when setup unknown", default=is_av_setup_for_unk,
+                            key='ux_av_setup_unknown', pad=((6,8),6))],
 
             [PyGUI.Text("Check for updates:", (21,1), justification="right"),
-             PyGUI.Checkbox(text="", default=is_auto_upd_check, key='ux_is_auto_upd_check')],
+             PyGUI.Checkbox("", default=is_auto_upd_check, key='ux_is_auto_upd_check')],
 
             [PyGUI.Text("Log raw OCR output:", (21,1), justification="right"),
-             PyGUI.Checkbox(text="", default=is_tesseract_debug, key='ux_is_tesseract_debug')]
+             PyGUI.Checkbox("", default=is_tesseract_debug, key='ux_is_tesseract_debug')]
         ]
 
         return PyGUI.Window("Preferences",
@@ -201,15 +205,21 @@ class PreferencesGUI:
                 self.window['ux_install'].update(text=f"Update to v{dcs_bios_vers_latest()}",
                                                  disabled=False)
 
-    # update gui for changes to the default airframe
+    # update gui for changes to the default airframe or avionics setup
     #
-    def update_gui_for_airframe(self):
+    def update_gui_for_airframe_avsetup(self):
         if airframe_ui_text_to_type(self.values['ux_airframe_default']) == "viper":
             self.window['ux_av_setup_default'].update(disabled=False, readonly=True)
             self.window['ux_av_setup_txt'].update(text_color="#ffffff")
+            if self.values['ux_av_setup_default'] == "DCS Default":
+                self.window['ux_av_setup_unknown'].update(visible=False)
+            else:
+                self.window['ux_av_setup_unknown'].update(visible=True,
+                                                          value=self.prefs.is_av_setup_for_unk_bool)
         else:
             self.window['ux_av_setup_default'].update(value="DCS Default", disabled=True)
             self.window['ux_av_setup_txt'].update(text_color="#b8b8b8")
+            self.window['ux_av_setup_unknown'].update(visible=False)
 
     # run the gui for the preferences window.
     #
@@ -219,7 +229,7 @@ class PreferencesGUI:
         event, self.values = self.window.read(timeout=0)
 
         self.update_gui_for_dcs_path()
-        self.update_gui_for_airframe()
+        self.update_gui_for_airframe_avsetup()
 
         while True:
             event, self.values = self.window.Read()
@@ -254,8 +264,8 @@ class PreferencesGUI:
             elif event == 'ux_path_dcs':
                 self.update_gui_for_dcs_path()
             
-            elif event == 'ux_airframe_default':
-                self.update_gui_for_airframe()
+            elif event == 'ux_airframe_default' or event == 'ux_av_setup_default':
+                self.update_gui_for_airframe_avsetup()
 
         self.close()
         

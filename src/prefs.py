@@ -52,6 +52,7 @@ class Preferences:
         self.callsign_default = "Colt1-1"
         self.is_auto_upd_check = "true"
         self.is_tesseract_debug = "false"
+        self.is_av_setup_for_unk = "true"
         self.profile_db_name = "profiles.db"
 
         try:
@@ -246,6 +247,20 @@ class Preferences:
         self._is_tesseract_debug = value
 
     @property
+    def is_av_setup_for_unk(self):
+        return self._is_av_setup_for_unk
+
+    @property
+    def is_av_setup_for_unk_bool(self):
+        return True if self._is_av_setup_for_unk == "true" else False
+
+    @is_av_setup_for_unk.setter
+    def is_av_setup_for_unk(self, value):
+        if type(value) == bool or type(value) == int or type(value) == float:
+            value = "true" if value else "false"
+        self._is_av_setup_for_unk = value
+
+    @property
     def profile_db_name(self):
         return self._profile_db_name
 
@@ -298,6 +313,7 @@ class Preferences:
         self.callsign_default = "Colt1-1"
         self.is_auto_upd_check = "true"
         self.is_tesseract_debug = "false"
+        self.is_av_setup_for_unk = "true"
         self.profile_db_name = "profiles.db"
 
     # synchronize the preferences the backing store file
@@ -322,6 +338,7 @@ class Preferences:
         self.callsign_default = self.prefs["PREFERENCES"]["callsign_default"]
         self.is_auto_upd_check = self.prefs["PREFERENCES"]["is_auto_upd_check"]
         self.is_tesseract_debug = self.prefs["PREFERENCES"]["is_tesseract_debug"]
+        self.is_av_setup_for_unk = self.prefs["PREFERENCES"]["is_av_setup_for_unk"]
         self.profile_db_name = self.prefs["PREFERENCES"]["profile_db_name"]
 
     # persist the preferences to the backing store file
@@ -343,6 +360,7 @@ class Preferences:
         self.prefs["PREFERENCES"]["callsign_default"] = self.callsign_default
         self.prefs["PREFERENCES"]["is_auto_upd_check"] = self.is_auto_upd_check
         self.prefs["PREFERENCES"]["is_tesseract_debug"] = self.is_tesseract_debug
+        self.prefs["PREFERENCES"]["is_av_setup_for_unk"] = self.is_av_setup_for_unk
         self.prefs["PREFERENCES"]["profile_db_name"] = self.profile_db_name
 
         if do_write:
