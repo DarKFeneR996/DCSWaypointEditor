@@ -25,6 +25,7 @@ import requests
 
 from src.comp_dcs_bios import dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_is_current
 from src.comp_dcs_bios import dcs_bios_install
+from src.db_models import AvionicsSetupModel
 from src.gui_util import airframe_list, airframe_ui_text_to_type, airframe_type_to_ui_text
 from src.logger import get_logger
 
@@ -50,6 +51,12 @@ class PreferencesGUI:
         except:
             errors = "default airframe"
         try:
+            self.prefs.av_setup_default = values.get('ux_av_setup_default')
+            if self.prefs.av_setup_default not in AvionicsSetupModel.list_all_names():
+                raise Exception("Unknown avionics setup")
+        except:
+            self.prefs.av_setup_default = "DCS Default"
+        try:
             self.prefs.dcs_btn_rel_delay_short = values.get('ux_dcs_btn_rel_delay_short')
         except:
             errors = errors + ", short release"
@@ -73,8 +80,16 @@ class PreferencesGUI:
             self.prefs.hotkey_enter_mission = values.get('ux_hotkey_enter_mission')
         except:
             errors = errors + ", enter mission hotkey"
+        try:
+            self.prefs.hotkey_dgft_dogfight = values.get('ux_hotkey_dgft_dogfight')
+        except:
+            errors = errors + ", DGFT dogfight hotkey"
+        try:
+            self.prefs.hotkey_dgft_center = values.get('ux_hotkey_dgft_center')
+        except:
+            errors = errors + ", DGFT center hotkey"
         if len(errors) > 0:
-            PyGUI.Popup(f"Invalid value(s) for {errors}, change ignored.", title="Error")
+            PyGUI.Popup(f"Invalid value(s) for {errors}, changes ignored.", title="Error")
         self.prefs.is_auto_upd_check = values.get('ux_is_auto_upd_check')
         self.prefs.is_tesseract_debug = values.get('ux_is_tesseract_debug')
         self.prefs.persist_prefs()
@@ -85,6 +100,11 @@ class PreferencesGUI:
         is_auto_upd_check = self.prefs.is_auto_upd_check_bool
         is_tesseract_debug = self.prefs.is_tesseract_debug_bool
         dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
+        as_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
+
+        if self.prefs.av_setup_default not in as_tmplts:
+            self.prefs.av_setup_default = "DCS Default"
+
 
         layout_paths = [
             [PyGUI.Text("DCS saved games directory:", (21,1), justification="right"),
@@ -99,6 +119,7 @@ class PreferencesGUI:
              PyGUI.Input(self.prefs.path_mission, key='ux_path_mission'),
              PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target='ux_path_mission')],
         ]
+
         layout_hotkeys = [
             [PyGUI.Text("DCS F10 map capture:", (21,1), justification="right"),
              PyGUI.Input(self.prefs.hotkey_capture, key='ux_hotkey_capture', pad=((5,80),0))],
@@ -110,14 +131,23 @@ class PreferencesGUI:
              PyGUI.Input(self.prefs.hotkey_enter_profile, key='ux_hotkey_enter_profile')],
 
             [PyGUI.Text("Load mission file into jet:", (21,1), justification="right"),
-             PyGUI.Input(self.prefs.hotkey_enter_mission, key='ux_hotkey_enter_mission')]
+             PyGUI.Input(self.prefs.hotkey_enter_mission, key='ux_hotkey_enter_mission')],
+
+            [PyGUI.Text("", font="Helvetica 6", pad=(0,0))],
+
+            [PyGUI.Text("F-16 HOTAS DGFT dogfight:", (21,1), justification="right"),
+             PyGUI.Input(self.prefs.hotkey_dgft_dogfight, key='ux_hotkey_dgft_dogfight')],
+
+            [PyGUI.Text("F-16 HOTAS DGFT center:", (21,1), justification="right"),
+             PyGUI.Input(self.prefs.hotkey_dgft_center, key='ux_hotkey_dgft_center')]
         ]
+
         layout_dcsbios = [
-            [PyGUI.Text("Button release (short):", (21,1), justification="right"),
+            [PyGUI.Text("Button press (short):", (21,1), justification="right"),
              PyGUI.Input(self.prefs.dcs_btn_rel_delay_short, key='ux_dcs_btn_rel_delay_short'),
              PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],
 
-            [PyGUI.Text("Button release (medium):", (21,1), justification="right"),
+            [PyGUI.Text("Button press (medium):", (21,1), justification="right"),
              PyGUI.Input(self.prefs.dcs_btn_rel_delay_medium, key='ux_dcs_btn_rel_delay_medium'),
              PyGUI.Text("(seconds)", justification="left", pad=((0,14),0))],
 
@@ -126,11 +156,18 @@ class PreferencesGUI:
              PyGUI.Button("Install", key='ux_install', size=(18,1),
                           disabled=(dcs_bios_ver is not None))]
         ]
+
         layout_misc = [
             [PyGUI.Text("Default airframe:", (21,1), justification="right"),
              PyGUI.Combo(values=airframe_list(),
                          default_value=airframe_type_to_ui_text(self.prefs.airframe_default),
-                         key='ux_airframe_default', pad=((5,277),0))],
+                         key='ux_airframe_default', readonly=True, enable_events=True,
+                         size=(30,1), pad=((5,172),0))],
+
+            [PyGUI.Text("Default avionics setup:", (21,1), key='ux_av_setup_txt', justification="right"),
+             PyGUI.Combo(values=as_tmplts, default_value=self.prefs.av_setup_default,
+                         key='ux_av_setup_default', readonly=True,
+                         size=(30,1), pad=((5,172),0))],
 
             [PyGUI.Text("Check for updates:", (21,1), justification="right"),
              PyGUI.Checkbox(text="", default=is_auto_upd_check, key='ux_is_auto_upd_check')],
@@ -141,7 +178,7 @@ class PreferencesGUI:
 
         return PyGUI.Window("Preferences",
                             [[PyGUI.Frame("Paths & Files", layout_paths)],
-                             [PyGUI.Frame("DCS Hot Keys", layout_hotkeys)],
+                             [PyGUI.Frame("DCS/DCSWE Interaction Hot Keys", layout_hotkeys)],
                              [PyGUI.Frame("DCS BIOS Parameters", layout_dcsbios)],
                              [PyGUI.Frame("Miscellaneous", layout_misc)],
                              [PyGUI.Button("OK", key='ux_ok', size=(8,1), pad=((264,0),16))]],
@@ -164,12 +201,25 @@ class PreferencesGUI:
                 self.window['ux_install'].update(text=f"Update to v{dcs_bios_vers_latest()}",
                                                  disabled=False)
 
+    # update gui for changes to the default airframe
+    #
+    def update_gui_for_airframe(self):
+        if airframe_ui_text_to_type(self.values['ux_airframe_default']) == "viper":
+            self.window['ux_av_setup_default'].update(disabled=False, readonly=True)
+            self.window['ux_av_setup_txt'].update(text_color="#ffffff")
+        else:
+            self.window['ux_av_setup_default'].update(value="DCS Default", disabled=True)
+            self.window['ux_av_setup_txt'].update(text_color="#b8b8b8")
+
     # run the gui for the preferences window.
     #
     def run(self):
         is_accepted = True
 
+        event, self.values = self.window.read(timeout=0)
+
         self.update_gui_for_dcs_path()
+        self.update_gui_for_airframe()
 
         while True:
             event, self.values = self.window.Read()
@@ -203,6 +253,9 @@ class PreferencesGUI:
     
             elif event == 'ux_path_dcs':
                 self.update_gui_for_dcs_path()
+            
+            elif event == 'ux_airframe_default':
+                self.update_gui_for_airframe()
 
         self.close()
         

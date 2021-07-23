@@ -20,6 +20,7 @@
 *
 '''
 
+import keyboard
 import re
 import socket
 import queue
@@ -732,11 +733,28 @@ class ViperDriver(Driver):
         super().__init__(logger, config)
         self.limits = dict(WP=127)
 
+    def push_btn(self, key, delay_after=None, delay_release=None):
+        if delay_release is None:
+            delay_release = self.short_delay
+        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        if delay_after is not None:
+            sleep(delay_after)
+
+    def ehsi_btn(self, btn, delay_after=None, delay_release=None):
+        self.push_btn(f"EHSI_{btn}", delay_after=delay_after, delay_release=delay_release)
+
+    def mfd_btn(self, lr, num, delay_after=None, delay_release=None):
+        self.push_btn(f"MFD_{lr}_{num}", delay_after=delay_after, delay_release=delay_release)
+
     def icp_btn(self, num, delay_after=None, delay_release=None):
         key = f"ICP_BTN_{num}"
         if num == "ENTR":
             key = "ICP_ENTR_BTN"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        elif num == "AA_MODE":
+            key = "ICP_AA_MODE_BTN"
+        elif num == "AG_MODE":
+            key = "ICP_AG_MODE_BTN"
+        self.push_btn(key, delay_after=delay_after, delay_release=delay_release)
 
     def icp_ded(self, num, delay_after=None, delay_release=None):
         if delay_release is None:
@@ -808,33 +826,121 @@ class ViperDriver(Driver):
         self.icp_btn("ENTR")
         self.icp_data("DN")
 
+    def enter_mfd_format(self, lr, osb, format):
+        #
+        # NOTE: For this to work correctly, the format mapped to the OSB should *NOT* be selected
+        # NOTE: in the MFD upon entry.
+        #
+        self.mfd_btn(lr, osb)                           # Select OSB to set format for
+        self.mfd_btn(lr, osb, delay_after=0.50)         # Enter format select mode
+        self.mfd_btn(lr, format, delay_after=0.50)      # Select format
+
     def enter_waypoints(self, wps, command_q=None, progress_q=None):
-        self.icp_data("RTN")
+        if len(wps) > 0:
+            self.icp_data("RTN")
 
-        self.icp_btn("4", delay_after=1)
-        self.icp_data("DN", delay_after=1)
+            self.icp_btn("4", delay_after=1)
+            self.icp_data("DN", delay_after=1)
 
-        for wp in wps:
-            if self.bkgnd_advance(command_q, progress_q):
-                break
+            for wp in wps:
+                if self.bkgnd_advance(command_q, progress_q):
+                    break
 
-            self.enter_coords(wp.position)
-            if wp.elevation != 0:
-                self.enter_elevation(wp.elevation)
+                self.enter_coords(wp.position)
+                if wp.elevation != 0:
+                    self.enter_elevation(wp.elevation)
 
-            self.icp_data("UP")
-            self.icp_data("UP")
-            self.icp_ded("UP")
+                self.icp_data("UP")
+                self.icp_data("UP")
+                self.icp_ded("UP")
 
-        self.icp_ded("DN")
-        self.icp_data("RTN")
+            self.icp_ded("DN")
+            self.icp_data("RTN")
+
+    def enter_tacan(self, spec, command_q=None, progress_q=None):
+        if spec is not None:
+            self.icp_data("RTN")
+
+            self.logger.info(f"Entering TACAN: {spec}")
+
+            fields = [ str(field) for field in spec.split(",") ]
+
+            self.icp_btn("1", delay_after=1)            # T-ILS
+            if fields[1] == "Y":
+                self.icp_btn("0")                       # Select Y
+                self.icp_btn("ENTR")
+            self.icp_data("DN")                         # To CHAN field
+            chan = int(fields[0])
+            if fields[2] == "W":
+                chan = chan + 63
+            self.enter_number(str(chan))                # CHAN field
+            self.icp_btn("ENTR")
+            self.icp_btn("SEQ")                         # REC -> T/R
+            self.icp_btn("SEQ")                         # T/R -> A/A TR
+            
+            self.icp_data("RTN")
+
+            self.ehsi_btn("MODE")
+            self.ehsi_btn("MODE")
+
+            self.bkgnd_advance(command_q, progress_q)
+
+    def enter_mfd(self, mode, spec, command_q=None, progress_q=None):
+        if spec is not None:
+            self.icp_data("RTN")
+
+            self.logger.info(f"Entering MFD: {mode}, spec [ {spec} ]")
+
+            if mode == "DGFT":
+                keyboard.send(self.prefs.hotkey_dgft_dogfight)
+            elif mode != "NAV":
+                self.icp_btn(mode)
+
+            # The current default setup of the Viper has a mixture of OSB 13 and 14 formats
+            # selected in the four master modes (NAV, AA, AG, DGFT). For enter_mfd_format to
+            # work correctly, the OSB being setup should not be selected. Start the setup
+            # from OSB 12 on each MFD as in 2.7.4 none of the modes start with an OSB 12
+            # format selected on either MFD.
+            #
+            # After setting up the formats, OSB 14 will be selected on both MFDs.
+            #
+            # TODO: Would work better if we could detect what is selected. Then, we could
+            # TODO: act appropriately in enter_mfd_format.
+            #
+            fmt_osb_list = [ str(osb) for osb in spec.split(",") ]
+            self.enter_mfd_format("L", "12", fmt_osb_list[2])
+            self.enter_mfd_format("L", "13", fmt_osb_list[1])
+            self.enter_mfd_format("L", "14", fmt_osb_list[0])
+
+            self.enter_mfd_format("R", "12", fmt_osb_list[5])
+            self.enter_mfd_format("R", "13", fmt_osb_list[4])
+            self.enter_mfd_format("R", "14", fmt_osb_list[3])
+
+            if mode == "DGFT":
+                keyboard.send(self.prefs.hotkey_dgft_center)
+            elif mode != "NAV":
+                self.icp_btn(mode)
+
+            self.icp_data("RTN")
+            self.bkgnd_advance(command_q, progress_q)
 
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        avs_dict = profile.av_setup_dict
+
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + len(avs_dict) + 2)) * 100.0
         self.bkgnd_prog_cur = 0
 
         self.bkgnd_advance(command_q, progress_q)
         self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+        self.enter_tacan(avs_dict.get('tacan_yard'), command_q=command_q, progress_q=progress_q)
+        self.enter_mfd("NAV", avs_dict.get('f16_mfd_setup_nav'),
+                       command_q=command_q, progress_q=progress_q)
+        self.enter_mfd("AA_MODE", avs_dict.get('f16_mfd_setup_air'),
+                       command_q=command_q, progress_q=progress_q)
+        self.enter_mfd("AG_MODE", avs_dict.get('f16_mfd_setup_gnd'),
+                       command_q=command_q, progress_q=progress_q)
+        self.enter_mfd("DGFT", avs_dict.get('f16_mfd_setup_dog'),
+                       command_q=command_q, progress_q=progress_q)
         self.bkgnd_advance(command_q, progress_q, is_done=True)

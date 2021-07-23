@@ -21,14 +21,15 @@
 '''
 
 import json
-import urllib.request
 
 from dataclasses import dataclass, asdict
 from LatLon23 import LatLon, Longitude, Latitude
-from os import walk, path
+from os import walk
+from peewee import IntegrityError
 from typing import Any
 
-from src.db_models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
+from src.db_models import ProfileModel, WaypointModel, SequenceModel, AvionicsSetupModel
+from src.db_models import db
 from src.logger import get_logger
 
 
@@ -65,8 +66,7 @@ def generate_default_bases():
                 with open(".\\data\\" + filename, "r") as f:
                     try:
                         base_data_load(json.load(f), default_bases)
-                        logger.info(
-                            f"Default base data built succesfully from file: {filename}")
+                        logger.info(f"Default base data built succesfully from file: {filename}")
                     except AttributeError:
                         logger.warning(
                             f"Failed to build default base data from file: {filename}", exc_info=True)
@@ -115,17 +115,10 @@ class Waypoint:
         return d
 
     @staticmethod
-    def to_object(waypoint):
-        return Waypoint(
-            LatLon(
-                Latitude(waypoint.get('latitude')),
-                Longitude(waypoint.get('longitude'))
-            ),
-            elevation=waypoint.get('elevation'),
-            name=waypoint.get('name'),
-            sequence=waypoint.get('sequence'),
-            wp_type=waypoint.get('wp_type')
-        )
+    def to_object(dict):
+        return Waypoint(LatLon(Latitude(dict.get('latitude')), Longitude(dict.get('longitude'))),
+                        elevation=dict.get('elevation'), name=dict.get('name'),
+                        sequence=dict.get('sequence'), wp_type=dict.get('wp_type'))
 
 
 @dataclass
@@ -145,24 +138,18 @@ class MSN(Waypoint):
         return strrep
 
     @staticmethod
-    def to_object(waypoint):
-        return MSN(
-            LatLon(
-                Latitude(waypoint.get('latitude')),
-                Longitude(waypoint.get('longitude'))
-            ),
-            elevation=waypoint.get('elevation'),
-            name=waypoint.get('name'),
-            sequence=waypoint.get('sequence'),
-            wp_type=waypoint.get('wp_type'),
-            station=waypoint.get('station')
-        )
+    def to_object(dict):
+        return MSN(LatLon(Latitude(dict.get('latitude')), Longitude(dict.get('longitude'))),
+                   elevation=dict.get('elevation'), name=dict.get('name'),
+                   sequence=dict.get('sequence'), wp_type=dict.get('wp_type'),
+                   station=dict.get('station'))
 
 
 class Profile:
-    def __init__(self, profilename, waypoints=None, aircraft="hornet"):
+    def __init__(self, profilename, waypoints=None, aircraft="viper", av_setup_name=None):
         self.profilename = profilename
         self.aircraft = aircraft
+        self.av_setup_name = av_setup_name
 
         if waypoints is None:
             self.waypoints = list()
@@ -232,6 +219,27 @@ class Profile:
 
         return d
 
+    @property
+    def av_setup_dict(self):
+        if self.av_setup_name is not None:
+            try:
+                avs_dict = dict()
+                setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.av_setup_name)
+                if setup.tacan_yard is not None:
+                    avs_dict['tacan_yard'] = setup.tacan_yard
+                if setup.f16_mfd_setup_nav is not None:
+                    avs_dict['f16_mfd_setup_nav'] = setup.f16_mfd_setup_nav
+                if setup.f16_mfd_setup_air is not None:
+                    avs_dict['f16_mfd_setup_air'] = setup.f16_mfd_setup_air
+                if setup.f16_mfd_setup_gnd is not None:
+                    avs_dict['f16_mfd_setup_gnd'] = setup.f16_mfd_setup_gnd
+                if setup.f16_mfd_setup_dog is not None:
+                    avs_dict['f16_mfd_setup_dog'] = setup.f16_mfd_setup_dog
+                return avs_dict
+            except:
+                pass
+        return None
+
     def waypoints_of_type(self, wp_type):
         return [wp for wp in self.waypoints if wp.wp_type == wp_type]
 
@@ -258,7 +266,8 @@ class Profile:
         readable_string = "Waypoints:\n\n"
         for wp in self.waypoints:
             if wp.wp_type != "MSN":
-                position = LatLon(Latitude(wp.latitude), Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
+                position = LatLon(Latitude(wp.latitude),
+                                  Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
 
@@ -266,7 +275,8 @@ class Profile:
 
         for wp in sorted(self.waypoints_of_type("MSN"), key=lambda waypoint: waypoint.station):
             if wp.wp_type == "MSN":
-                position = LatLon(Latitude(wp.latitude), Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
+                position = LatLon(Latitude(wp.latitude),
+                                  Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
         return readable_string
@@ -295,12 +305,11 @@ class Profile:
 
         try:
             with db.atomic():
-                profile = ProfileModel.create(
-                    name=self.profilename, aircraft=self.aircraft)
+                profile = ProfileModel.create(name=self.profilename, aircraft=self.aircraft)
         except IntegrityError:
-            profile = ProfileModel.get(
-                ProfileModel.name == self.profilename)
+            profile = ProfileModel.get(ProfileModel.name == self.profilename)
         profile.aircraft = self.aircraft
+        profile.av_setup_name = self.av_setup_name
 
         for waypoint in profile.waypoints:
             delete_list.append(waypoint)
@@ -347,6 +356,7 @@ class Profile:
     def load(profile_name):
         profile = ProfileModel.get(ProfileModel.name == profile_name)
         aircraft = profile.aircraft
+        av_setup_name = profile.av_setup_name
 
         wps = list()
         for waypoint in profile.waypoints:
@@ -365,10 +375,9 @@ class Profile:
                          wp_type=waypoint.wp_type, station=waypoint.station)
             wps.append(wp)
 
-        profile = Profile(profile_name, waypoints=wps, aircraft=aircraft)
+        profile = Profile(profile_name, waypoints=wps, aircraft=aircraft, av_setup_name=av_setup_name)
         profile.update_waypoint_numbers()
-        logger.debug(
-            f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
+        logger.debug(f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
         return profile
 
     @staticmethod
@@ -379,7 +388,3 @@ class Profile:
             waypoint.delete_instance()
 
         profile.delete_instance(recursive=True)
-
-    @staticmethod
-    def list_all():
-        return list(ProfileModel.select())

@@ -21,6 +21,7 @@
 '''
 
 import base64
+from math import floor
 import keyboard
 import os
 import pyperclip
@@ -36,9 +37,11 @@ from LatLon23 import LatLon, Longitude, Latitude
 from peewee import DoesNotExist
 from slpp import slpp as lua
 
+from src.avionics_setup_gui import AvionicsSetupGUI
 from src.cf_xml import CombatFliteXML
 from src.comp_dcs_bios import dcs_bios_is_current, dcs_bios_vers_install, dcs_bios_vers_latest, dcs_bios_install
 from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_latest, dcs_we_install
+from src.db_models import ProfileModel, AvionicsSetupModel
 from src.dcs_f10_capture import dcs_f10_capture_map_coords, dcs_f10_parse_map_coords_string
 from src.gui_util import gui_update_request, gui_backgrounded_operation, gui_verify_dcs_running
 from src.gui_util import gui_text_strike, gui_text_unstrike
@@ -112,19 +115,20 @@ class WaypointEditorGUI:
 
 
     def load_profile(self, name=None):
-        if name is None:
+        if name is None or name is "":
             self.profile = Profile("")
             self.profile.aircraft = self.editor.prefs.airframe_default
+            self.profile.av_setup_name = self.editor.prefs.av_setup_default
         else:
             self.profile = Profile.load(name)
+        if (self.profile.av_setup_name not in AvionicsSetupModel.list_all_names() and
+            self.profile.av_setup_name != "DCS Default"):
+            self.profile.av_setup_name = "DCS Default"
         self.is_profile_dirty = False
 
     def save_profile(self, name):
         self.profile.save(name)
         self.is_profile_dirty = False
-
-    def profile_names(self):
-        return [profile.name for profile in Profile.list_all()]
 
     def profile_name_for_ui(self):
         if self.profile.profilename == "":
@@ -212,6 +216,9 @@ class WaypointEditorGUI:
         
         is_dcs_f10_disabled = True if self.tesseract_version is None else False
 
+        av_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
+        av_tmplt_default = "DCS Default"
+
         # HACK: &@#$* PyGUI forces you to rebuild the entire menu to disable a single item. this also
         # HACK: seems to introduce visual glitches. so, we are going to fall into Tk to do all the
         # HACK: menu handling. build a menu bar with a single menu to get PySimpleGUI to do the right
@@ -221,18 +228,25 @@ class WaypointEditorGUI:
 
         frame_prof = PyGUI.Frame("Profile",
                                  [[PyGUI.Text("Profile:", size=(8,1), justification="right"),
-                                   PyGUI.Combo(values=[""] + self.profile_names(), readonly=True,
-                                               enable_events=True, key='ux_prof_select', size=(37,1))],
+                                   PyGUI.Combo(values=[""] + ProfileModel.list_all_names(),
+                                               readonly=True, enable_events=True, key='ux_prof_select',
+                                               size=(37,1))],
                                   [PyGUI.Text("Airframe:", size=(8,1), justification="right"),
                                    PyGUI.Combo(values=airframe_list(), default_value=arfm_ui_text,
                                                enable_events=True, key='ux_prof_afrm_select', size=(37,1))],
                                   [PyGUI.Text("Waypoints in Profile:")],
-                                  [PyGUI.Listbox(values=list(), size=(48,15),
+                                  [PyGUI.Listbox(values=list(), size=(48,12),
                                                  enable_events=True, key='ux_prof_wypt_list')],
+                                  [PyGUI.Text("Avionics setup:", key='ux_prof_av_setup_text'),
+                                   PyGUI.Combo(values=av_tmplts, default_value=av_tmplt_default,
+                                               readonly=True, enable_events=True,
+                                               key='ux_prof_av_setup_combo', size=(24,1)),
+                                   PyGUI.Button("Edit...", key='ux_prof_av_setup_edit', size=(6,1),
+                                                pad=(6,(8,6)))],
                                   [PyGUI.Text("Profile has not been modified.", key='ux_prof_state',
-                                              size=(24,1)),
-                                   PyGUI.Button("Load Profile into Jet", key='ux_prof_enter', size=(17,1),
-                                                pad=((10,6),6))]
+                                              size=(24,1), pad=(6,(16,6))),
+                                   PyGUI.Button("Load Profile into Jet", key='ux_prof_enter',
+                                                size=(17,1), pad=((10,6),(16,6)))]
                                  ])
 
         frame_coord = PyGUI.Frame("Coordinates",
@@ -329,13 +343,29 @@ class WaypointEditorGUI:
     # update state in response to a profile change.
     #
     def update_for_profile_change(self, set_to_first=False, update_enable=True):
-        profiles = [""] + self.profile_names()
+        profiles = [ "" ] + ProfileModel.list_all_names()
         self.window['ux_prof_select'].update(values=profiles,
                                              set_to_index=profiles.index(self.profile.profilename))
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
         ac_ui_text = airframe_type_to_ui_text(self.profile.aircraft)
         self.window['ux_prof_afrm_select'].update(value=ac_ui_text)
         self.editor.set_driver(self.profile.aircraft)
+        av_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
+        if self.profile.aircraft == "viper":
+            if self.profile.av_setup_name not in av_tmplts:
+                self.profile.av_setup_name = "DCS Default"
+            self.window['ux_prof_av_setup_text'].update(text_color="#ffffff")
+            self.window['ux_prof_av_setup_combo'].update(values=av_tmplts,
+                                                         value=self.profile.av_setup_name,
+                                                         disabled=False, readonly=True)
+            self.window['ux_prof_av_setup_edit'].update(disabled=False)
+        else:
+            self.profile.av_setup_name = "DCS Default"
+            self.window['ux_prof_av_setup_text'].update(text_color="#b8b8b8")
+            self.window['ux_prof_av_setup_combo'].update(values=av_tmplts,
+                                                         value=self.profile.av_setup_name,
+                                                         disabled=True)
+            self.window['ux_prof_av_setup_edit'].update(disabled=True)
         if self.is_profile_dirty:
             self.window['ux_prof_state'].update(value="Profile is modified.")
         else:
@@ -527,7 +557,7 @@ class WaypointEditorGUI:
         else:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
-        if self.profile.has_waypoints == True:
+        if self.profile.has_waypoints or self.profile.av_setup_name is not None:
             if self.dcs_bios_version is not None:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
@@ -723,7 +753,7 @@ class WaypointEditorGUI:
             name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
             if name is None or len(name) == 0:
                 name = None
-            elif len([obj for obj in Profile.list_all() if obj.name == name]) != 0:
+            elif len([obj for obj in ProfileModel.list_all() if obj.name == name]) != 0:
                 PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
                 name = None
         if name is not None:
@@ -855,7 +885,7 @@ class WaypointEditorGUI:
             mpack_name, _ = os.path.splitext(mpack_path)
             mpack_name = ((os.path.split(mpack_name))[1]).replace(" ", "-")
 
-            if mpack_name in self.profile_names() and \
+            if mpack_name in ProfileModel.list_all_names() and \
                PyGUI.PopupOKCancel(f"There is already a profile named '{mpack_name}'. Replace it?",
                                    title="Duplicate Profile Name") == "Cancel":
                 return
@@ -890,20 +920,6 @@ class WaypointEditorGUI:
         self.is_profile_dirty = True
         self.update_for_profile_change()
 
-    def do_profile_enter_in_jet(self):
-        if gui_verify_dcs_running("Unable to enter the profile into the jet. ") and \
-           self.dcs_bios_version is not None and self.profile.has_waypoints:
-            self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
-            self.window['ux_prof_enter'].update(disabled=True)
-            profile_name = self.profile_name_for_ui()
-            airframe = self.window['ux_prof_afrm_select'].get()
-            gui_backgrounded_operation(f"Entering Profile '{profile_name}' into {airframe}...",
-                                       bop_fn=self.editor.enter_all, bop_args=(self.profile,))
-            self.window['ux_prof_enter'].update(disabled=False)
-            self.update_gui_enable_state()
-        else:
-            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
-
     def do_profile_waypoint_list(self):
         if self.values['ux_prof_wypt_list']:
             wypt = self.find_selected_waypoint()
@@ -914,8 +930,34 @@ class WaypointEditorGUI:
             else:
                 seq_stn = None
             self.is_waypoint_dirty = False
-            self.update_for_coords_change(wypt.position, wypt.elevation, wypt.name, wypt_type=wypt.wp_type,
-                                          wypt_seq_sta=seq_stn)
+            self.update_for_coords_change(wypt.position, wypt.elevation, wypt.name,
+                                          wypt_type=wypt.wp_type, wypt_seq_sta=seq_stn)
+
+    def do_profile_av_setup_select(self):
+        self.profile.av_setup_name = self.values['ux_prof_av_setup_combo']
+        self.is_profile_dirty = True
+        self.update_for_profile_change()
+
+    def do_profile_av_setup_edit(self):
+        av_gui = AvionicsSetupGUI(airframe=self.profile.aircraft,
+                                  cur_tmplt=self.profile.av_setup_name)
+        av_gui.run()
+        self.update_for_profile_change()
+
+    def do_profile_enter_in_jet(self):
+        if gui_verify_dcs_running("Unable to enter the profile into the jet. ") and \
+           self.dcs_bios_version is not None and (self.profile.has_waypoints or
+                                                  self.profile.av_setup_name is not None):
+            self.logger.info(f"Entering profile '{self.profile_name_for_ui()}' into jet...")
+            self.window['ux_prof_enter'].update(disabled=True)
+            profile_name = self.profile_name_for_ui()
+            airframe = self.window['ux_prof_afrm_select'].get()
+            gui_backgrounded_operation(f"Entering Profile '{profile_name}' into {airframe}...",
+                                       bop_fn=self.editor.enter_all, bop_args=(self.profile,))
+            self.window['ux_prof_enter'].update(disabled=False)
+            self.update_gui_enable_state()
+        else:
+            winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
 
 
     # ================ ui waypoint panel handlers
@@ -1133,7 +1175,7 @@ class WaypointEditorGUI:
                                                   csign=self.editor.prefs.callsign_default,
                                                   aircraft=self.editor.prefs.airframe_default)
                 winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
-                if tmp_profile.has_waypoints:
+                if tmp_profile.has_waypoints or tmp_profile.av_setup_name is not None:
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)
                     airframe = airframe_type_to_ui_text(tmp_profile.aircraft)
@@ -1185,10 +1227,10 @@ class WaypointEditorGUI:
 
         handler_map = { 'ux_prof_select' : self.do_profile_select,
                         'ux_prof_afrm_select' : self.do_airframe_select,
-
-                        'ux_prof_enter' : self.do_profile_enter_in_jet,
-
                         'ux_prof_wypt_list' : self.do_profile_waypoint_list,
+                        'ux_prof_av_setup_combo' : self.do_profile_av_setup_select,
+                        'ux_prof_av_setup_edit' : self.do_profile_av_setup_edit,
+                        'ux_prof_enter' : self.do_profile_enter_in_jet,
 
                         'ux_wypt_name' : self.do_wypt_name,
                         'ux_wypt_type_select' : self.do_wypt_type_select,

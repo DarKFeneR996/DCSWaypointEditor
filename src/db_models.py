@@ -3,6 +3,7 @@
 *  db.py: DCS Waypoint Editor profile database models
 *
 *  Copyright (C) 2020 Santi871
+*  Copyright (C) 2021 twillis/ilominar
 *
 *  This program is free software: you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -20,28 +21,39 @@
 '''
 
 from peewee import Model, IntegerField, CharField, ForeignKeyField, FloatField, SqliteDatabase
-from peewee import IntegrityError
+
 
 db = SqliteDatabase(None, pragmas={'foreign_keys': 1})
 
 
-class ProfileModel(Model):
-    name = CharField(unique=True)
-    aircraft = CharField(unique=False)
-
+class BaseModel(Model):
     class Meta:
         database = db
 
 
-class SequenceModel(Model):
+class ProfileModel(BaseModel):
+    name = CharField(unique=True)
+    aircraft = CharField(unique=False)
+    #
+    # Field added in db v.2, v1.1.0-51stVFW and later
+    #
+    av_setup_name = CharField(null=True, unique=False)
+
+    @staticmethod
+    def list_all():
+        return sorted(list(ProfileModel.select()), key=lambda profile: profile.name)
+
+    @staticmethod
+    def list_all_names():
+        return [ profile.name for profile in ProfileModel.list_all() ]
+
+
+class SequenceModel(BaseModel):
     identifier = IntegerField()
     profile = ForeignKeyField(ProfileModel, backref='sequences')
 
-    class Meta:
-        database = db
 
-
-class WaypointModel(Model):
+class WaypointModel(BaseModel):
     name = CharField(null=True, default="")
     latitude = FloatField()
     longitude = FloatField()
@@ -51,5 +63,37 @@ class WaypointModel(Model):
     wp_type = CharField()
     station = IntegerField(default=0)
 
-    class Meta:
-        database = db
+
+# Model added in db v.2, v1.1.0-51stVFW and later
+#
+class AvionicsSetupModel(BaseModel):
+    name = CharField(null=False, unique=True)
+
+    # airframes supported: viper
+    # 
+    # CSV list of the format: "<channel>,<X|Y>,<L|W>" where <channel> is an integer on 1..63,
+    # <X|Y> selects x-ray or yankee channel, and <L|W> specifies a role of lead or wingman.
+    # With a wingman role, the channel entered into the jet is <channel> + 63.
+    #
+    # TODO: support other airframes?
+    #
+    tacan_yard = CharField(null=True, default=None)
+
+    # airframes supported: viper
+    #
+    # CSV list of 6 integers corresponding to MFD OSBs L 14, L 13, L 12, R 14, R 13, R 12
+    # (i.e., list[0] = L 14, list[1] = L 13, etc.). integers values are the OSB to push on
+    # the format select page to select desired format. None (empty list) indicates default.
+    #
+    f16_mfd_setup_nav = CharField(null=True, default=None)
+    f16_mfd_setup_air = CharField(null=True, default=None)
+    f16_mfd_setup_gnd = CharField(null=True, default=None)
+    f16_mfd_setup_dog = CharField(null=True, default=None)
+
+    @staticmethod
+    def list_all():
+        return sorted(list(AvionicsSetupModel.select()), key=lambda setup: setup.name)
+
+    @staticmethod
+    def list_all_names():
+        return [ setup.name for setup in AvionicsSetupModel.list_all() ]
