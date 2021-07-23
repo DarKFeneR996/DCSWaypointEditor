@@ -959,7 +959,7 @@ class WaypointEditorGUI:
 
     def do_profile_av_setup_edit(self):
         av_gui = AvionicsSetupGUI(airframe=self.profile.aircraft,
-                                  cur_tmplt=self.profile.av_setup_name)
+                                  cur_av_setup=self.profile.av_setup_name)
         av_gui.run()
         self.update_for_profile_change()
 

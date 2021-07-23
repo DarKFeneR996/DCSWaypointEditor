@@ -56,26 +56,23 @@ mfd_key_suffixes = [ '_l14', '_l13', '_l12', '_r14', '_r13', '_r12' ]
 
 class AvionicsSetupGUI:
 
-    def __init__(self, airframe=None, cur_tmplt=None):
+    def __init__(self, airframe=None, cur_av_setup=None):
         self.logger = get_logger(__name__)
         self.dbase_setup = None
         self.values = None
         self.window = self.create_gui(airframe)
-        self.cur_tmplt = cur_tmplt
+        self.cur_av_setup = cur_av_setup
 
-        if self.cur_tmplt is not None:
-            self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.cur_tmplt)
+        if self.cur_av_setup is not None:
+            self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.cur_av_setup)
         else:
-            self.cur_tmplt = "DCS Default"
+            self.cur_av_setup = "DCS Default"
 
         self.is_dirty = False
 
     def is_setup_default(self):
-        try:
-            if self.values['ux_tmplt_select'] == "DCS Default":
-                return True
-        except:
-            pass
+        if self.values.get('ux_tmplt_select') == "DCS Default":
+            return True
         return False
 
     def create_gui(self, airframe="viper"):
@@ -306,11 +303,11 @@ class AvionicsSetupGUI:
     def update_gui_template_list(self):
         tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
         if self.dbase_setup is None:
-            cur_tmplt = "DCS Default"
+            cur_av_setup = "DCS Default"
         else:
-            cur_tmplt = self.dbase_setup.name
-        self.window['ux_tmplt_select'].update(values=tmplts, set_to_index=tmplts.index(cur_tmplt))
-        self.values['ux_tmplt_select'] = cur_tmplt
+            cur_av_setup = self.dbase_setup.name
+        self.window['ux_tmplt_select'].update(values=tmplts, set_to_index=tmplts.index(cur_av_setup))
+        self.values['ux_tmplt_select'] = cur_av_setup
         self.update_gui_control_enable_state()
 
     # update the gui button state based on current setup
@@ -403,8 +400,7 @@ class AvionicsSetupGUI:
                 try:
                     self.dbase_setup.save()
                 except:
-                    # TODO error message?
-                    pass
+                    PyGUI.PopupError("Unable to save TACAN yardstick information to database?")
             self.is_dirty = False
     
     # synchronize F-16 MFD setup UI and database
@@ -432,8 +428,7 @@ class AvionicsSetupGUI:
                 try:
                     self.dbase_setup.save()
                 except:
-                    # TODO error message?
-                    pass
+                    PyGUI.PopupError("Unable to save MFD setup information to database?")
             self.is_dirty = False
 
 
@@ -470,14 +465,14 @@ class AvionicsSetupGUI:
                                             " Closing the window will discard these changes.",
                                             title="Unsaved Changes")
             if action == "Cancel":
-                self.window['ux_tmplt_select'].update(value=self.cur_tmplt)
+                self.window['ux_tmplt_select'].update(value=self.cur_av_setup)
                 return
 
         if self.is_setup_default():
             self.dbase_setup = None
         else:
             self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.values[event])
-        self.cur_tmplt = self.values['ux_tmplt_select']
+        self.cur_av_setup = self.values['ux_tmplt_select']
         self.copy_f16_mfd_dbase_to_ui()
         self.copy_tacan_dbase_to_ui()
 
@@ -498,7 +493,7 @@ class AvionicsSetupGUI:
             self.copy_tacan_ui_to_dbase(db_save=True)
 
     def do_template_delete(self, event):
-        action = PyGUI.PopupOKCancel(f"Are you sure you want to delete the template {self.cur_tmplt}?",
+        action = PyGUI.PopupOKCancel(f"Are you sure you want to delete the settings {self.cur_av_setup}?",
                                      title="Confirm Delete")
         if action == "OK":
             try:
@@ -507,8 +502,7 @@ class AvionicsSetupGUI:
                 self.is_dirty = False
                 self.update_gui_template_list()
             except Exception as e:
-                # TODO: error message...
-                pass
+                PyGUI.PopupError(f"Unable to delete the settings {self.cur_av_setup} from the database.")
 
     # run the gui for the preferences window.
     #
@@ -526,7 +520,7 @@ class AvionicsSetupGUI:
         self.update_gui_enable_tacan_row()
         self.update_gui_template_list()
 
-        self.window['ux_tmplt_select'].update(value=self.cur_tmplt)
+        self.window['ux_tmplt_select'].update(value=self.cur_av_setup)
 
         self.window.reappear()
 
@@ -595,7 +589,6 @@ class AvionicsSetupGUI:
                     (handler_map[event])(event)
                 except Exception as e:
                     self.logger.debug(f"ERROR: {e}")
-                    pass
                 tout_val = 0
         
         self.close()
