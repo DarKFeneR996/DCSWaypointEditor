@@ -221,10 +221,10 @@ class AvionicsSetupGUI:
         layout_mgmt = [
             [PyGUI.Text("Avionics setup name:"),
              PyGUI.Combo(values=["DCS Default"], key='ux_tmplt_select', readonly=True,
-                         enable_events=True, size=(30,1)),
+                         enable_events=True, size=(32,1)),
              PyGUI.Button("Save...", key='ux_tmplt_save', size=(10,1)),
              PyGUI.Button("Delete...", key='ux_tmplt_delete', size=(10,1)),
-             PyGUI.VerticalSeparator(pad=(22,12)),
+             PyGUI.VerticalSeparator(pad=(24,12)),
              PyGUI.Button("Done", key='ux_done', size=(10,1), pad=(6,12))]
         ]
 
