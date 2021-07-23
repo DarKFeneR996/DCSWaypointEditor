@@ -164,6 +164,7 @@ class WaypointEditorGUI:
                 return False
         return True
 
+
     # ================ waypoint support
 
 
