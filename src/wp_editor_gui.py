@@ -148,6 +148,8 @@ class WaypointEditorGUI:
                                  "DCSWE will not use a callsign for this import.", title="Note")
                 csign = ""
             profile = CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+            if self.editor.prefs.is_av_setup_for_unk:
+                profile.av_setup_name = self.editor.prefs.av_setup_default
             if not profile.has_waypoints and warn:
                 PyGUI.Popup(f"The profile loaded with no waypoints.\n" +
                              "Are you sure you have a valid callsign set up?", title="Note")
