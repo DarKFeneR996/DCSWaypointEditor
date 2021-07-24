@@ -238,7 +238,7 @@ class AvionicsSetupGUI:
                              [PyGUI.Frame("DGFT: Dogfight Master Mode", layout_dog)],
                              [PyGUI.Frame("TACAN Yardstick", layout_tacan)],
                              [layout_mgmt]],
-                            modal=True, disable_close=True, finalize=True)
+                            modal=True, finalize=True)
 
     # update the gui for the enable state of a MFD master mode
     #
@@ -569,32 +569,31 @@ class AvionicsSetupGUI:
 
         tout_val = 1000000
         while True:
-            event, self.values = self.window.Read(timeout=tout_val, timeout_key='timeout')
+            event, new_values = self.window.Read(timeout=tout_val, timeout_key='timeout')
             tout_val = 1000000
             if event != 'timeout':
                 self.logger.debug(f"AVS Event: {event}")
                 self.logger.debug(f"AVS Values: {self.values}")
+            if new_values is not None:
+                self.values = new_values
 
-            self.update_gui_control_enable_state()
-            for key_base in ['ux_nav', 'ux_air', 'ux_gnd', 'ux_dog']:
-                self.update_gui_enable_mfd_row(key_base)
-            self.update_gui_enable_tacan_row()
-
-            if event == 'ux_done':
-                if self.is_dirty:
-                    action = PyGUI.PopupOKCancel(f"You have unsaved changes to the current template." +
-                                                  " Closing the window will discard these changes.",
-                                                 title="Unsaved Changes")
-                    if action == "OK":
-                        break
-                else:
+            if event != 'ux_done' and event is not None:
+                self.update_gui_control_enable_state()
+                for key_base in ['ux_nav', 'ux_air', 'ux_gnd', 'ux_dog']:
+                    self.update_gui_enable_mfd_row(key_base)
+                self.update_gui_enable_tacan_row()
+            elif event is None or \
+                 not self.is_dirty or \
+                 PyGUI.PopupOKCancel(f"You have unsaved changes to the current template." +
+                                     f" Closing the window will discard these changes.",
+                                     title="Unsaved Changes") == "OK":
                     break
 
-            elif event != 'timeout':
+            if event != 'timeout':
                 try:
                     (handler_map[event])(event)
                 except Exception as e:
-                    self.logger.debug(f"ERROR: {e}")
+                    self.logger.debug(f"AVS ERROR: {e}")
                 tout_val = 0
         
         self.close()
