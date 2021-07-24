@@ -509,18 +509,21 @@ class AvionicsSetupGUI:
     def run(self):
         self.window.disappear()
 
-        self.copy_f16_mfd_dbase_to_ui()
-        self.copy_tacan_dbase_to_ui()
+        try:
+            self.copy_f16_mfd_dbase_to_ui()
+            self.copy_tacan_dbase_to_ui()
 
-        event, self.values = self.window.read(timeout=0)
+            event, self.values = self.window.read(timeout=0)
 
-        self.update_gui_control_enable_state()
-        for key_base in ['ux_nav', 'ux_gnd', 'ux_air', 'ux_dog']:
-            self.update_gui_enable_mfd_row(key_base)
-        self.update_gui_enable_tacan_row()
-        self.update_gui_template_list()
+            self.update_gui_control_enable_state()
+            for key_base in ['ux_nav', 'ux_gnd', 'ux_air', 'ux_dog']:
+                self.update_gui_enable_mfd_row(key_base)
+            self.update_gui_enable_tacan_row()
+            self.update_gui_template_list()
 
-        self.window['ux_tmplt_select'].update(value=self.cur_av_setup)
+            self.window['ux_tmplt_select'].update(value=self.cur_av_setup)
+        except Exception as e:
+            self.logger.debug(f"AVS setup fails {e}")
 
         self.window.reappear()
 
