@@ -162,3 +162,30 @@ def gui_verify_dcs_running(message=None, is_notify=True):
     if not is_running and is_notify:
         PyGUI.Popup(f"{message}DCS is not currently running.", title="Error")
     return is_running
+
+# select one option from a list of options with OK/cancel.
+#
+def gui_select_from_list(message="Select an option", title="Select", values=[]):
+    if len(values) == 0:
+        return None
+
+    layout = [[PyGUI.Text(f"{message}:", size=(40,2))],
+              [PyGUI.Combo(values=values, default_value=values[0], key='ux_option_combo',
+                           readonly=True, size=(42,1))],
+              [PyGUI.Button("OK", key='ux_ok', size=(10,1)),
+               PyGUI.Button("Cancel", key='ux_cancel', size=(8,1))]]
+    window = PyGUI.Window(title, layout, modal=True, finalize=True, disable_close=True)
+
+    selection = None
+    while True:
+        event, values = window.Read()
+        if event == 'ux_ok':
+            selection = values['ux_option_combo']
+            break
+        elif event == 'ux_cancel':
+            break
+    
+    window.close()
+
+    return selection
+

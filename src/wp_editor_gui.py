@@ -44,7 +44,7 @@ from src.comp_dcs_we import dcs_we_is_current, dcs_we_vers_install, dcs_we_vers_
 from src.db_models import ProfileModel, AvionicsSetupModel
 from src.dcs_f10_capture import dcs_f10_capture_map_coords, dcs_f10_parse_map_coords_string
 from src.gui_util import gui_update_request, gui_backgrounded_operation, gui_verify_dcs_running
-from src.gui_util import gui_text_strike, gui_text_unstrike
+from src.gui_util import gui_select_from_list, gui_text_strike, gui_text_unstrike
 from src.gui_util import airframe_list, airframe_type_to_ui_text, airframe_ui_text_to_type
 from src.logger import get_logger
 from src.mission_package import dcswe_install_mpack
@@ -147,12 +147,25 @@ class WaypointEditorGUI:
                     PyGUI.Popup(f"The callsign '{csign}' is invalid.\n" +
                                  "DCSWE will not use a callsign for this import.", title="Note")
                 csign = ""
-            profile = CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+            while True:
+                profile = CombatFliteXML.profile_from_string(str, csign, name, aircraft)
+                if not profile.has_waypoints and warn:    
+                    flights = CombatFliteXML.flight_names_from_string(str)
+                    message = f"Flight unknown. Please select one of the flights defined in " + \
+                              f"{os.path.basename(path)} instead"
+                    csign = gui_select_from_list(message=message, title=f"{csign} Not Found",
+                                                 values=flights)
+                    if csign is None:
+                        return None
+                    warn = False
+                elif not profile.has_waypoints:
+                    PyGUI.Popup(f"The profile loaded with no waypoints.\n" +
+                                 "Are you sure you have a valid callsign set up?", title="Note")
+                    return None
+                else:
+                    break
             if self.editor.prefs.is_av_setup_for_unk_bool:
                 profile.av_setup_name = self.editor.prefs.av_setup_default
-            if not profile.has_waypoints and warn:
-                PyGUI.Popup(f"The profile loaded with no waypoints.\n" +
-                             "Are you sure you have a valid callsign set up?", title="Note")
             return profile
         else:
             return Profile.from_string(str)
@@ -866,9 +879,12 @@ class WaypointEditorGUI:
             if filename is not None:
                 try:
                     self.validate_text_callsign('ux_callsign')
-                    self.profile = self.import_profile(filename, warn=True,
-                                                    csign=self.editor.prefs.callsign_default,
-                                                    aircraft=self.editor.prefs.airframe_default)
+                    tmp_profile = self.import_profile(filename, warn=True,
+                                                      csign=self.editor.prefs.callsign_default,
+                                                      aircraft=self.editor.prefs.airframe_default)
+                    if tmp_profile is None:
+                        raise Exception("Unable to import profile")
+                    self.profile = tmp_profile
                     #
                     # note that text JSON may carry profile name, we will force the name to the name
                     # of the empty slot, "" here.
@@ -1197,7 +1213,8 @@ class WaypointEditorGUI:
                 tmp_profile = self.import_profile(self.editor.prefs.path_mission,
                                                   csign=self.editor.prefs.callsign_default,
                                                   aircraft=self.editor.prefs.airframe_default)
-                if tmp_profile.has_waypoints or tmp_profile.av_setup_name is not None:
+                if tmp_profile is not None and (tmp_profile.has_waypoints or
+                                                tmp_profile.av_setup_name is not None):
                     winsound.PlaySound(UX_SND_INJECT_TO_JET, flags=winsound.SND_FILENAME)
                     tmp_profile.aircraft = self.editor.prefs.airframe_default
                     self.editor.set_driver(tmp_profile.aircraft)

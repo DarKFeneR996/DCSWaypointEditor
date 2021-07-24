@@ -144,6 +144,30 @@ class CombatFliteXML:
 
         return None
 
+    # generate a list of all flights in a CombatFlite XML string by inspecting the waypoint
+    # elements
+    #
+    @staticmethod
+    def flight_names_from_string(str):
+        try:
+            index = str.index("<?xml version")
+            str = str[index:]
+        except:
+            raise ValueError("Data does not contain a vaild XML description")
+
+        try:
+            root = xml.fromstring(str)
+            flights = []
+            for elem in root.iter("Waypoint"):
+                match = re.match(r"^(?P<flight>[^-\s]+)", CombatFliteXML.elem_get_name(elem))
+                if match and match.group('flight') not in flights:
+                    flights.append(match.group('flight'))
+        except:
+            raise ValueError("Failed to parse CombatFlite XML file")
+
+        flights.sort()
+        return flights
+
     # create and populate a DCSWE profile from an CombatFlite XML string.
     #
     # callsign, if given, should be in the format "<name><number>-<ship>", e.g., "Enfield1-2"
