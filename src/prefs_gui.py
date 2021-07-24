@@ -102,7 +102,10 @@ class PreferencesGUI:
         is_tesseract_debug = self.prefs.is_tesseract_debug_bool
         is_av_setup_for_unk = self.prefs.is_av_setup_for_unk_bool
         dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
-        as_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
+        try:
+            as_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
+        except:
+            as_tmplts = [ "DCS Default" ]
 
         if self.prefs.av_setup_default not in as_tmplts:
             self.prefs.av_setup_default = "DCS Default"
