@@ -274,13 +274,13 @@ class Preferences:
     #
     def is_hotkey_valid(self, hotkey):
         if hotkey is not None and hotkey != "":
-            tokens = hotkey.replace(" ", "").split("+")
+            tokens = hotkey.replace(" ", "+").split("+")
             if len(tokens) >= 1:
                 key = tokens.pop()
                 if key is None or len(key) != 1:
                     return False
                 for token in tokens:
-                    if token.lower() not in ("ctrl", "alt", "shift"):
+                    if token.lower() not in ("ctrl", "alt", "shift", "left", "right"):
                         return False
             else:
                 return False
