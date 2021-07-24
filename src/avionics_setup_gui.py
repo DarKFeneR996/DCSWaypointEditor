@@ -64,7 +64,10 @@ class AvionicsSetupGUI:
         self.cur_av_setup = cur_av_setup
 
         if self.cur_av_setup is not None:
-            self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.cur_av_setup)
+            try:
+                self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.cur_av_setup)
+            except:
+                self.cur_av_setup = "DCS Default"
         else:
             self.cur_av_setup = "DCS Default"
 

@@ -224,17 +224,20 @@ class Profile:
         if self.av_setup_name is not None:
             try:
                 avs_dict = dict()
-                setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.av_setup_name)
-                if setup.tacan_yard is not None:
-                    avs_dict['tacan_yard'] = setup.tacan_yard
-                if setup.f16_mfd_setup_nav is not None:
-                    avs_dict['f16_mfd_setup_nav'] = setup.f16_mfd_setup_nav
-                if setup.f16_mfd_setup_air is not None:
-                    avs_dict['f16_mfd_setup_air'] = setup.f16_mfd_setup_air
-                if setup.f16_mfd_setup_gnd is not None:
-                    avs_dict['f16_mfd_setup_gnd'] = setup.f16_mfd_setup_gnd
-                if setup.f16_mfd_setup_dog is not None:
-                    avs_dict['f16_mfd_setup_dog'] = setup.f16_mfd_setup_dog
+                try:
+                    setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.av_setup_name)
+                    if setup.tacan_yard is not None:
+                        avs_dict['tacan_yard'] = setup.tacan_yard
+                    if setup.f16_mfd_setup_nav is not None:
+                        avs_dict['f16_mfd_setup_nav'] = setup.f16_mfd_setup_nav
+                    if setup.f16_mfd_setup_air is not None:
+                        avs_dict['f16_mfd_setup_air'] = setup.f16_mfd_setup_air
+                    if setup.f16_mfd_setup_gnd is not None:
+                        avs_dict['f16_mfd_setup_gnd'] = setup.f16_mfd_setup_gnd
+                    if setup.f16_mfd_setup_dog is not None:
+                        avs_dict['f16_mfd_setup_dog'] = setup.f16_mfd_setup_dog
+                except:
+                    pass
                 return avs_dict
             except:
                 pass
