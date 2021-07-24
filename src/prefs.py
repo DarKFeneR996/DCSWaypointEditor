@@ -24,7 +24,11 @@ import re
 
 from configparser import ConfigParser
 from pathlib import Path
-from src.gui_util import airframe_list, airframe_type_to_ui_text
+from src.gui_util import airframe_type_to_ui_text
+from src.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 
 # preferences object to abstract preferences storage. preference values are always strings.
@@ -319,27 +323,31 @@ class Preferences:
     # synchronize the preferences the backing store file
     #
     def synchronize_prefs(self):
-        self.persist_prefs(do_write=False)
-        self.prefs.read(self.bs_file)
+        try:
+            self.persist_prefs(do_write=False)
+            self.prefs.read(self.bs_file)
 
-        self.path_dcs = self.prefs["PREFERENCES"]["path_dcs"]
-        self.path_tesseract = self.prefs["PREFERENCES"]["path_tesseract"]
-        self.path_mission = self.prefs["PREFERENCES"]["path_mission"]
-        self.dcs_btn_rel_delay_short = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_short"]
-        self.dcs_btn_rel_delay_medium = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_medium"]
-        self.hotkey_capture = self.prefs["PREFERENCES"]["hotkey_capture"]
-        self.hotkey_capture_mode = self.prefs["PREFERENCES"]["hotkey_capture_mode"]
-        self.hotkey_enter_profile = self.prefs["PREFERENCES"]["hotkey_enter_profile"]
-        self.hotkey_enter_mission = self.prefs["PREFERENCES"]["hotkey_enter_mission"]
-        self.hotkey_dgft_dogfight = self.prefs["PREFERENCES"]["hotkey_dgft_dogfight"]
-        self.hotkey_dgft_center = self.prefs["PREFERENCES"]["hotkey_dgft_center"]
-        self.airframe_default = self.prefs["PREFERENCES"]["airframe_default"]
-        self.av_setup_default = self.prefs["PREFERENCES"]["av_setup_default"]
-        self.callsign_default = self.prefs["PREFERENCES"]["callsign_default"]
-        self.is_auto_upd_check = self.prefs["PREFERENCES"]["is_auto_upd_check"]
-        self.is_tesseract_debug = self.prefs["PREFERENCES"]["is_tesseract_debug"]
-        self.is_av_setup_for_unk = self.prefs["PREFERENCES"]["is_av_setup_for_unk"]
-        self.profile_db_name = self.prefs["PREFERENCES"]["profile_db_name"]
+            self.path_dcs = self.prefs["PREFERENCES"]["path_dcs"]
+            self.path_tesseract = self.prefs["PREFERENCES"]["path_tesseract"]
+            self.path_mission = self.prefs["PREFERENCES"]["path_mission"]
+            self.dcs_btn_rel_delay_short = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_short"]
+            self.dcs_btn_rel_delay_medium = self.prefs["PREFERENCES"]["dcs_btn_rel_delay_medium"]
+            self.hotkey_capture = self.prefs["PREFERENCES"]["hotkey_capture"]
+            self.hotkey_capture_mode = self.prefs["PREFERENCES"]["hotkey_capture_mode"]
+            self.hotkey_enter_profile = self.prefs["PREFERENCES"]["hotkey_enter_profile"]
+            self.hotkey_enter_mission = self.prefs["PREFERENCES"]["hotkey_enter_mission"]
+            self.hotkey_dgft_dogfight = self.prefs["PREFERENCES"]["hotkey_dgft_dogfight"]
+            self.hotkey_dgft_center = self.prefs["PREFERENCES"]["hotkey_dgft_center"]
+            self.airframe_default = self.prefs["PREFERENCES"]["airframe_default"]
+            self.av_setup_default = self.prefs["PREFERENCES"]["av_setup_default"]
+            self.callsign_default = self.prefs["PREFERENCES"]["callsign_default"]
+            self.is_auto_upd_check = self.prefs["PREFERENCES"]["is_auto_upd_check"]
+            self.is_tesseract_debug = self.prefs["PREFERENCES"]["is_tesseract_debug"]
+            self.is_av_setup_for_unk = self.prefs["PREFERENCES"]["is_av_setup_for_unk"]
+            self.profile_db_name = self.prefs["PREFERENCES"]["profile_db_name"]
+        except:
+            logger.error("Synchronize failed, resetting preferences to defaults")
+            self.reset_prefs()
 
     # persist the preferences to the backing store file
     #
@@ -366,3 +374,4 @@ class Preferences:
         if do_write:
             with open(self.bs_file, "w+") as f:
                 self.prefs.write(f)
+            logger.info("Preferences persisted and written")
