@@ -564,10 +564,10 @@ class AvionicsSetupGUI:
         tout_val = 1000000
         while True:
             event, self.values = self.window.Read(timeout=tout_val, timeout_key='timeout')
+            tout_val = 1000000
             if event != 'timeout':
-                self.logger.debug(f"MFD Event: {event}")
-                self.logger.debug(f"MFD Values: {self.values}")
-                tout_val = 1000000
+                self.logger.debug(f"AVS Event: {event}")
+                self.logger.debug(f"AVS Values: {self.values}")
 
             self.update_gui_control_enable_state()
             for key_base in ['ux_nav', 'ux_air', 'ux_gnd', 'ux_dog']:
