@@ -40,7 +40,7 @@ def main(logger):
     vers_sw_latest = dcs_we_vers_latest()
 
     sw_install_fn = lambda: dcs_we_install()
-    if (prefs.is_auto_upd_check == "true" and
+    if (prefs.is_auto_upd_check_bool and
         gui_update_request("DCS Waypoint Editor", vers_sw_cur, vers_sw_latest, sw_install_fn)):
         return
 
@@ -61,7 +61,7 @@ def main(logger):
         vers_db_cur = dcs_bios_vers_install(prefs.path_dcs)
         vers_db_latest = dcs_bios_vers_latest()
         db_install_fn = lambda: dcs_bios_install(prefs.path_dcs)
-        if (prefs.is_auto_upd_check == "true" and
+        if (prefs.is_auto_upd_check_bool and
             gui_update_request("DCS-BIOS", vers_db_cur, vers_db_latest, db_install_fn)):
             vers_db_cur = dcs_bios_vers_install(prefs.path_dcs)
 

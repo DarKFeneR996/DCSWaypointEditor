@@ -148,7 +148,7 @@ class WaypointEditorGUI:
                                  "DCSWE will not use a callsign for this import.", title="Note")
                 csign = ""
             profile = CombatFliteXML.profile_from_string(str, csign, name, aircraft)
-            if self.editor.prefs.is_av_setup_for_unk:
+            if self.editor.prefs.is_av_setup_for_unk_bool:
                 profile.av_setup_name = self.editor.prefs.av_setup_default
             if not profile.has_waypoints and warn:
                 PyGUI.Popup(f"The profile loaded with no waypoints.\n" +
@@ -1146,7 +1146,7 @@ class WaypointEditorGUI:
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         try:
-            is_debug = True if self.editor.prefs.is_tesseract_debug_bool else False
+            is_debug = self.editor.prefs.is_tesseract_debug_bool
             captured_coords = dcs_f10_capture_map_coords(scaled_dcs_gui=self.scaled_dcs_gui,
                                                          is_debug=is_debug)
             position, elevation = dcs_f10_parse_map_coords_string(captured_coords)
