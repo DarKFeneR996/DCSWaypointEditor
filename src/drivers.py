@@ -784,6 +784,9 @@ class ViperDriver(Driver):
         elif num == "RTN":
             self.s.sendto(f"ICP_DATA_RTN_SEQ_SW 0\n".replace("OSB", "OS").encode(
                 "utf-8"), (self.host, self.port))
+        elif num == "SEQ":
+            self.s.sendto(f"ICP_DATA_RTN_SEQ_SW 2\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
 
         sleep(delay_release)
         self.s.sendto(f"ICP_DATA_UP_DN_SW 1\n".replace("OSB", "OS").encode(
@@ -861,11 +864,11 @@ class ViperDriver(Driver):
         if spec is not None:
             self.icp_data("RTN")
 
-            self.logger.info(f"Entering TACAN: {spec}")
+            self.logger.info(f"Entering TACAN: {spec} A/A mode; EHSI TACAN")
 
             fields = [ str(field) for field in spec.split(",") ]
 
-            self.icp_btn("1", delay_after=1)            # T-ILS
+            self.icp_btn("1", delay_after=0.75)         # T-ILS
             if fields[1] == "Y":
                 self.icp_btn("0")                       # Select Y
                 self.icp_btn("ENTR")
@@ -874,13 +877,13 @@ class ViperDriver(Driver):
             if fields[2] == "W":
                 chan = chan + 63
             self.enter_number(str(chan))                # CHAN field
-            self.icp_btn("ENTR")
-            self.icp_btn("SEQ")                         # REC -> T/R
-            self.icp_btn("SEQ")                         # T/R -> A/A TR
+            self.icp_btn("ENTR", delay_after=0.5)
+            self.icp_data("SEQ", delay_after=0.5)       # REC -> T/R
+            self.icp_data("SEQ", delay_after=0.5)       # T/R -> A/A TR
             
-            self.icp_data("RTN")
+            self.icp_data("RTN", delay_after=0.5)
 
-            self.ehsi_btn("MODE")
+            self.ehsi_btn("MODE")                       # EHSI -> TACAN
             self.ehsi_btn("MODE")
 
             self.bkgnd_advance(command_q, progress_q)
