@@ -108,6 +108,10 @@ def dcs_bios_is_current(dcs_path):
 def dcs_bios_install(dcs_path):
     vers_install = None
 
+    if not os.path.exists(dcs_path):
+        logger.debug(f"DCS path {dcs_path} is invalid")
+        return None
+
     with tempfile.TemporaryDirectory() as tmp_dir:
         url = DCS_BIOS_URL.format(DCS_BIOS_VERSION, DCS_BIOS_VERSION)
         try:
@@ -128,7 +132,7 @@ def dcs_bios_install(dcs_path):
 
             if (not is_export_setup(dcs_path) and
                 not backup_path(dcs_path + "\\Scripts\\Export.lua", is_move=False)) or \
-               not backup_path(dcs_path + "\\Scripts\\DCS-BIOS", is_move=True):
+                not backup_path(dcs_path + "\\Scripts\\DCS-BIOS", is_move=True):
                 logger.debug(f"backup of DCS-BIOS and/or Export.lua fail")
                 return None
 
