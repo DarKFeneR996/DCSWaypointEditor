@@ -30,7 +30,7 @@ from src.logger import get_logger
 
 
 #DCS_WE_VERSION = "v1.0.1-51stVFW"
-DCS_WE_VERSION = "v1.1.0-raven_BETA.2"
+DCS_WE_VERSION = "v1.1.0-raven_BETA.3"
 
 logger = get_logger(__name__)
 
