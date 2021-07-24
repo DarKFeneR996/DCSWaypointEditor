@@ -98,7 +98,7 @@ class WaypointEditorGUI:
                 self.scaled_dcs_gui = dcs_settings["graphics"]["scaleGui"]
             self.logger.info(f"DCS GUI scale is: {self.scaled_dcs_gui}")
         except (FileNotFoundError, ValueError, TypeError):
-            self.logger.error("Failed to decode DCS settings", exc_info=True)
+            self.logger.info("Failed to decode DCS settings, assuming scale of 1")
 
         self.logger.info(f"Tesseract path is: {self.editor.prefs.path_tesseract}")
         pytesseract.pytesseract.tesseract_cmd = self.editor.prefs.path_tesseract
