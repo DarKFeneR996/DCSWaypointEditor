@@ -1175,7 +1175,8 @@ class WaypointEditorGUI:
                 self.update_for_coords_change(position, elevation, update_mgrs=True, update_enable=False)
                 self.do_waypoint_linked_update_elev_ft()
             winsound.PlaySound(UX_SND_F10CAP_GOT_WAYPT, flags=winsound.SND_FILENAME)
-        except (IndexError, ValueError, TypeError):
+        except (IndexError, ValueError, TypeError) as e:
+            self.logger.debug(f"DCS F10 capture fails: {e}")
             winsound.PlaySound(UX_SND_ERROR, flags=winsound.SND_FILENAME)
         self.update_gui_coords_input_disabled(False)
         self.update_for_waypoint_list_change()
