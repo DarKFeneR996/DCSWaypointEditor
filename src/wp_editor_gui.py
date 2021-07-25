@@ -343,7 +343,7 @@ class WaypointEditorGUI:
                                                 pad=((6,16),(12,6))),
                                    PyGUI.Button("Update", key='ux_wypt_update',
                                                 size=(14, 1), pad=((16,16),(12,6))),
-                                   PyGUI.Button("Remove", key='ux_wypt_delete',
+                                   PyGUI.Button("Delete", key='ux_wypt_delete',
                                                 size=(14, 1), pad=((16,6),(12,6)))]
                                  ])
 
@@ -506,6 +506,9 @@ class WaypointEditorGUI:
             self.selected_wp_type = wypt_type
             self.window['ux_wypt_type_select'].update(value=wypt_type)
             self.update_for_waypoint_type_change()
+        
+        if wypt_seq_sta is not None:
+            self.window['ux_wypt_seq_stn_select'].update(value=wypt_seq_sta)
 
         if update_enable:
             self.update_gui_enable_state()
@@ -970,8 +973,8 @@ class WaypointEditorGUI:
             wypt = self.find_selected_waypoint()
             if wypt.wp_type == "MSN":
                 seq_stn = wypt.station
-            elif wypt.wp_type == "WPT":
-                seq_stn = wypt.Sequence
+            elif wypt.wp_type == "WP" and wypt.sequence != 0:
+                seq_stn = wypt.sequence
             else:
                 seq_stn = None
             self.is_waypoint_dirty = False
@@ -1058,13 +1061,37 @@ class WaypointEditorGUI:
             waypoint = self.find_selected_waypoint()
             position, elevation, name = self.validate_coords()
             if position is not None:
+                waypoint.name = name
                 waypoint.position = position
                 waypoint.elevation = elevation
-                waypoint.name = name
+                if waypoint.wp_type == self.values['ux_wypt_type_select']:
+                    #
+                    # waypoint type is not changing, but sequence/station may be. in this case
+                    # we can update the waypoint in place.
+                    #
+                    seq_stn = self.values['ux_wypt_seq_stn_select']
+                    if waypoint.wp_type == "MSN" and waypoint.station != seq_stn:
+                        self.logger.debug("**** update MSN STN ****")
+                        waypoint.station = seq_stn
+                    elif waypoint.wp_type == "WP" and waypoint.sequence != seq_stn:
+                        self.logger.debug("**** update WP SEQ ****")
+                        if seq_stn == "None":
+                            waypoint.sequence = 0
+                        else:
+                            seq_stn = int(seq_stn)
+                            if len(self.profile.get_sequence(seq_stn)) >= 15:
+                                # TODO: abort, abort, abort...
+                                pass
+                            waypoint.sequence = seq_stn
+                            self.profile.update_sequences()
+                    self.profile.update_waypoint_numbers()
+                else:
+                    PyGUI.Popup("Changing a waypoint type is not currently supported." +
+                                " Waypoint type will not be updated.")
                 self.is_waypoint_dirty = False
                 self.is_profile_dirty = True
             else:
-                PyGUI.Popup("Cannot update waypoint without coordinates.")
+                PyGUI.Popup("Cannot update waypoint without valid coordinates.")
         self.window['ux_poi_wypt_select'].update(set_to_index=0)
         self.update_for_waypoint_list_change()
 
