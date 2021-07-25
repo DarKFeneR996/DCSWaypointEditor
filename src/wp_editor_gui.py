@@ -195,13 +195,13 @@ class WaypointEditorGUI:
 
         try:
             if self.selected_wp_type == "MSN":
-                station = int(self.values.get('ux_seq_stn_select', 0))
+                station = int(self.values.get('ux_wypt_seq_stn_select', 0))
                 number = len(self.profile.stations_dict.get(station, list()))+1
                 wp = MSN(position=position, elevation=int(elevation) or 0, name=name,
                          station=station, number=number)
 
             else:
-                sequence = self.values['ux_seq_stn_select']
+                sequence = self.values['ux_wypt_seq_stn_select']
                 if sequence == "None":
                     sequence = 0
                 else:
@@ -292,10 +292,12 @@ class WaypointEditorGUI:
                                     PyGUI.InputText(size=(8, 1), key='ux_lon_sec', enable_events=True),
                                     PyGUI.Text("(sec)", pad=((0,12),0))],
  
-                                   [PyGUI.Text("MGRS:", size=(8,1), justification="right", pad=(5,(12,12))),
+                                   [PyGUI.Text("MGRS:", size=(8,1), justification="right",
+                                               pad=(5,(12,12))),
                                     PyGUI.InputText(size=(25, 1), key='ux_mgrs', enable_events=True)],
  
-                                   [PyGUI.Text("Elevation:", size=(8,1), pad=(4,(2,8)), justification="right"),
+                                   [PyGUI.Text("Elevation:", justification="right",
+                                               size=(8,1), pad=(4,(2,8))),
                                     PyGUI.InputText(size=(8, 1), pad=(6,(2,8)), key='ux_elev_ft',
                                                     enable_events=True),
                                     PyGUI.Text("(ft)", pad=((6,29),(2,8))),
@@ -305,9 +307,10 @@ class WaypointEditorGUI:
                                   ])
 
         frame_capt = PyGUI.Frame("DCS Coordinate Capture",
-                                 [[PyGUI.Checkbox("Enable capture from DCS F10 map into", pad=((6,3),6),
-                                                  default=False, enable_events=True, key='ux_dcs_f10_enable',
-                                                  disabled=is_dcs_f10_disabled),
+                                 [[PyGUI.Checkbox("Enable capture from DCS F10 map into",
+                                                  default=False, enable_events=True,
+                                                  key='ux_dcs_f10_enable',
+                                                  disabled=is_dcs_f10_disabled, pad=((6,3),6)),
                                    PyGUI.Combo(values=["Coordiante Panel", "New Waypoint"],
                                                default_value="Coordiante Panel", 
                                                enable_events=True, readonly=True,
@@ -319,22 +322,29 @@ class WaypointEditorGUI:
                                  [[PyGUI.Text("Set up from predefined location:", pad=(6,(0,16))),
                                    PyGUI.Combo(values=pois, readonly=False, enable_events=True,
                                                key='ux_poi_wypt_select', size=(20,1), pad=(6,(0,16))),
-                                   PyGUI.Button(button_text="Filter", size=(6,1), key='ux_poi_filter', pad=(6,(0,16)))],
+                                   PyGUI.Button(button_text="Filter", size=(6,1), key='ux_poi_filter',
+                                                pad=(6,(0,16)))],
                                   [PyGUI.Text("Name:", size=(8,1), justification="right"),
-                                   PyGUI.InputText(size=(49, 1), key='ux_wypt_name', enable_events=True)],
+                                   PyGUI.InputText(key='ux_wypt_name', enable_events=True,
+                                                   size=(49, 1))],
                                   [PyGUI.Text("Type:", size=(8,1), justification="right"),
                                     PyGUI.Combo(values=["WP", "MSN", "FP", "ST", "IP", "DP", "HA", "HB"],
                                                default_value="WP", enable_events=True, readonly=True,
                                                key='ux_wypt_type_select', size=(8,1))],
-                                  [PyGUI.Text("Sequence:", key="ux_seq_sta_text", size=(8,1), justification="right"),
+                                  [PyGUI.Text("Sequence:", key="ux_wypt_seq_sta_text",
+                                              justification="right", size=(8,1)),
                                    PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
-                                               enable_events=True, readonly=True, key='ux_seq_stn_select',
+                                               enable_events=True, readonly=True,
+                                               key='ux_wypt_seq_stn_select',
                                                size=(8,1))],
                                   [frame_coord],
                                   [frame_capt],
-                                  [PyGUI.Button("Add", key='ux_wypt_add', size=(14, 1), pad=((6,16),(12,6))),
-                                   PyGUI.Button("Update", key='ux_wypt_update', size=(14, 1), pad=((16,16),(12,6))),
-                                   PyGUI.Button("Remove", key='ux_wypt_delete', size=(14, 1), pad=((16,6),(12,6)))]
+                                  [PyGUI.Button("Add", key='ux_wypt_add', size=(14, 1),
+                                                pad=((6,16),(12,6))),
+                                   PyGUI.Button("Update", key='ux_wypt_update',
+                                                size=(14, 1), pad=((16,16),(12,6))),
+                                   PyGUI.Button("Remove", key='ux_wypt_delete',
+                                                size=(14, 1), pad=((16,6),(12,6)))]
                                  ])
 
         col_0 = PyGUI.Column([[menu_bar],
@@ -429,16 +439,16 @@ class WaypointEditorGUI:
     #
     def update_for_waypoint_type_change(self):
         if self.selected_wp_type == "WP":
-            self.window['ux_seq_sta_text'].update(value="Sequence:")
-            self.window['ux_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
+            self.window['ux_wypt_seq_sta_text'].update(value="Sequence:")
+            self.window['ux_wypt_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
                                                             disabled=False, readonly=True)
         elif self.selected_wp_type == "MSN":
-            self.window['ux_seq_sta_text'].update(value="Station:")
-            self.window['ux_seq_stn_select'].update(values=(8, 7, 3, 2), value=8,
+            self.window['ux_wypt_seq_sta_text'].update(value="Station:")
+            self.window['ux_wypt_seq_stn_select'].update(values=(8, 7, 3, 2), value=8,
                                                     disabled=False, readonly=True)
         else:
-            self.window['ux_seq_sta_text'].update(value="Sequence:")
-            self.window['ux_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
+            self.window['ux_wypt_seq_sta_text'].update(value="Sequence:")
+            self.window['ux_wypt_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
                                                     disabled=True, readonly=False)
 
     # update state in response to changes in the coordinates.
@@ -498,9 +508,9 @@ class WaypointEditorGUI:
             self.update_for_waypoint_type_change()
     
         if wypt_seq_sta is not None:
-            self.window['ux_seq_stn_select'].update(value=wypt_seq_sta)
+            self.window['ux_wypt_seq_stn_select'].update(value=wypt_seq_sta)
         else:
-            self.window['ux_seq_stn_select'].update(value="None")
+            self.window['ux_wypt_seq_stn_select'].update(value="None")
 
         if update_enable:
             self.update_gui_enable_state()
@@ -1013,7 +1023,7 @@ class WaypointEditorGUI:
         self.update_for_waypoint_type_change()
         self.update_gui_control_enable_state()
 
-    def do_seq_stn_select(self):
+    def do_wypt_seq_stn_select(self):
         self.is_waypoint_dirty = True
         self.update_gui_control_enable_state()
 
@@ -1279,7 +1289,7 @@ class WaypointEditorGUI:
 
                         'ux_wypt_name' : self.do_wypt_name,
                         'ux_wypt_type_select' : self.do_wypt_type_select,
-                        'ux_seq_stn_select' : self.do_seq_stn_select,
+                        'ux_wypt_seq_stn_select' : self.do_wypt_seq_stn_select,
                         'ux_poi_wypt_select' : self.do_poi_wypt_select,
                         'ux_dcs_f10_tgt_select' : self.do_dcs_f10_tgt_select,
                         'ux_poi_filter' : self.do_poi_wypt_filter,
