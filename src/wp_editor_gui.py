@@ -441,15 +441,15 @@ class WaypointEditorGUI:
         if self.selected_wp_type == "WP":
             self.window['ux_wypt_seq_sta_text'].update(value="Sequence:")
             self.window['ux_wypt_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
-                                                            disabled=False, readonly=True)
+                                                         disabled=False, readonly=True)
         elif self.selected_wp_type == "MSN":
             self.window['ux_wypt_seq_sta_text'].update(value="Station:")
             self.window['ux_wypt_seq_stn_select'].update(values=(8, 7, 3, 2), value=8,
-                                                    disabled=False, readonly=True)
+                                                         disabled=False, readonly=True)
         else:
             self.window['ux_wypt_seq_sta_text'].update(value="Sequence:")
             self.window['ux_wypt_seq_stn_select'].update(values=("None", 1, 2, 3), value="None",
-                                                    disabled=True, readonly=False)
+                                                         disabled=True, readonly=False)
 
     # update state in response to changes in the coordinates.
     #
@@ -506,11 +506,6 @@ class WaypointEditorGUI:
             self.selected_wp_type = wypt_type
             self.window['ux_wypt_type_select'].update(value=wypt_type)
             self.update_for_waypoint_type_change()
-    
-        if wypt_seq_sta is not None:
-            self.window['ux_wypt_seq_stn_select'].update(value=wypt_seq_sta)
-        else:
-            self.window['ux_wypt_seq_stn_select'].update(value="None")
 
         if update_enable:
             self.update_gui_enable_state()
