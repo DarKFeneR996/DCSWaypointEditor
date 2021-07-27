@@ -856,7 +856,9 @@ class WaypointEditorGUI:
                                       default_extension=".json", save_as=True,
                                       file_types=(("JSON File", "*.json"),))
         if filename is not None:
-            with open(filename + ".json", "w+") as f:
+            if not filename.endswith(".json"):
+                filename += ".json"
+            with open(filename, "w+") as f:
                 f.write(str(self.profile))
             PyGUI.Popup(f"Profile '{name}' successfullly written to '{filename}'.")
 
