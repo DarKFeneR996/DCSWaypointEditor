@@ -594,7 +594,8 @@ class WaypointEditorGUI:
         else:
             self.window['ux_dcs_f10_tgt_select'].update(set_to_index=0)
 
-        if self.profile.has_waypoints or self.profile.av_setup_name is not None:
+        if self.profile.has_waypoints or (self.profile.av_setup_name is not None and
+                                          self.profile.av_setup_name is not "DCS Default"):
             if self.dcs_bios_version is not None:
                 self.window['ux_prof_enter'].update(disabled=False)
             else:
