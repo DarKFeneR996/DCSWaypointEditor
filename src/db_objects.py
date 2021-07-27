@@ -267,7 +267,7 @@ class Profile:
                 waypoint.number = i
 
     def to_readable_string(self):
-        readable_string = "Waypoints:\n\n"
+        readable_string = "-- Waypoints:\n\n"
         for wp in self.waypoints:
             if wp.wp_type != "MSN":
                 position = LatLon(Latitude(wp.latitude),
@@ -275,7 +275,7 @@ class Profile:
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
 
-        readable_string += "\nPreplanned Missions:\n\n"
+        readable_string += "\n-- Preplanned Mission Waypoints:\n\n"
 
         for wp in sorted(self.waypoints_of_type("MSN"), key=lambda waypoint: waypoint.station):
             if wp.wp_type == "MSN":
@@ -283,8 +283,10 @@ class Profile:
                                   Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
+        if len(self.waypoints_of_type("MSN")) == 0:
+            readable_string += "None.\n"
 
-        readable_string += f"\nAvionics Setup:\n\n{self.av_setup_name}\n"
+        readable_string += f"\n-- Avionics Setup:\n\n{self.av_setup_name}\n"
 
         return readable_string
 
