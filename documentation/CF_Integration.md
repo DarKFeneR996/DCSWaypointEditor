@@ -56,8 +56,8 @@ DCSWE makes several assumptions about how missions are set up in CF,
    point (i.e., when placing a DMPI waypoint, they should be snapped to a DMPI reference
    point).
 5. Multiple flights may target the same DMPI reference point.
-6. Callsigns follow the standard “`[name][flight_number]-[ship_number]`” format; for example,
-   “Enfield1-4”, “Colt3-2”, etc.
+6. Callsigns follow the standard “`[name][flight_number]-[ship_number]`” format; for
+   example, “Enfield1-4”, “Colt3-2”, etc.
 
 From the waypoints, DMPI reference points, and callsign, DCSWE builds a set of waypoints
 for the mission for use by a ship with the specified callsign. At present, DCSWE only
@@ -109,9 +109,9 @@ the waypoint list for a ship have a name with the following format:
 where,
 
 - `{number}` is the DMPI number.
-- `[ss_list]` is an optional list of the ship(s) that target the DMPI and the station each
-  ship uses, all ships in this list must belong to a flight from a CF DMPI waypoint that
-  targets this DMPI reference point.
+- `[ss_list]` is an optional list of the ship(s) that target the DMPI and the station
+  each ship uses, all ships in this list must belong to a flight from a CF DMPI waypoint
+  that targets this DMPI reference point.
 
 The default format for DMPI reference point names in CF is “DMPI {number}”. DCSWE
 requires the addition of the `[ss_list]` to further specify how to convert the CF DMPI
@@ -123,13 +123,15 @@ A `[ss_list]` is an optional list of elements separated by whitespace of the for
 
 where,
 
-- `{ships}` specifies ship(s), either by flight name or callsign, and must match a flight
-  from a CF DMPI waypoint at the same geographic location as the DMPI reference point.
-- `{station}` is an optional station number (ignored if `{ships}` is a flight name instead of a full callsign), valid
-  values are 8, 7, 3, or 2 with 8 being assumed if the station is not specified.
+- `{ships}` specifies ship(s), either by flight name or callsign, and must match a
+  flight from a CF DMPI waypoint at the same geographic location as the DMPI reference
+  point.
+- `{station}` is an optional station number (ignored if `{ships}` is a flight name
+  instead of a full callsign), valid values are 8, 7, 3, or 2 with 8 being assumed if
+  the station is not specified.
 
-When specifying `{ships}`, DCSWE allows the use of “`*`” to prefix match on the name to cut
-down on typing. Some examples of `{ships}` include,
+When specifying `{ships}`, DCSWE allows the use of “`*`” to prefix match on the name to
+cut down on typing. Some examples of `{ships}` include,
 
 - “`Enfield1`” refers to all ships in the Enfield1 flight.
 - “`En*2`” refers to all ships in any #2 flight with a name beginning with “En” (e.g.,
@@ -142,12 +144,12 @@ down on typing. Some examples of `{ships}` include,
 
 With the candidate CF DMPI waypoints and the CF DMPI reference points with appropriate
 information in the name DCSWE can build the set of MSN waypoints for a callsign. First,
-each candidate CF DMPI waypoint is correlated with a CF DMPI reference point by geographic
-location. Multiple CF DMPI waypoints can be associated with a single CF DMPI reference
-point (i.e., several flights might be tasked onto the same target). Once correlated, a
-candidate CF DMPI waypoint will be included in the MSN waypoints for a callsign if the
-callsign a ship from the ship list in the CF DMPI reference point associated with the CF
-DMPI waypoint. There are several rules,
+each candidate CF DMPI waypoint is correlated with a CF DMPI reference point by
+geographic location. Multiple CF DMPI waypoints can be associated with a single CF DMPI
+reference point (i.e., several flights might be tasked onto the same target). Once
+correlated, a candidate CF DMPI waypoint will be included in the MSN waypoints for a
+callsign if the callsign a ship from the ship list in the CF DMPI reference point
+associated with the CF DMPI waypoint. There are several rules,
 
 - An empty callsign matches any ship in the ship list; in this case, the station is
   always the default value, 8.

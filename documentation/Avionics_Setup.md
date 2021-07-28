@@ -1,79 +1,87 @@
 # Avionics Setup
 
 DCC Waypoint Editor (DCSWE) currently supports avionics setup for the F-16C Viper. The
-following state in the Viper's avionics can be setup (in addition to waypoints):
+following state, in addition to waypoints, in the Viper's avionics can be set up:
 
-- TACAN in yardstick mode
-- Selected MFD formats for use in NAV, AA, AG, and DGFT master modes
+- TACAN, in yardstick mode
+- MFD formats for use on the left and right MFDs in NAV, AA, AG, and DGFT master modes
 
-At present, this support is specific to the Viper, though other airframes may have
-analogous state.
+At present, this support is specific to the Viper. As other airframes may have some
+analogous state, we may extend the support in the future.
 
 > **NOTE:** This functionality will eventually be replaced by DCS DTC support if and
-> when that happens.
+> when ED makes that happen.
 
-As DCSWE cannot always determine avionics state (e.g., it is difficult to determine
-which MFD format is currently selected), DCSWE makes some assumptions around the initial
-configuration of the avionics.
+Because DCSWE cannot always determine avionics state (e.g., it is difficult to determine
+which MFD format is currently selected), DCSWE makes some assumptions, detailed below,
+around the initial configuration of the avionics.
 
 > **NOTE:** If the state does not match the expected initial configuration, the updates
 > that DCSWE performs may not yield the desired results.
 
 Avionics setup can be done as part of loading a profile or a mission (in DCSWE JSON
-format) into the jet. It is not possible at present to set up the avionics through
-non-native mission setups (e.g., CombatFlite). To setup the avionics while loading
-a mission from a CombatFlite import, you could import the waypoints from CombatFlite
-and use a separate profile (with no waypoints) to provide the avionics.
+format) into the jet. For non-native mission setups (e.g., CombatFlite), you can either
+import into a native DCSWE profile and set the avionics setup, or tell DCSWE to use a
+default avionics setup (through preferences) when configuring the jet using non-native
+sources.
 
 As with waypoint entry, it is important to minimize interactions with the jet while
 DCSWE is driving the cockpit switches.
 
 ## TACAN Yardstick
 
-The TACAN yardstick allows the user to specify a TACAN channel and a role (flight lead
-or wingman) and will set up the TACAN appropriately. Yardsticks are setup with the
-flight lead on channel C and the wingmen on channel C+63 (note that this implies that
-legal channels for yardsticks are between 1 and 63). DCSWE handles the lead/wingman
-channel modification automatically.
+The TACAN yardstick support allows the user to specify a TACAN channel and a role
+(flight lead or wingman) and will set up the TACAN appropriately. Yardsticks are set
+up with the flight lead on channel C and the wingmen on channel C+63 (note that this
+implies that legal channels for yardsticks are between 1 and 63, though legal TACAN
+channels are between 1 and 126). DCSWE handles the lead/wingman channel modification
+automatically.
 
-For example, if the UI sets up for a TACAN yardstick on 38Y, the flight lead or wingman
-role will determine what is actually programmed into the jet,
+For example, if the user configures the DCSWE UI to set up a TACAN yardstick on 38Y,
+the flight lead or wingman role selected in the UI will determine what is actually
+programmed into the jet,
 
 - For a flight lead, the TACAN is set to channel 38Y in AA T/R mode.
 - For a wingman, the TACAN is set to channel 101Y in AA T/R mode.
 
-In both cases, the EHSI will be switched to TACAN mode.
+In both cases, the EHSI will be also switched to TACAN mode so you can check DME to
+see if the yardstick is sweet or sour.
 
-For TACAN setup to work correctly, DCSWE expects the following initial conditions:
+For TACAN setup to work correctly, DCSWE expects the following initial conditions in
+the Viper:
 
 - TACAN band should be "X"
 - TACAN operation mode should be "REC"
 - EHSI mode should be "NAV"
 
-The initial state of the Viper when powered on should match these requirements.
+The initial state of the Viper in DCS when the jet is either powered up from a cold
+start or running following a hot start should match these requirements.
 
 ## MFD Formats
 
 Each MFD on the Viper can display one of three formats (e.g., FCR, TGP, HSD) that are
-selected by OSB 12, 13, and 14. The formats are tied to the current master mode (NAV,
-AA, AG, DGFT) allowing each master mode to have its own unique setup of MFD formats.
-DCSWE provides the ability to change the MFD format configuration from the defaults.
+selected by OSB 12, 13, and 14 on the MFD. The formats are tied to the current master
+mode (NAV, AA, AG, DGFT) allowing each master mode to have its own unique setup of MFD
+formats. DCSWE provides the ability to change the MFD format configuration from the
+defaults that DCS selects.
 
 DCSWE allows per-master-mode selection of format sets to update. That is, you can update
 only DGFT while leaving the other setups in their default configuration.
 
-For MFD format setup to work correct, DCSWE expects the following initial conditions:
+For MFD format setup to work correct, DCSWE expects the following initial conditions in
+the Viper:
 
 - Master mode should be NAV
-- For all master modes that are to be updated, the current format on the left and right
-  MFDs may not be whatever format is mapped to OSB 12
+- For all master modes that are to be updated, the current format selected on the left
+  and right MFDs may not be whatever format is mapped to OSB 12
 - The HOTAS DOGFIGHT switch `DOGFIGHT` position in DCS must be bound to the hotkey
   specified in the DCSWE preferences
 - The HOTAS DOGFIGHT switch `CENTER` position in DCS must be bound to the hotkey
   specified in the DCSWE preferences
 - DCS must be in the foreground so that it can recieve key presses
 
-The initial state of the Viper when powered on should match these requirements.
+The initial state of the Viper in DCS when the jet is either powered up from a cold
+start or running following a hot start should match these requirements.
 
 ## Preferences
 
@@ -93,5 +101,5 @@ There are four preferences that control the behavior of the avionics setup funct
   HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
 
 These can be set throught the DCSWE preferences, strangely enough. Note that the
-`DOGFIGHT` and `CENTER` hotkeys will need to also be set up through the DCS control
-setup in DCS.
+`DOGFIGHT` and `CENTER` hotkeys will need to also be set up through the control options
+in DCS (specifically, see the HOTAS section in the "F-16C Sim" controls).
