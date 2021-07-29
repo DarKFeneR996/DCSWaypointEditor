@@ -806,7 +806,7 @@ class WaypointEditorGUI:
             name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile",
                                       default_text=f"{self.profile.profilename} Copy")
         if name is not None and len(name) > 0:
-            if len([obj for obj in Profile.list_all() if obj.name == name]) == 0:
+            if len([obj for obj in ProfileModel.list_all() if obj.name == name]) == 0:
                 self.save_profile(name)
                 self.update_for_profile_change()
             else:
