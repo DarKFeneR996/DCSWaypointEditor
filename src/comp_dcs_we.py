@@ -29,7 +29,7 @@ import webbrowser
 from src.logger import get_logger
 
 
-DCS_WE_VERSION = "v1.1.0-51stVFW"
+DCS_WE_VERSION = "v1.1.1-51stVFW"
 
 logger = get_logger(__name__)
 
