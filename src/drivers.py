@@ -835,8 +835,8 @@ class ViperDriver(Driver):
         # NOTE: in the MFD upon entry.
         #
         self.mfd_btn(lr, osb)                           # Select OSB to set format for
-        self.mfd_btn(lr, osb, delay_after=0.50)         # Enter format select mode
-        self.mfd_btn(lr, format, delay_after=0.50)      # Select format
+        self.mfd_btn(lr, osb, delay_after=0.1)          # Enter format select mode
+        self.mfd_btn(lr, format, delay_after=0.1)       # Select format
 
     def enter_waypoints(self, wps, command_q=None, progress_q=None):
         if len(wps) > 0:
@@ -868,7 +868,7 @@ class ViperDriver(Driver):
 
             fields = [ str(field) for field in spec.split(",") ]
 
-            self.icp_btn("1", delay_after=0.75)         # T-ILS
+            self.icp_btn("1", delay_after=0.25)         # T-ILS
             if fields[1] == "Y":
                 self.icp_btn("0")                       # Select Y
                 self.icp_btn("ENTR")
@@ -877,21 +877,20 @@ class ViperDriver(Driver):
             if fields[2] == "W":
                 chan = chan + 63
             self.enter_number(str(chan))                # CHAN field
-            self.icp_btn("ENTR", delay_after=0.5)
-            self.icp_data("SEQ", delay_after=0.5)       # REC -> T/R
-            self.icp_data("SEQ", delay_after=0.5)       # T/R -> A/A TR
+            self.icp_btn("ENTR", delay_after=0.1)
+            self.icp_data("SEQ", delay_after=0.1)       # REC -> T/R
+            self.icp_data("SEQ", delay_after=0.1)       # T/R -> A/A TR
             
-            self.icp_data("RTN", delay_after=0.5)
+            self.icp_data("RTN", delay_after=0.1)
 
             self.ehsi_btn("MODE")                       # EHSI -> TACAN
             self.ehsi_btn("MODE")
 
+            self.icp_data("RTN")
             self.bkgnd_advance(command_q, progress_q)
 
     def enter_mfd(self, mode, spec, command_q=None, progress_q=None):
         if spec is not None:
-            self.icp_data("RTN")
-
             self.logger.info(f"Entering MFD: {mode}, spec [ {spec} ]")
 
             if mode == "DGFT":
@@ -911,20 +910,19 @@ class ViperDriver(Driver):
             # TODO: act appropriately in enter_mfd_format.
             #
             fmt_osb_list = [ str(osb) for osb in spec.split(",") ]
-            self.enter_mfd_format("L", "12", fmt_osb_list[2])
-            self.enter_mfd_format("L", "13", fmt_osb_list[1])
-            self.enter_mfd_format("L", "14", fmt_osb_list[0])
-
             self.enter_mfd_format("R", "12", fmt_osb_list[5])
             self.enter_mfd_format("R", "13", fmt_osb_list[4])
             self.enter_mfd_format("R", "14", fmt_osb_list[3])
+
+            self.enter_mfd_format("L", "12", fmt_osb_list[2])
+            self.enter_mfd_format("L", "13", fmt_osb_list[1])
+            self.enter_mfd_format("L", "14", fmt_osb_list[0])
 
             if mode == "DGFT":
                 keyboard.send(self.prefs.hotkey_dgft_center)
             elif mode != "NAV":
                 self.icp_btn(mode)
 
-            self.icp_data("RTN")
             self.bkgnd_advance(command_q, progress_q)
 
     def enter_all(self, profile, command_q=None, progress_q=None):
