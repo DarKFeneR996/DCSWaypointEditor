@@ -542,9 +542,11 @@ class WaypointEditorGUI:
             install_norm = 'disabled'
         
         self.tk_menu_profile.delete(0, 12)
-        self.tk_menu_profile.add_command(label="New", command=self.menu_profile_new, state=named_prof_norm)
+        self.tk_menu_profile.add_command(label="New",
+                                         command=self.menu_profile_new, state=named_prof_norm)
         self.tk_menu_profile.add('separator')
-        self.tk_menu_profile.add_command(label='Save...', command=self.menu_profile_save, state=dirty_norm)
+        self.tk_menu_profile.add_command(label='Save...',
+                                         command=self.menu_profile_save, state=dirty_norm)
         self.tk_menu_profile.add_command(label='Save a Copy As...',
                                          command=self.menu_profile_save_copy, state=named_prof_norm)
         self.tk_menu_profile.add('separator')
@@ -1180,8 +1182,8 @@ class WaypointEditorGUI:
     # the main thread via do_hk_<foo>.
 
     def hkey_clear_pendings(self):
-        with self.menu_pend_q.mutex:
-            self.menu_pend_q.queue.clear()
+        with self.hkey_pend_q.mutex:
+            self.hkey_pend_q.queue.clear()
 
     def hkey_dcs_f10_capture(self):
         self.hkey_pend_q.put(self.do_hk_dcs_f10_capture)
@@ -1340,8 +1342,8 @@ class WaypointEditorGUI:
         validate_map = { 'ux_callsign:focus_out' : self.validate_text_callsign }
 
         while True:
-            event, self.values = self.window.Read(timeout=100, timeout_key='Timeout')
-            if event != 'Timeout':
+            event, self.values = self.window.Read(timeout=100, timeout_key='ux_timeout')
+            if event != 'ux_timeout':
                 self.logger.debug(f"DCSWE Event: {event}")
                 self.logger.debug(f"DCSWE Values: {self.values}")
                 try:
@@ -1351,13 +1353,13 @@ class WaypointEditorGUI:
                 except:
                     pass
 
-            if event is None or event == 'Exit' or event == PyGUI.WIN_CLOSED:
+            if event == PyGUI.WIN_CLOSED:
                 self.logger.info("Exiting...")
                 break
 
             # ======== hotkeys, menus (enqueued from handler outside PySimpleGUI)
 
-            elif event == 'Timeout':
+            elif event == 'ux_timeout':
                 while True:
                     try:
                         hkey_callback = self.hkey_pend_q.get(False)
@@ -1365,8 +1367,7 @@ class WaypointEditorGUI:
                         err_msg = hkey_callback()
                         if err_msg is not None:
                             PyGUI.Popup(err_msg, title="Error")
-                            with self.hkey_pend_q.mutex:
-                                self.hkey_pend_q.clear()
+                            self.hkey_clear_pendings()
                     except queue.Empty:
                         break
 
