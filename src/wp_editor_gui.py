@@ -742,6 +742,8 @@ class WaypointEditorGUI:
         prefs_gui = PreferencesGUI(prefs)
         prefs_gui.run()
 
+        self.hkey_clear_pendings()
+
         if self.profile.profilename == "":
             self.profile.aircraft = prefs.airframe_default
             self.update_for_profile_change()
@@ -995,6 +997,9 @@ class WaypointEditorGUI:
         av_gui = AvionicsSetupGUI(airframe=self.profile.aircraft,
                                   cur_av_setup=self.profile.av_setup_name)
         av_gui.run()
+
+        self.hkey_clear_pendings()
+
         self.update_for_profile_change()
 
     def do_profile_enter_in_jet(self):
