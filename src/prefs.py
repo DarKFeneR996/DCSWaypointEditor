@@ -49,8 +49,7 @@ class Preferences:
         self.hotkey_capture_mode = "ctrl+shift+t"
         self.hotkey_enter_profile = "ctrl+alt+t"
         self.hotkey_enter_mission = "ctrl+alt+shift+t"
-        self.hotkey_dgft_dogfight = "ctrl+3"
-        self.hotkey_dgft_center = "ctrl+4"
+        self.hotkey_dgft_cycle = "left ctrl+3"
         self.airframe_default = "viper"
         self.av_setup_default = "DCS Default"
         self.callsign_default = "Colt1-1"
@@ -174,24 +173,14 @@ class Preferences:
         self._hotkey_enter_mission = value
 
     @property
-    def hotkey_dgft_dogfight(self):
-        return self._hotkey_dgft_dogfight
+    def hotkey_dgft_cycle(self):
+        return self._hotkey_dgft_cycle
     
-    @hotkey_dgft_dogfight.setter
-    def hotkey_dgft_dogfight(self, value):
+    @hotkey_dgft_cycle.setter
+    def hotkey_dgft_cycle(self, value):
         if not self.is_hotkey_valid(value):
             raise ValueError("Invalid hotkey")
-        self._hotkey_dgft_dogfight = value
-
-    @property
-    def hotkey_dgft_center(self):
-        return self._hotkey_dgft_center
-    
-    @hotkey_dgft_center.setter
-    def hotkey_dgft_center(self, value):
-        if not self.is_hotkey_valid(value):
-            raise ValueError("Invalid hotkey")
-        self._hotkey_dgft_center = value
+        self._hotkey_dgft_cycle = value
 
     @property
     def airframe_default(self):
@@ -310,8 +299,7 @@ class Preferences:
         self.hotkey_capture_mode = "ctrl+shift+t"
         self.hotkey_enter_profile = "ctrl+alt+t"
         self.hotkey_enter_mission = "ctrl+alt+shift+t"
-        self.hotkey_dgft_dogfight = "ctrl+3"
-        self.hotkey_dgft_center = "ctrl+4"
+        self.hotkey_dgft_cycle = "left ctrl+3"
         self.airframe_default = "viper"
         self.av_setup_default = "DCS Default"
         self.callsign_default = "Colt1-1"
@@ -336,8 +324,7 @@ class Preferences:
             self.hotkey_capture_mode = self.prefs["PREFERENCES"]["hotkey_capture_mode"]
             self.hotkey_enter_profile = self.prefs["PREFERENCES"]["hotkey_enter_profile"]
             self.hotkey_enter_mission = self.prefs["PREFERENCES"]["hotkey_enter_mission"]
-            self.hotkey_dgft_dogfight = self.prefs["PREFERENCES"]["hotkey_dgft_dogfight"]
-            self.hotkey_dgft_center = self.prefs["PREFERENCES"]["hotkey_dgft_center"]
+            self.hotkey_dgft_cycle = self.prefs["PREFERENCES"]["hotkey_dgft_cycle"]
             self.airframe_default = self.prefs["PREFERENCES"]["airframe_default"]
             self.av_setup_default = self.prefs["PREFERENCES"]["av_setup_default"]
             self.callsign_default = self.prefs["PREFERENCES"]["callsign_default"]
@@ -361,8 +348,7 @@ class Preferences:
         self.prefs["PREFERENCES"]["hotkey_capture_mode"] = self.hotkey_capture_mode
         self.prefs["PREFERENCES"]["hotkey_enter_profile"] = self.hotkey_enter_profile
         self.prefs["PREFERENCES"]["hotkey_enter_mission"] = self.hotkey_enter_mission
-        self.prefs["PREFERENCES"]["hotkey_dgft_dogfight"] = self.hotkey_dgft_dogfight
-        self.prefs["PREFERENCES"]["hotkey_dgft_center"] = self.hotkey_dgft_center
+        self.prefs["PREFERENCES"]["hotkey_dgft_cycle"] = self.hotkey_dgft_cycle
         self.prefs["PREFERENCES"]["airframe_default"] = self.airframe_default
         self.prefs["PREFERENCES"]["av_setup_default"] = self.av_setup_default
         self.prefs["PREFERENCES"]["callsign_default"] = self.callsign_default

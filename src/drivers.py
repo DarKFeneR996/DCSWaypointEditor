@@ -889,8 +889,11 @@ class ViperDriver(Driver):
 
             self.logger.info(f"Entering MFD: {mode}, spec [ {spec} ]")
 
-            if mode == "DGFT":
-                keyboard.send(self.prefs.hotkey_dgft_dogfight)
+            if mode == "DGFT_D":
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
+            elif mode == "DGFT_M":
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
             elif mode != "NAV":
                 self.icp_btn(mode)
 
@@ -914,8 +917,11 @@ class ViperDriver(Driver):
             self.enter_mfd_format("L", "13", fmt_osb_list[1])
             self.enter_mfd_format("L", "14", fmt_osb_list[0])
 
-            if mode == "DGFT":
-                keyboard.send(self.prefs.hotkey_dgft_center)
+            if mode == "DGFT_D":
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
+            elif mode == "DGFT_M":
+                keyboard.send(self.prefs.hotkey_dgft_cycle)
             elif mode != "NAV":
                 self.icp_btn(mode)
 
@@ -923,8 +929,11 @@ class ViperDriver(Driver):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
         avs_dict = profile.av_setup_dict
+        avs_dict_len = len(avs_dict)
+        if avs_dict is not None and avs_dict.get('f16_mfd_setup_dog') is not None:
+            avs_dict_len += 1
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + len(avs_dict) + 1)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + avs_dict_len + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
         try:
@@ -936,7 +945,9 @@ class ViperDriver(Driver):
                         command_q=command_q, progress_q=progress_q)
             self.enter_mfd("AG_MODE", avs_dict.get('f16_mfd_setup_gnd'),
                         command_q=command_q, progress_q=progress_q)
-            self.enter_mfd("DGFT", avs_dict.get('f16_mfd_setup_dog'),
+            self.enter_mfd("DGFT_D", avs_dict.get('f16_mfd_setup_dog'),
+                        command_q=command_q, progress_q=progress_q)
+            self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_dog'),
                         command_q=command_q, progress_q=progress_q)
             self.bkgnd_advance(command_q, progress_q, is_done=True)
         except Exception as e:

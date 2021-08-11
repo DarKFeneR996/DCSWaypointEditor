@@ -105,14 +105,9 @@ class PreferencesGUI:
             errors = errors + "'Load Mission' hotkey, "
 
         try:
-            self.prefs.hotkey_dgft_dogfight = values.get('ux_hotkey_dgft_dogfight')
+            self.prefs.hotkey_dgft_cycle = values.get('ux_hotkey_dgft_cycle')
         except:
-            errors = errors + "'DGFT Dogfight' hotkey, "
-
-        try:
-            self.prefs.hotkey_dgft_center = values.get('ux_hotkey_dgft_center')
-        except:
-            errors = errors + "'DGFT Center' hotkey, "
+            errors = errors + "'DGFT Cycle' hotkey, "
 
         self.prefs.is_auto_upd_check = values.get('ux_is_auto_upd_check')
         self.prefs.is_tesseract_debug = values.get('ux_is_tesseract_debug')
@@ -174,13 +169,9 @@ class PreferencesGUI:
 
             [PyGUI.Text("", font="Helvetica 6", pad=(0,0))],
 
-            [PyGUI.Text("F-16 HOTAS DGFT dogfight:", (21,1), justification="right"),
-             PyGUI.Input(self.prefs.hotkey_dgft_dogfight, key='ux_hotkey_dgft_dogfight',
+            [PyGUI.Text("F-16 HOTAS DGFT cycle:", (21,1), justification="right"),
+             PyGUI.Input(self.prefs.hotkey_dgft_cycle, key='ux_hotkey_dgft_cycle',
                          enable_events=True)],
-
-            [PyGUI.Text("F-16 HOTAS DGFT center:", (21,1), justification="right"),
-             PyGUI.Input(self.prefs.hotkey_dgft_center, key='ux_hotkey_dgft_center',
-                         enable_events=True)]
         ]
 
         layout_dcsbios = [

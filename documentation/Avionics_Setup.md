@@ -65,6 +65,9 @@ mode (NAV, AA, AG, DGFT) allowing each master mode to have its own unique setup 
 formats. DCSWE provides the ability to change the MFD format configuration from the
 defaults that DCS selects.
 
+> **NOTE:** DCSWE assumes that all DGFT submodes (e.g., `DOGFIGHT`, `MISSILE OVERRIDE`)
+> share the same MFD formats.
+
 DCSWE allows per-master-mode selection of format sets to update. That is, you can update
 only DGFT while leaving the other setups in their default configuration.
 
@@ -74,9 +77,7 @@ the Viper:
 - Master mode should be NAV
 - For all master modes that are to be updated, the current format selected on the left
   and right MFDs may not be whatever format is mapped to OSB 12
-- The HOTAS DOGFIGHT switch `DOGFIGHT` position in DCS must be bound to the hotkey
-  specified in the DCSWE preferences
-- The HOTAS DOGFIGHT switch `CENTER` position in DCS must be bound to the hotkey
+- The HOTAS DOGFIGHT switch `Cycle` command in DCS must be bound to the hotkey
   specified in the DCSWE preferences
 - DCS must be in the foreground so that it can recieve key presses
 
@@ -95,11 +96,11 @@ There are four preferences that control the behavior of the avionics setup funct
   For example, if this is set, a profile created from CombatFlite would use the default
   setup. When not set, DCSWE does not change avionics setup (i.e., it behaves as if the
   default were "DCS Default")
-- *F-16 HOTAS DOGFIGHT Dogfight:* Specifies the keybind for the `DOGFIGHT` position on
-  the HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
-- *F-16 HOTAS DOGFIGHT Center:* Specifies the keybind for the `CENTER` position on the
-  HOTAS DGFT switch, the keybind should use `shift`, `alt`, or `ctrl`.
+- *F-16 HOTAS DOGFIGHT Cycle:* Specifies the keybind for the `Cycle` command on the
+  HOTAS DGFT switch, the keybind should use at least one of `shift`, `alt`, or `ctrl`.
+  The keybind should be specified keeping in mind that DCS uses specific modifiers
+  (left or right `shift`, for example).
 
 These can be set throught the DCSWE preferences, strangely enough. Note that the
-`DOGFIGHT` and `CENTER` hotkeys will need to also be set up through the control options
-in DCS (specifically, see the HOTAS section in the "F-16C Sim" controls).
+`Cycle` hotkey will need to also be set up through the control options in DCS
+(specifically, see the HOTAS section in the "F-16C Sim" controls).
