@@ -135,7 +135,15 @@ class Driver:
                 waypoints.remove(waypoint)
         return sorted(waypoints, key=lambda wp: wp.wp_type)
 
+    # bkgnd_advance will raise an "Operation Cancelled" exception if the operation is cancelled
+    #
     def bkgnd_advance(self, command_q, progress_q, is_done=False):
+        try:
+            if command_q is not None and command_q.get(False) == "CANCEL":
+                raise Exception("Operation Cancelled")
+        except queue.Empty:
+            pass
+
         if progress_q is not None and is_done:
             progress_q.put(100)
             progress_q.put("DONE")
@@ -145,15 +153,6 @@ class Driver:
             if self.bkgnd_prog_cur > 100:
                 self.bkgnd_prog_cur = 100
     
-        if command_q is not None:
-            try:
-                cancel = command_q.get(False)
-                return True
-            except queue.Empty:
-                pass
-
-        return False
-
     def stop(self):
         self.s.close()
 
@@ -277,9 +276,7 @@ class HornetDriver(Driver):
         self.ufc("CLR")
 
         for i, wp in enumerate(wps):
-            if self.bkgnd_advance(command_q, progress_q):
-                canceled = True
-                break
+            self.bkgnd_advance(command_q, progress_q)
 
             if not wp.name:
                 self.logger.info(f"Entering waypoint {i+1}")
@@ -305,9 +302,7 @@ class HornetDriver(Driver):
             self.ampcd("1")
 
             for waypoint in waypointslist:
-                if self.bkgnd_advance(command_q, progress_q):
-                    canceled = True
-                    break
+                self.bkgnd_advance(command_q, progress_q)
 
                 self.ufc("OSB4")
                 self.enter_number(waypoint)
@@ -365,18 +360,12 @@ class HornetDriver(Driver):
 
             n = 1
             for msn in msns:
-                if self.bkgnd_advance(command_q, progress_q):
-                    canceled = True
-                    break
+                self.bkgnd_advance(command_q, progress_q)
+
                 self.enter_pp_msn(msn, n)
                 n += 1
 
             self.lmdi("13")
-
-            if canceled:
-                break
-        
-        return canceled
 
     def enter_all(self, profile, command_q=None, progress_q=None):
         missions = self.validate_waypoints(profile.msns_as_list)
@@ -384,17 +373,18 @@ class HornetDriver(Driver):
 
         steps = self.count_steps_enter_wypts(waypoints, profile.sequences_dict) + len(missions)
 
-        self.bkgnd_prog_step = (1.0 / (steps + 3)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (steps + 2)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        if not self.enter_missions(missions, command_q=command_q, progress_q=progress_q) and \
-           not self.bkgnd_advance(command_q, progress_q):
+        try:
+            self.enter_missions(missions, command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q)
             sleep(1)
             self.enter_waypoints(waypoints, profile.sequences_dict, command_q=command_q,
-                                 progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
-
+                                progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
 
 
 class HarrierDriver(Driver):
@@ -470,8 +460,7 @@ class HarrierDriver(Driver):
         self.lmpcd("2")
 
         for wp in wps:
-            if self.bkgnd_advance(command_q, progress_q):
-                break
+            self.bkgnd_advance(command_q, progress_q)
 
             self.ufc("7")
             self.ufc("7")
@@ -485,12 +474,14 @@ class HarrierDriver(Driver):
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
+        try:
+            self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
 
 class MirageDriver(Driver):
     def __init__(self, logger, config):
@@ -536,8 +527,7 @@ class MirageDriver(Driver):
 
     def enter_waypoints(self, wps, command_q=None, progress_q=None):
         for i, wp in enumerate(wps, 1):
-            if self.bkgnd_advance(command_q, progress_q):
-                break
+            self.bkgnd_advance(command_q, progress_q)
 
             self.pcn("PREP")
             self.pcn("0")
@@ -548,12 +538,14 @@ class MirageDriver(Driver):
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
+        try:
+            self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
 
 class TomcatDriver(Driver):
     def __init__(self, logger, config):
@@ -619,8 +611,7 @@ class TomcatDriver(Driver):
         )
         self.cap("TAC")
         for wp in wps:
-            if self.bkgnd_advance(command_q, progress_q):
-                break
+            self.bkgnd_advance(command_q, progress_q)
 
             if wp.wp_type == "WP":
                 self.cap(f"BTN_{wp.number}")
@@ -633,12 +624,14 @@ class TomcatDriver(Driver):
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
+        try:
+            self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
 
 class WarthogDriver(Driver):
     def __init__(self, logger, config):
@@ -704,8 +697,7 @@ class WarthogDriver(Driver):
         self.cdu("LSK_3L", self.medium_delay)
         self.logger.debug("Number of waypoints: " + str(len(wps)))
         for wp in wps:
-            if self.bkgnd_advance(command_q, progress_q):
-                break
+            self.bkgnd_advance(command_q, progress_q)
 
             self.logger.debug(f"Entering WP: {wp}")
             self.cdu("LSK_7R", self.short_delay)
@@ -721,12 +713,14 @@ class WarthogDriver(Driver):
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 2)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
+        try:
+            self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
 
 class ViperDriver(Driver):
     def __init__(self, logger, config):
@@ -846,8 +840,7 @@ class ViperDriver(Driver):
             self.icp_data("DN", delay_after=1)
 
             for wp in wps:
-                if self.bkgnd_advance(command_q, progress_q):
-                    break
+                self.bkgnd_advance(command_q, progress_q)
 
                 self.enter_coords(wp.position)
                 if wp.elevation != 0:
@@ -862,6 +855,8 @@ class ViperDriver(Driver):
 
     def enter_tacan(self, spec, command_q=None, progress_q=None):
         if spec is not None:
+            self.bkgnd_advance(command_q, progress_q)
+
             self.icp_data("RTN")
 
             self.logger.info(f"Entering TACAN: {spec} A/A mode; EHSI TACAN")
@@ -887,10 +882,11 @@ class ViperDriver(Driver):
             self.ehsi_btn("MODE")
 
             self.icp_data("RTN")
-            self.bkgnd_advance(command_q, progress_q)
 
     def enter_mfd(self, mode, spec, command_q=None, progress_q=None):
         if spec is not None:
+            self.bkgnd_advance(command_q, progress_q)
+
             self.logger.info(f"Entering MFD: {mode}, spec [ {spec} ]")
 
             if mode == "DGFT":
@@ -923,25 +919,25 @@ class ViperDriver(Driver):
             elif mode != "NAV":
                 self.icp_btn(mode)
 
-            self.bkgnd_advance(command_q, progress_q)
-
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
         avs_dict = profile.av_setup_dict
 
-        self.bkgnd_prog_step = (1.0 / (len(waypoints) + len(avs_dict) + 2)) * 100.0
+        self.bkgnd_prog_step = (1.0 / (len(waypoints) + len(avs_dict) + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
-        self.bkgnd_advance(command_q, progress_q)
-        self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
-        self.enter_tacan(avs_dict.get('tacan_yard'), command_q=command_q, progress_q=progress_q)
-        self.enter_mfd("NAV", avs_dict.get('f16_mfd_setup_nav'),
-                       command_q=command_q, progress_q=progress_q)
-        self.enter_mfd("AA_MODE", avs_dict.get('f16_mfd_setup_air'),
-                       command_q=command_q, progress_q=progress_q)
-        self.enter_mfd("AG_MODE", avs_dict.get('f16_mfd_setup_gnd'),
-                       command_q=command_q, progress_q=progress_q)
-        self.enter_mfd("DGFT", avs_dict.get('f16_mfd_setup_dog'),
-                       command_q=command_q, progress_q=progress_q)
-        self.bkgnd_advance(command_q, progress_q, is_done=True)
+        try:
+            self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
+            self.enter_tacan(avs_dict.get('tacan_yard'), command_q=command_q, progress_q=progress_q)
+            self.enter_mfd("NAV", avs_dict.get('f16_mfd_setup_nav'),
+                        command_q=command_q, progress_q=progress_q)
+            self.enter_mfd("AA_MODE", avs_dict.get('f16_mfd_setup_air'),
+                        command_q=command_q, progress_q=progress_q)
+            self.enter_mfd("AG_MODE", avs_dict.get('f16_mfd_setup_gnd'),
+                        command_q=command_q, progress_q=progress_q)
+            self.enter_mfd("DGFT", avs_dict.get('f16_mfd_setup_dog'),
+                        command_q=command_q, progress_q=progress_q)
+            self.bkgnd_advance(command_q, progress_q, is_done=True)
+        except Exception as e:
+            self.logger.debug(f"Exception raised: {e}")
