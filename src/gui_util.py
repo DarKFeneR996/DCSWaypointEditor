@@ -24,6 +24,9 @@ import psutil
 import threading
 import queue
 
+from time import sleep
+from win32gui import GetWindowText, GetForegroundWindow
+
 from src.logger import get_logger
 
 logger = get_logger(__name__)
@@ -113,11 +116,19 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
 #                       stop processing, clean up, and exit
 #
 def gui_backgrounded_operation(title, bop_fn=None, bop_args=None):
+
+    # we will prepare the layout but *not* actually create the window. this avoids some
+    # potential issues caused when window layering changes while DCSWE is running in the
+    # background.
+    #
     layout = [[PyGUI.Text("Progress:", size=(8,1), justification="right"),
                PyGUI.ProgressBar(100, key='ux_progress', size=(25,16)),
                PyGUI.Button("Cancel", key='ux_cancel', size=(10,1), pad=(6,16))]]
-    window = PyGUI.Window(title, layout, modal=True, finalize=True, disable_close=True)
+    window = None
+    progress = 0
 
+    # launch a background thread to run the backgrounded work in the background.
+    #
     progress_q = queue.Queue()
     command_q = queue.Queue()
     bop_kwargs={ 'progress_q' : progress_q, 'command_q' : command_q }
@@ -127,29 +138,44 @@ def gui_backgrounded_operation(title, bop_fn=None, bop_args=None):
 
     logger.debug(f"Starting progress ui for backgrounded op, thread {bop_thread.ident}")
 
+    # main loop. we will run this without any ui for as long as the front window is the
+    # DCS window. this ensures that we don't disturb the window stack (taking dcs out of
+    # focus and potentially causing it to miss keypresses) if DCSWE is running in the
+    # background. once DCS is not frontmost, we'll create the window and continue.
+    #
     while True:
-        event, _ = window.Read(timeout=500, timeout_key='Timeout')
-        if event == 'Timeout':
+        if not bop_thread.is_alive() and progress_q.empty():
+            logger.debug("Backgrounded op thread has passed beyond the veil")
+            break
+        elif GetWindowText(GetForegroundWindow()) != "Digital Combat Simulator" and window is None:
+            window = PyGUI.Window(title, layout, modal=True, finalize=True, disable_close=True)
+            window['ux_progress'].update(progress)
+
+        if window is not None:
+            event, _ = window.read(timeout=250, timeout_key='ux_timeout')
+        else:
+            sleep(0.25)
+            event = 'ux_timeout'
+
+        if event == 'ux_timeout':
             try:
                 progress = progress_q.get(False)
-                window['ux_progress'].update(progress)
                 if progress == "DONE":
                     logger.debug(f"Backgrounded op progress: DONE")
                     break
                 else:
                     logger.debug(f"Backgrounded op progress: {progress:.2f}")
+                    if window is not None:
+                        window['ux_progress'].update(progress)
             except queue.Empty:
                 pass
         elif event == 'ux_cancel':
             logger.debug("Sending cancel to backgrounded op, waiting for join")
             window['ux_cancel'].update(text="Cancelling...", disabled=True)
-            window['ux_cancel'].update(disabled=True)
             command_q.put("CANCEL")
-        if not bop_thread.is_alive():
-            logger.debug("Backgrounded op thread has passed beyond the veil")
-            break
 
-    window.close()
+    if window is not None:
+        window.close()
 
 # use psutil to figure out if DCS is running, potentially notifing user if not.
 #
