@@ -62,7 +62,10 @@ class WaypointModel(BaseModel):
     sequence = ForeignKeyField(SequenceModel, backref='waypoints', null=True)
     wp_type = CharField()
     station = IntegerField(default=0)
-
+    #
+    # Field added in db v.3, v1.2.0-51stVFW and later
+    #
+    is_set_cur = IntegerField(default=False)
 
 # Model added in db v.2, v1.1.0-51stVFW and later
 #

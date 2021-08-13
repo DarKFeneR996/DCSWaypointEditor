@@ -20,7 +20,7 @@
 *
 '''
 
-from peewee import CharField, IntegrityError, SqliteDatabase
+from peewee import CharField, IntegerField, IntegrityError, SqliteDatabase
 from playhouse.migrate import SqliteMigrator, migrate
 
 from src.db_models import ProfileModel, WaypointModel, SequenceModel, AvionicsSetupModel, db
@@ -45,6 +45,12 @@ class DatabaseInterface:
                     # db v.2 adds "viper_setup" column to "ProfileModel" table.
                     #
                     self.db_version = 2
+            for metadata in db.get_columns('WaypointModel'):
+                if self.db_version == 2 and metadata.name == 'is_set_cur':
+                    #
+                    # db v.3 adds "is_set_cur" column to "WaypointModel" table.
+                    #
+                    self.db_version = 3
 
             if self.db_version == 1:
                 avionics_setup_field = CharField(null=True, unique=False)
@@ -53,6 +59,14 @@ class DatabaseInterface:
                         migrator.add_column('ProfileModel', 'av_setup_name', avionics_setup_field)
                     )
                 self.db_version = 2
+                self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
+            if self.db_version == 2:
+                is_init_field = IntegerField(default=False)
+                with db.atomic():
+                    migrate(
+                        migrator.add_column('WaypointModel', 'is_set_cur', is_init_field)
+                    )
+                self.db_version = 3
                 self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
 
         except Exception as e:

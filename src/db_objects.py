@@ -82,6 +82,7 @@ class Waypoint:
     wp_type: str = "WP"
     latitude: float = None
     longitude: float = None
+    is_set_cur: int = False
 
     def __post_init__(self):
         if type(self.position) == str:
@@ -104,8 +105,12 @@ class Waypoint:
         strrep = f"{self.wp_type}{self.number}"
         if self.wp_type == "WP" and self.sequence:
             strrep += f" | SEQ{self.sequence}"
+        if self.is_set_cur:
+            strrep += f" | [CUR]"
+        else:
+            strrep += f" |"
         if self.name:
-            strrep += f" | {self.name}"
+            strrep += f" {self.name}"
         return strrep
 
     @property
@@ -118,7 +123,8 @@ class Waypoint:
     def to_object(dict):
         return Waypoint(LatLon(Latitude(dict.get('latitude')), Longitude(dict.get('longitude'))),
                         elevation=dict.get('elevation'), name=dict.get('name'),
-                        sequence=dict.get('sequence'), wp_type=dict.get('wp_type'))
+                        sequence=dict.get('sequence'), wp_type=dict.get('wp_type'),
+                        is_set_cur=dict.get('is_set_cur'))
 
 
 @dataclass
@@ -346,7 +352,8 @@ class Profile:
                     elevation=waypoint.elevation,
                     profile=profile,
                     sequence=sequence,
-                    wp_type=waypoint.wp_type
+                    wp_type=waypoint.wp_type,
+                    is_set_cur=waypoint.is_set_cur
                 )
             else:
                 WaypointModel.create(
@@ -356,6 +363,7 @@ class Profile:
                     elevation=waypoint.elevation,
                     profile=profile,
                     wp_type=waypoint.wp_type,
+                    is_set_cur=waypoint.is_set_cur,
                     station=waypoint.station
                 )
 
@@ -379,11 +387,11 @@ class Profile:
             if waypoint.wp_type != "MSN":
                 wp = Waypoint(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
                               elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
-                              wp_type=waypoint.wp_type)
+                              wp_type=waypoint.wp_type, is_set_cur=waypoint.is_set_cur)
             else:
                 wp = MSN(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
                          elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
-                         wp_type=waypoint.wp_type, station=waypoint.station)
+                         wp_type=waypoint.wp_type, station=waypoint.station, is_set_cur=waypoint.is_set_cur)
             wps.append(wp)
 
         profile = Profile(profile_name, waypoints=wps, aircraft=aircraft, av_setup_name=av_setup_name)

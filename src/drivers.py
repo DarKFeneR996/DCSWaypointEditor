@@ -836,21 +836,31 @@ class ViperDriver(Driver):
         if len(wps) > 0:
             self.icp_data("RTN")
 
-            self.icp_btn("4", delay_after=1)
-            self.icp_data("DN", delay_after=1)
+            self.icp_btn("4", delay_after=0.25)
+            self.icp_data("DN")
 
+            is_cur_seen = False
+            num_backups = 1
             for wp in wps:
                 self.bkgnd_advance(command_q, progress_q)
 
                 self.enter_coords(wp.position)
                 if wp.elevation != 0:
                     self.enter_elevation(wp.elevation)
+                if is_cur_seen:
+                    num_backups += 1
+                elif wp.is_set_cur:
+                    is_cur_seen = True
 
                 self.icp_data("UP")
                 self.icp_data("UP")
                 self.icp_ded("UP")
 
-            self.icp_ded("DN")
+            # "backup" the current steerpoint to select the steerpoint marked is_cur_seen.
+            # if there is no such marked steerpoint, select the last one entered.
+            #
+            for _ in range(0, num_backups):
+                self.icp_ded("DN")
             self.icp_data("RTN")
 
     def enter_tacan(self, spec, command_q=None, progress_q=None):
