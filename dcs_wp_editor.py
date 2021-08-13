@@ -39,6 +39,11 @@ def main(logger):
     vers_sw_cur = dcs_we_vers_install()
     vers_sw_latest = dcs_we_vers_latest()
 
+    logger.info(f"Prefernces path: {prefs.path_ini}")
+    logger.info(f"Profile dbase path: {prefs.path_profile_db}")
+    logger.info(f"SW version (current): {vers_sw_cur}")
+    logger.info(f"SW version (latest): {vers_sw_latest}")
+
     sw_install_fn = lambda: dcs_we_install()
     if (prefs.is_auto_upd_check_bool and
         gui_update_request("DCS Waypoint Editor", vers_sw_cur, vers_sw_latest, sw_install_fn)):

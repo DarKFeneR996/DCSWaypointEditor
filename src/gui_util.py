@@ -101,7 +101,7 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
         elif version is None:
             PyGUI.Popup(f"{comp} {new_vers} installation failed.", title="Error")
         return True
-    else:
+    elif cur_vers != new_vers:
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} declined")
     return False
 
