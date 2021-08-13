@@ -41,24 +41,7 @@ class Preferences:
         self.prefs = ConfigParser()
         self.prefs.add_section("PREFERENCES")
 
-        # Following instance variables are persisted to the .ini file.
-        #
-        self.path_dcs = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
-        self.path_tesseract = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
-        self.path_mission = f"{str(Path.home())}\\Desktop\\dcs_mission.xml"
-        self.dcs_btn_rel_delay_short = "0.15"
-        self.dcs_btn_rel_delay_medium = "0.40"
-        self.hotkey_capture = "ctrl+t"
-        self.hotkey_capture_mode = "ctrl+shift+t"
-        self.hotkey_enter_profile = "ctrl+alt+t"
-        self.hotkey_enter_mission = "ctrl+alt+shift+t"
-        self.hotkey_dgft_cycle = "left ctrl+3"
-        self.airframe_default = "viper"
-        self.av_setup_default = "DCS Default"
-        self.callsign_default = "Colt1-1"
-        self.is_auto_upd_check = "true"
-        self.is_tesseract_debug = "false"
-        self.is_av_setup_for_unk = "true"
+        self.reset_prefs()
 
         try:
             open(self.path_ini, "r").close()
