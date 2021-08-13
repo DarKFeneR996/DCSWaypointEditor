@@ -34,7 +34,7 @@ class WaypointEditor:
     def __init__(self, prefs):
         self.logger = get_logger("drivers")
         self.prefs = prefs
-        self.db = DatabaseInterface(self.prefs.profile_db_name)
+        self.db = DatabaseInterface(self.prefs.path_profile_db)
         self.default_bases = default_bases
         self.drivers = dict(hornet=HornetDriver(self.logger, self.prefs),
                             harrier=HarrierDriver(self.logger, self.prefs),
@@ -56,8 +56,8 @@ class WaypointEditor:
 
     def reset_db(self):
         self.db.close()
-        os.remove(self.prefs.profile_db_name)
-        self.db = DatabaseInterface(self.prefs.profile_db_name)
+        os.remove(self.prefs.path_profile_db)
+        self.db = DatabaseInterface(self.prefs.path_profile_db)
 
     def stop(self):
         self.db.close()

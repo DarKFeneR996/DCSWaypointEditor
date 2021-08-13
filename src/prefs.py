@@ -34,12 +34,15 @@ logger = get_logger(__name__)
 # preferences object to abstract preferences storage. preference values are always strings.
 #
 class Preferences:
-    def __init__(self, file="settings.ini"):
-        self.bs_file = file
+    def __init__(self, data_path=".\\"):
+        self.path_ini = data_path + "settings.ini"
+        self.path_profile_db = data_path + "profiles.db"
 
         self.prefs = ConfigParser()
         self.prefs.add_section("PREFERENCES")
 
+        # Following instance variables are persisted to the .ini file.
+        #
         self.path_dcs = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
         self.path_tesseract = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
         self.path_mission = f"{str(Path.home())}\\Desktop\\dcs_mission.xml"
@@ -56,10 +59,9 @@ class Preferences:
         self.is_auto_upd_check = "true"
         self.is_tesseract_debug = "false"
         self.is_av_setup_for_unk = "true"
-        self.profile_db_name = "profiles.db"
 
         try:
-            open(self.bs_file, "r").close()
+            open(self.path_ini, "r").close()
             self.synchronize_prefs()
             self.is_new_prefs_file = False
         except FileNotFoundError:
@@ -198,7 +200,6 @@ class Preferences:
     
     @av_setup_default.setter
     def av_setup_default(self, value):
-# TODO: fixme
         self._av_setup_default = value
 
     @property
@@ -253,14 +254,6 @@ class Preferences:
             value = "true" if value else "false"
         self._is_av_setup_for_unk = value
 
-    @property
-    def profile_db_name(self):
-        return self._profile_db_name
-
-    @profile_db_name.setter
-    def profile_db_name(self, value):
-        self._profile_db_name = value
-
     # ================ general methods
 
     # validate a hot key sequence
@@ -306,14 +299,13 @@ class Preferences:
         self.is_auto_upd_check = "true"
         self.is_tesseract_debug = "false"
         self.is_av_setup_for_unk = "true"
-        self.profile_db_name = "profiles.db"
 
     # synchronize the preferences the backing store file
     #
     def synchronize_prefs(self):
         try:
             self.persist_prefs(do_write=False)
-            self.prefs.read(self.bs_file)
+            self.prefs.read(self.path_ini)
 
             self.path_dcs = self.prefs["PREFERENCES"]["path_dcs"]
             self.path_tesseract = self.prefs["PREFERENCES"]["path_tesseract"]
@@ -331,7 +323,6 @@ class Preferences:
             self.is_auto_upd_check = self.prefs["PREFERENCES"]["is_auto_upd_check"]
             self.is_tesseract_debug = self.prefs["PREFERENCES"]["is_tesseract_debug"]
             self.is_av_setup_for_unk = self.prefs["PREFERENCES"]["is_av_setup_for_unk"]
-            self.profile_db_name = self.prefs["PREFERENCES"]["profile_db_name"]
         except:
             logger.error("Synchronize failed, resetting preferences to defaults")
             self.reset_prefs()
@@ -355,9 +346,8 @@ class Preferences:
         self.prefs["PREFERENCES"]["is_auto_upd_check"] = self.is_auto_upd_check
         self.prefs["PREFERENCES"]["is_tesseract_debug"] = self.is_tesseract_debug
         self.prefs["PREFERENCES"]["is_av_setup_for_unk"] = self.is_av_setup_for_unk
-        self.prefs["PREFERENCES"]["profile_db_name"] = self.profile_db_name
 
         if do_write:
-            with open(self.bs_file, "w+") as f:
+            with open(self.path_ini, "w+") as f:
                 self.prefs.write(f)
             logger.info("Preferences persisted and written")
