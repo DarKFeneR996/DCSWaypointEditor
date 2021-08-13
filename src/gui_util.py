@@ -105,6 +105,17 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} declined")
     return False
 
+# handle an initial setup request.
+#
+def gui_new_install_request(data_path):
+    data_path = data_path[:-1]
+    message = f"Save DCSWE data in {data_path}, creating it if necessary?\n" + \
+              f"If not, DCSWE data is stored in the application directory."
+    if PyGUI.PopupYesNo(message, title="New Install Detected") == "Yes":
+        return True
+    else:
+        return False
+
 # run a background operation with a modal progress ui.
 #
 # the backgrounded operation (bop_fn) must take two named args: progress_q and cancel_q in

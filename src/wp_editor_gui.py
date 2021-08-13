@@ -1242,9 +1242,12 @@ class WaypointEditorGUI:
         self.logger.info(f"DCS F10 capture map is_dcs_f10_tgt_add {self.is_dcs_f10_tgt_add}")
         self.update_gui_coords_input_disabled(True)
         try:
-            is_debug = self.editor.prefs.is_tesseract_debug_bool
+            if self.editor.prefs.is_tesseract_debug_bool:
+                debug_dir = self.editor.prefs.path_data
+            else:
+                debug_dir = None
             captured_coords = dcs_f10_capture_map_coords(scaled_dcs_gui=self.scaled_dcs_gui,
-                                                         is_debug=is_debug)
+                                                         debug_dir=debug_dir)
             position, elevation = dcs_f10_parse_map_coords_string(captured_coords)
             if position is None:
                 raise ValueError("Capture or parse fails")

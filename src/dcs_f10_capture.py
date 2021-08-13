@@ -43,15 +43,17 @@ logger = get_logger(__name__)
 # returns an uppercase string with the extracted coordinates.
 #
 def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
-                               scaled_dcs_gui=None, is_debug=False):
+                               scaled_dcs_gui=None, debug_dir=None):
     logger.debug("Attempting to capture map coords")
     gui_mult = 2 if scaled_dcs_gui else 1
 
     dt = datetime.datetime.now()
-    debug_dirname = dt.strftime("%Y-%m-%d-%H-%M-%S")
-
-    if is_debug:
+    if debug_dir is not None:
+        debug_dirname = debug_dir + dt.strftime("%Y-%m-%d-%H-%M-%S")
         os.mkdir(debug_dirname)
+        is_debug = True
+    else:
+        is_debug = False
 
     map_image = cv2.imread("data/map.bin")
     arrow_image = cv2.imread("data/arrow.bin")

@@ -35,31 +35,40 @@ logger = get_logger(__name__)
 #
 class Preferences:
     def __init__(self, data_path=".\\"):
+        self.path_data = data_path
         self.path_ini = data_path + "settings.ini"
         self.path_profile_db = data_path + "profiles.db"
 
         self.prefs = ConfigParser()
         self.prefs.add_section("PREFERENCES")
-
         self.reset_prefs()
 
         try:
             open(self.path_ini, "r").close()
             self.synchronize_prefs()
-            self.is_new_prefs_file = False
         except FileNotFoundError:
             self.persist_prefs()
-            self.is_new_prefs_file = True
+
+    # ================ setup support
+
+    @staticmethod
+    def locate_dcswe_prefs():
+        if os.path.exists(".\\settings.ini"):
+            data_path = ".\\"
+        elif os.path.exists(f"{Path.home()}\\Documents\\DCSWE\\settings.ini"):
+            data_path = f"{Path.home()}\\Documents\\DCSWE\\"
+        else:
+            data_path = None
+        return data_path
+
+    def prefs_to_file(self, path):
+        with open(path, "w+") as f:
+            f.write("---- settings.ini ----\n\n")
+            with open(self.path_ini, "r") as f2:
+                f.writelines(f2.readlines())
+            f.write("----------------------\n\n")
 
     # ================ general properties
-
-    @property
-    def is_new_prefs_file(self):
-        return self._is_new_prefs_file
-
-    @is_new_prefs_file.setter
-    def is_new_prefs_file(self, value):
-        self._is_new_prefs_file = value
 
     @property
     def prefs(self):
