@@ -1,29 +1,30 @@
 # Avionics Setup
 
 DCC Waypoint Editor (DCSWE) currently supports avionics setup for the F-16C Viper. The
-following state, in addition to waypoints, in the Viper's avionics can be set up:
+following state, in addition to waypoints, from the Viper's avionics can be set up:
 
 - TACAN, in yardstick mode
 - MFD formats for use on the left and right MFDs in NAV, AA, AG, and DGFT master modes
 
-At present, this support is specific to the Viper. As other airframes may have some
+At present, this support is specific to the Viper. As other airframes can have some
 analogous state, we may extend the support in the future.
 
 > **NOTE:** This functionality will eventually be replaced by DCS DTC support if and
 > when ED makes that happen.
 
 Because DCSWE cannot always determine avionics state (e.g., it is difficult to determine
-which MFD format is currently selected), DCSWE makes some assumptions, detailed below,
-around the initial configuration of the avionics.
+which MFD format is currently selected from information accessible from DCSWE), DCSWE
+makes several assumptions, detailed below, around the initial configuration of the
+avionics.
 
 > **NOTE:** If the state does not match the expected initial configuration, the updates
 > that DCSWE performs may not yield the desired results.
 
 Avionics setup can be done as part of loading a profile or a mission (in DCSWE JSON
 format) into the jet. For non-native mission setups (e.g., CombatFlite), you can either
-import into a native DCSWE profile and set the avionics setup, or tell DCSWE to use a
-default avionics setup (through preferences) when configuring the jet using non-native
-sources.
+import into a native DCSWE profile and set the avionics setup through the DCSWE profile,
+or tell DCSWE (through preferences) to use a default avionics setup when configuring the
+jet using non-native sources.
 
 As with waypoint entry, it is important to minimize interactions with the jet while
 DCSWE is driving the cockpit switches.
@@ -86,7 +87,7 @@ start or running following a hot start should match these requirements.
 
 ## Preferences
 
-There are four preferences that control the behavior of the avionics setup functionality.
+There are three preferences that control the behavior of the avionics setup functionality.
 
 - *Default Avionics Setup:* Specifies the default avionics setup to use when creating new
   profiles, the setup "DCS Default" corresponds to the default setup of the jet in DCS.

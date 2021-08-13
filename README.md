@@ -2,8 +2,8 @@
 
 DCS Waypoint Editor (DCSWE) is an application that allows you to input waypoints
 (including airframe-specific waypoints such as the MSN preplanned missions waypoints in
-the F/A-18C Hornet) and other data into DCS aircraft. Currently DCSWE supports the following
-airframes,
+the F/A-18C Hornet) and other data, such as avionics configurations, into DCS aircraft.
+Currently DCSWE supports the following airframes,
 
 * A-10C Warthog
 * AV-8B Harrier
@@ -12,22 +12,29 @@ airframes,
 * F/A-18C Hornet
 * M-2000C Mirage
 
-This document provides a quick overview of DCSWE.
+Not all features are supported on all airframes. This document provides a quick overview
+of DCSWE.
 
-## Installilng & Building
-
-To install DCS Waypoint Editor,
-
-1. Download and install [Google Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
-2. Download and install [DCS-BIOS](https://github.com/DCSFlightpanels/dcs-bios), this
-   can also be done through the first time setup (noe that DCSWE is *not* compatible with
-   the HUB version of DCS-BIOS)
-2. Unzip the contents of the dcs_wp_editor.zip to a folder
-3. Run `dcs_wp_editor.exe` and perform the first time setup
+## Building & Installing
 
 See the
 [build documentation](https://github.com/51st-Vfw/DCSWaypointEditor/tree/master/documentation/build.md)
 for details on how to build DCSWE from its Python source code.
+
+To install DCS Waypoint Editor,
+
+1. Download and install [Google Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
+2. Download and install [DCS-BIOS](https://github.com/DCSFlightpanels/dcs-bios)
+3. Unzip the contents of the `dcs_wp_editor.zip` from the releases to a folder (or use a
+   copy you have built locally)
+4. Run `dcs_wp_editor.exe` and perform the first time setup
+
+> **NOTE**: DCSWE is *not* compatible with the HUB version of DCS-BIOS, you must use the
+> DCSFlightpanels version linked above.
+
+When you first run DCSWE, it will ask you to setup a directory for application data in
+your `Documents` directory. If you do not want to create this directory, DCSWE will fall
+back to saving application data in the installation directory.
 
 ## Where to Go Next
 
@@ -40,9 +47,9 @@ directory of the repository.
 
 ## Profiles Overview
 
-DCSWE creates "profiles" that contain mission information such as waypoints. Waypoints
-and similar items (e.g., F/A-18 JDAM preplanned missions) can be added to a profile
-through a variety of approaches,
+DCSWE creates "profiles" that contain mission information such as waypoints and avionics
+configurations. Waypoints and similar items (e.g., F/A-18 JDAM preplanned missions) can
+be added to a profile through a variety of approaches,
 
 - Manually entering coordinates
 - Capturing coordinates from the DCS F10 map via optical text recognition
@@ -64,7 +71,7 @@ You may add more preset locations by adding more JSON formatted files in the `da
 Such files should follow the format in the `pg.json` and `cauc.json` files that come with
 the distribution.
 
-### _Entering Coordinates Manually_
+### Entering Coordinates Manually
 
 To manually enter a waypoint,
 
@@ -81,7 +88,7 @@ To manually enter a waypoint,
 
 6. Click `Add` to add the waypoint to the list of waypoints in the active profile
 
-### _Entering Coordinates from the DCS F10 Map_
+### Entering Coordinates from the DCS F10 Map
 
 To capture the coordinates for a waypoint from the DCS F10 map,
 
@@ -115,18 +122,18 @@ key bindings.
 
 DCSWE does not currently support capture from the DCS F10 map in VR.
 
-### _Point-of-Interest Coordinates_
+### Point-of-Interest Coordinates
 
 You may select a position from a list of preset coordinates. Coordinates for all Caucasus and
 PG airfields and BlueFlag FARPS are included. Typing in the pop-up menu and then clicking on
 the "Filter" button allows you to filter the list of points of interest.
 
-### _Hornet JDAM Pre-Planned Missions_
+### Hornet JDAM Pre-Planned Missions
 
 Hornet JDAM preplanned missions work in a similar way to waypoints, however, you **must**
 select the correct station for the mission to be assigned using the station selector.
 
-### _Loading Data into Your Aircraft_
+### Loading Data into Your Aircraft
 
 DCSWE can directly drive the clickable cockpits in a DCS jet to enter data into a jet.
 When entering data, DCSWE uses the airframe selected by the "Airframe" pop-up menu in the
@@ -150,19 +157,19 @@ trying to enter data into. Further, to avoid issues, you should aovid interactin
 cockpit while DCSWE is entering data. The following sections provide some airframe-specific
 pointers.
 
-#### _AV-8B Harrier_
+#### AV-8B Harrier
 
 1. Make sure the main EHSD page is on the left AMPCD (left screen).
 
 2. Trigger entry as described above.
 
-#### _F-16C Viper_
+#### F-16C Viper
 
 For the Viper, the sequence will first reset the DED to the main page before using the
 steerpoint DED page to enter each waypoint. There is no specific state the jet needs to
 be in prior to triggering entry as described above.
 
-#### _F/A-18C Hornet_
+#### F/A-18C Hornet
 
 1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
  
@@ -173,7 +180,7 @@ be in prior to triggering entry as described above.
 
 3. Trigger entry as described above.
 
-#### _M-2000C Mirage_
+#### M-2000C Mirage
 
 For the Mirage, there is no specific state the jet needs to be in prior to triggering entry
 as described above.
