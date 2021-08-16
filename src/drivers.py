@@ -95,6 +95,12 @@ class Driver:
         self.bkgnd_prog_cur = 0
         self.bkgnd_prog_step = 0
 
+    def keyboard_key_with_delay(self, key, delay_after=None):
+        if delay_after is None:
+            delay_after = self.medium_delay
+        keyboard.send(key)
+        sleep(delay_after)
+
     def press_with_delay(self, key, delay_after=None, delay_release=None, raw=False):
         if not key:
             return False
@@ -900,10 +906,10 @@ class ViperDriver(Driver):
             self.logger.info(f"Entering MFD: {mode}, spec [ {spec} ]")
 
             if mode == "DGFT_D":
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
             elif mode == "DGFT_M":
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
             elif mode != "NAV":
                 self.icp_btn(mode)
 
@@ -928,10 +934,10 @@ class ViperDriver(Driver):
             self.enter_mfd_format("L", "14", fmt_osb_list[0])
 
             if mode == "DGFT_D":
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
             elif mode == "DGFT_M":
-                keyboard.send(self.prefs.hotkey_dgft_cycle)
+                self.keyboard_key_with_delay(self.prefs.hotkey_dgft_cycle)
             elif mode != "NAV":
                 self.icp_btn(mode)
 
