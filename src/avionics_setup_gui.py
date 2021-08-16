@@ -232,10 +232,13 @@ class AvionicsSetupGUI:
         ]
 
         return PyGUI.Window(f"{airframe_ui} Avionics Setup",
-                            [[PyGUI.Frame("NAV: Navigation Master Mode", layout_nav)],
-                             [PyGUI.Frame("AG: Air-to-Ground Master Mode", layout_gnd)],
-                             [PyGUI.Frame("AA: Air-to-Air Master Mode", layout_air)],
-                             [PyGUI.Frame("DGFT: Dogfight Master Mode", layout_dog)],
+                            [[PyGUI.Frame("Navigation Master Mode", layout_nav)],
+                             [PyGUI.Frame("Air-to-Ground Master Mode (ICP AG)", layout_gnd)],
+                             [PyGUI.Frame("Air-to-Air Master Mode (ICP AA)," +
+                                          " Dogfight MSL Override Mode (DGFT MSL OVRD)",
+                                          layout_air)],
+                             [PyGUI.Frame("Dogfight Override Mode (DGFT DOGFIGHT)",
+                                          layout_dog)],
                              [PyGUI.Frame("TACAN Yardstick", layout_tacan)],
                              [layout_mgmt]],
                             modal=True, finalize=True)

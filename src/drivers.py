@@ -963,7 +963,7 @@ class ViperDriver(Driver):
                         command_q=command_q, progress_q=progress_q)
             self.enter_mfd("DGFT_D", avs_dict.get('f16_mfd_setup_dog'),
                         command_q=command_q, progress_q=progress_q)
-            self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_dog'),
+            self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_air'),
                         command_q=command_q, progress_q=progress_q)
             self.bkgnd_advance(command_q, progress_q, is_done=True)
         except Exception as e:

@@ -9,22 +9,22 @@ following state, in addition to waypoints, from the Viper's avionics can be set 
 At present, this support is specific to the Viper. As other airframes can have some
 analogous state, we may extend the support in the future.
 
-> **NOTE:** This functionality will eventually be replaced by DCS DTC support if and
+> **NOTE:** This functionality eventually may be replaced by DCS DTC support if and
 > when ED makes that happen.
 
-Because DCSWE cannot always determine avionics state (e.g., it is difficult to determine
-which MFD format is currently selected from information accessible from DCSWE), DCSWE
-makes several assumptions, detailed below, around the initial configuration of the
-avionics.
+Because DCSWE cannot always determine avionics state (e.g., it is difficult for DCSWE
+to determine which MFD format is currently selected from information it has readily
+available), DCSWE makes several assumptions, detailed below, around the initial
+configuration of the avionics.
 
 > **NOTE:** If the state does not match the expected initial configuration, the updates
 > that DCSWE performs may not yield the desired results.
 
 Avionics setup can be done as part of loading a profile or a mission (in DCSWE JSON
-format) into the jet. For non-native mission setups (e.g., CombatFlite), you can either
-import into a native DCSWE profile and set the avionics setup through the DCSWE profile,
-or tell DCSWE (through preferences) to use a default avionics setup when configuring the
-jet using non-native sources.
+format) into the jet. For non-native mission setups (e.g., from a CombatFlite export),
+you can either import into a native DCSWE profile and set the avionics setup through
+that DCSWE profile, or tell DCSWE (through preferences) to use a default avionics setup
+when configuring the jet using non-native sources.
 
 As with waypoint entry, it is important to minimize interactions with the jet while
 DCSWE is driving the cockpit switches.
@@ -62,15 +62,17 @@ start or running following a hot start should match these requirements.
 
 Each MFD on the Viper can display one of three formats (e.g., FCR, TGP, HSD) that are
 selected by OSB 12, 13, and 14 on the MFD. The formats are tied to the current master
-mode (NAV, AA, AG, DGFT) allowing each master mode to have its own unique setup of MFD
-formats. DCSWE provides the ability to change the MFD format configuration from the
-defaults that DCS selects.
+mode (NAV, AA, and AG) along with the dogfight modes (DOGFIGHT and MSL OVRD) that the
+HOTAS DGFT switch selects. DCSWE maps four unique MFD setups to avionics modes as
+follows,
 
-> **NOTE:** DCSWE assumes that all DGFT submodes (e.g., `DOGFIGHT`, `MISSILE OVERRIDE`)
-> share the same MFD formats.
+- NAV master mode
+- AG master mode (via ICP AG button)
+- AA master mode (via ICP AA button), DGFT MSL OVRD override mode (via HOTAS DGFT switch)
+- DGFT DOGFIGHT override mode (via HOTAS DGFT switch)
 
-DCSWE allows per-master-mode selection of format sets to update. That is, you can update
-only DGFT while leaving the other setups in their default configuration.
+DCSWE allows per-mode selection of format sets to update. That is, you can update only
+only AG while leaving the other setups in their default configuration.
 
 For MFD format setup to work correct, DCSWE expects the following initial conditions in
 the Viper:
@@ -78,7 +80,7 @@ the Viper:
 - Master mode should be NAV
 - For all master modes that are to be updated, the current format selected on the left
   and right MFDs may not be whatever format is mapped to OSB 12
-- The HOTAS DOGFIGHT switch `Cycle` command in DCS must be bound to the hotkey
+- The HOTAS DOGFIGHT switch `Cycle` command in DCS must be bound to the same hotkey
   specified in the DCSWE preferences
 - DCS must be in the foreground so that it can recieve key presses
 
@@ -94,9 +96,10 @@ There are three preferences that control the behavior of the avionics setup func
   For airframes other than the Viper, this setting is effectively always "DCS Default".
 - *Use When Setup Unknown:* When set, this preference causes DCSWE to use the default
   avionics setup in situations where it does not have information on the avionics setup.
-  For example, if this is set, a profile created from CombatFlite would use the default
-  setup. When not set, DCSWE does not change avionics setup (i.e., it behaves as if the
-  default were "DCS Default")
+  For example, if this is set, when loading a mission from a CombatFlite export file
+  will use the specified default avionics setup. When not set, DCSWE will not change
+  avionics setup if it does not have information on the desired setup (i.e., it behaves
+  as if the default were "DCS Default")
 - *F-16 HOTAS DOGFIGHT Cycle:* Specifies the keybind for the `Cycle` command on the
   HOTAS DGFT switch, the keybind should use at least one of `shift`, `alt`, or `ctrl`.
   The keybind should be specified keeping in mind that DCS uses specific modifiers
