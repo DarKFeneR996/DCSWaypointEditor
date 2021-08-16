@@ -34,6 +34,7 @@ import winsound
 import zlib
 
 from LatLon23 import LatLon, Longitude, Latitude
+from pathlib import Path
 from peewee import DoesNotExist
 from slpp import slpp as lua
 
@@ -880,8 +881,12 @@ class WaypointEditorGUI:
     #
     def do_menu_profile_export_to_file(self):
         name = self.profile_name_for_ui()
+        initial_folder = str(Path.home())
+        default_path = initial_folder + "\\" + name + ".json"
         filename = PyGUI.PopupGetFile("Specify a File to Export To",
                                       f"Exporting Profile '{name}' from Database",
+                                      initial_folder=initial_folder,
+                                      default_path=default_path,
                                       default_extension=".json", save_as=True,
                                       file_types=(("JSON File", "*.json"),))
         if filename is not None:
