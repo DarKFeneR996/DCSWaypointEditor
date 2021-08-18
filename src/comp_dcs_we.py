@@ -70,6 +70,7 @@ def dcs_we_install():
     try:
         logger.debug("redirecting to DCSWE releases on GitHub...")
         webbrowser.open("https://github.com/51st-Vfw/DCSWaypointEditor/releases")
+        vers = dcs_we_vers_latest()
     except:
-        pass
-    return None
+        vers = None
+    return vers

@@ -88,7 +88,7 @@ def gui_exception(exc_info):
 # installation function should return version string on success (user is notified via ui), empty
 # string on error (user is notified via ui), or None on no result (user is not notified).
 #
-def gui_update_request(comp, cur_vers, new_vers, install_fn):
+def gui_update_request(comp, cur_vers, new_vers, install_fn, inform_update=True):
     message = f"A new version of {comp} is available ({new_vers}).\nDo you want to update from {cur_vers}?"
     if cur_vers != new_vers and PyGUI.PopupYesNo(message, title="New Version Available") == "Yes":
         logger.info(f"Update {comp} from {cur_vers} to {new_vers} accepted")
@@ -96,7 +96,7 @@ def gui_update_request(comp, cur_vers, new_vers, install_fn):
             version = install_fn()
         except Exception as e:
             version = None
-        if version is not None and version != "":
+        if version is not None and version != "" and inform_update:
             PyGUI.Popup(f"{comp} {new_vers} was successfully installed.", title="Success")
         elif version is None:
             PyGUI.Popup(f"{comp} {new_vers} installation failed.", title="Error")

@@ -800,8 +800,11 @@ class WaypointEditorGUI:
             vers_sw_cur = dcs_we_vers_install()
             vers_sw_latest = dcs_we_vers_latest()
             sw_install_fn = lambda: dcs_we_install()
-            if gui_update_request("DCS Waypoint Editor", vers_sw_cur, vers_sw_latest, sw_install_fn):
-                self.window.close()
+            if gui_update_request("DCS Waypoint Editor", vers_sw_cur, vers_sw_latest, sw_install_fn,
+                                  inform_update=False):
+                if PyGUI.PopupOKCancel("Would you like to quit DCSWE to install the update?",
+                                       title="Install Now?") == "OK":
+                    self.window.close()
             vers_db_cur = dcs_bios_vers_install(path_dcs)
             vers_db_latest = dcs_bios_vers_latest()
             db_install_fn = lambda: dcs_bios_install(path_dcs)
