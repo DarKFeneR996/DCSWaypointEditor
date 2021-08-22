@@ -1111,7 +1111,7 @@ class WaypointEditorGUI:
                 waypoint.name = name
                 waypoint.position = position
                 waypoint.elevation = elevation
-                if waypoint.wp_type == "WP":
+                if waypoint.wp_type == "WP" and self.values['ux_wypt_set_cur_select']:
                     for wp in self.profile.waypoints:
                         wp.is_set_cur = False
                     waypoint.is_set_cur = self.values['ux_wypt_set_cur_select']
