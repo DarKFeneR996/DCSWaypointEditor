@@ -507,6 +507,8 @@ class AvionicsSetupGUI:
                 self.dbase_setup = None
                 self.is_dirty = False
                 self.update_gui_template_list()
+                self.copy_f16_mfd_dbase_to_ui()
+                self.copy_tacan_dbase_to_ui()
             except Exception as e:
                 PyGUI.PopupError(f"Unable to delete the settings {self.cur_av_setup} from the database.")
 
