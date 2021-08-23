@@ -13,20 +13,23 @@ Currently DCSWE supports the following airframes,
 * M-2000C Mirage
 
 Not all features are supported on all airframes. This document provides a quick overview
-of DCSWE.
+of DCSWE. See the
+[documentation](https://github.com/51st-Vfw/DCSWaypointEditor/blob/master/documentation/README.md)
+in the repository for detailed documentation.
 
 ## Building & Installing
 
 See the
-[build documentation](https://github.com/51st-Vfw/DCSWaypointEditor/tree/master/documentation/build.md)
+[build documentation](https://github.com/51st-Vfw/DCSWaypointEditor/blob/master/documentation/build.md)
 for details on how to build DCSWE from its Python source code.
 
 To install DCS Waypoint Editor,
 
 1. Download and install [Google Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
 2. Download and install [DCS-BIOS](https://github.com/DCSFlightpanels/dcs-bios)
-3. Unzip the contents of the `dcs_wp_editor.zip` from the releases to a folder (or use a
-   copy you have built locally)
+3. Unzip the contents of the `dcs_wp_editor.zip` from the
+   [DCSWE releases](https://github.com/51st-Vfw/DCSWaypointEditor/releases) to a folder
+   (or use a version you have built locally)
 4. Run `dcs_wp_editor.exe` and perform the first time setup
 
 > **NOTE**: DCSWE is *not* compatible with the HUB version of DCS-BIOS, you must use the
