@@ -566,14 +566,14 @@ class WaypointEditorGUI:
             load_prof_norm = 'disabled'
             install_norm = 'disabled'
         
-        self.tk_menu_profile.delete(0, 12)
+        self.tk_menu_profile.delete(0, 13)
         self.tk_menu_profile.add_command(label="New",
                                          command=self.menu_profile_new, state=named_prof_norm)
         self.tk_menu_profile.add('separator')
-        self.tk_menu_profile.add_command(label='Save...',
-                                         command=self.menu_profile_save, state=dirty_norm)
-        self.tk_menu_profile.add_command(label='Save a Copy As...',
-                                         command=self.menu_profile_save_copy, state=named_prof_norm)
+        self.tk_menu_profile.add_command(label='Save',
+                                         command=self.menu_profile_save, state=named_prof_norm)
+        self.tk_menu_profile.add_command(label='Save As...',
+                                         command=self.menu_profile_save_copy, state=dirty_norm)
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Delete...',
                                          command=self.menu_profile_delete, state=named_prof_norm)
@@ -582,24 +582,26 @@ class WaypointEditorGUI:
         self.tk_menu_profile.add('separator')
         self.tk_menu_profile.add_command(label='Revert', command=self.menu_profile_revert, state=dirty_norm)
         self.tk_menu_profile.add('separator')
-
+        
         submenu_import = tk.Menu(self.tk_menu_profile, tearoff=False)
-        self.tk_menu_profile.add_command(label="Load Profile into Jet",
-                                         command=self.menu_profile_load_jet, state=load_prof_norm)
         self.tk_menu_profile.add_cascade(label="Import", menu=submenu_import, underline=0)
-        submenu_import.add_command(label="From Clipboard as Encoded DCSWE JSON",
+        submenu_import.add_command(label="From Clipboard",
                                    command=self.menu_profile_import_from_encoded_string)
-        submenu_import.add_command(label="From CombatFlite XML or DCSWE JSON File...",
+        submenu_import.add_command(label="From File...",
                                    command=self.menu_profile_import_from_file)
 
         submenu_export = tk.Menu(self.tk_menu_profile, tearoff=False)
         self.tk_menu_profile.add_cascade(label="Export", menu=submenu_export, underline=0)
-        submenu_export.add_command(label="To Clipboard as Encoded DCSWE JSON",
+        submenu_export.add_command(label="To Clipboard (Encoded)",
                                    command=self.menu_profile_export_to_enc_string, state=has_wypt_norm)
-        submenu_export.add_command(label="To Clipboard as Text",
+        submenu_export.add_command(label="To Clipboard (Text)",
                                    command=self.menu_profile_export_to_pln_string, state=has_wypt_norm)
-        submenu_export.add_command(label="To DCSWE JSON File...",
+        submenu_export.add_command(label="To File...",
                                    command=self.menu_profile_export_to_file, state=has_wypt_norm)
+
+        self.tk_menu_profile.add('separator')
+        self.tk_menu_profile.add_command(label="Load Profile into Jet",
+                                         command=self.menu_profile_load_jet, state=load_prof_norm)
 
         self.tk_menu_mission.delete(0,2)
         self.tk_menu_mission.add_command(label="Install Mission Package...",
@@ -696,6 +698,25 @@ class WaypointEditorGUI:
                lon_deg != "" or lon_min != "" or lon_sec != "":
                 self.logger.error(f"Failed to validate coords: {e}")
             return None, None, None
+
+    def prompt_profile_name(self, title, default_name, allow_blank=False):
+        if allow_blank:
+            blank = " (Blank Populates 'Untitled' Profile)"
+        else:
+            blank = ""
+        name = PyGUI.PopupGetText(f"New Profile Name{blank}", title=title, default_text=default_name)
+        if name is not None and len(name) > 0:
+            if len([obj for obj in ProfileModel.list_all() if obj.name == name]) != 0:
+                result = PyGUI.PopupOKCancel(f"There is already a profile named '{name}' in the " +
+                                             f"profile database. Replace it?",
+                                             title="Profile Exists")
+                if result == "Cancel":
+                    name = None
+        elif name is not None and allow_blank:
+            name = ""
+        else:
+            name = None
+        return name
 
 
     # ================ ui menu item handlers
@@ -821,28 +842,22 @@ class WaypointEditorGUI:
     def do_menu_profile_save(self):
         name = self.profile.profilename
         if name == "":
-            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile")
-            if name is None or len(name) == 0:
-                name = None
-            elif len([obj for obj in ProfileModel.list_all() if obj.name == name]) != 0:
-                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
-                name = None
+            name = self.prompt_profile_name("Saving New Profile", "New Profile")
         if name is not None:
             self.save_profile(name)
             self.update_for_profile_change()
 
     def do_menu_profile_save_copy(self):
         if self.profile.profilename == "":
-            name = PyGUI.PopupGetText("Profile Name", "Saving New Profile", default_text="New Profile")
+            title="Saving New Profile"
+            default_name="New Profile"
         else:
-            name = PyGUI.PopupGetText("Profile Name", "Copying Existing Profile",
-                                      default_text=f"{self.profile.profilename} Copy")
-        if name is not None and len(name) > 0:
-            if len([obj for obj in ProfileModel.list_all() if obj.name == name]) == 0:
-                self.save_profile(name)
-                self.update_for_profile_change()
-            else:
-                PyGUI.Popup(f"There is already a profile named '{name}'.", title="Error")
+            title="Copying Existing Profile"
+            default_name=f"{self.profile.profilename} Copy"
+        name = self.prompt_profile_name(title, default_name)
+        if name is not None:
+            self.save_profile(name)
+            self.update_for_profile_change()
 
     def do_menu_profile_delete(self):
         if self.profile.profilename != "" and self.approve_profile_change(action="Deleting the"):
@@ -905,20 +920,31 @@ class WaypointEditorGUI:
         if self.approve_profile_change(action="Importing a new"):
             encoded = pyperclip.paste()
             try:
-                self.profile = Profile.from_string(json_unzip(encoded))
+                tmp_profile = Profile.from_string(json_unzip(encoded))
                 #
-                # note that encoded JSON may carry profile name, we will force the name to the name
-                # of the empty slot, "" here.
+                # note that encoded JSON may carry profile name, we will use that as the 
+                # default name for the profile.
                 #
-                self.profile.profilename = ""
-                if self.profile.aircraft is None:
-                    self.profile.aircraft = self.editor.prefs.airframe_default
-                self.is_profile_dirty = True
-                self.window['ux_prof_select'].update(set_to_index=0)
-                self.update_for_profile_change(set_to_first=True)
-                self.logger.debug(self.profile.to_dict())
+                def_name = tmp_profile.profilename
+                if def_name == "":
+                    def_name = "New Profile"
+                name = self.prompt_profile_name("Saving New Profile", def_name, allow_blank=True)
+                if name is not None:
+                    self.profile = tmp_profile
+                    self.profile.profilename = name
+                    if self.profile.aircraft is None:
+                        self.profile.aircraft = self.editor.prefs.airframe_default
+                    self.is_profile_dirty = True
+                    if name != "":
+                        self.save_profile(name)
+                        self.update_for_profile_change()
+                    else:
+                        self.window['ux_prof_select'].update(set_to_index=0)
+                        self.update_for_profile_change(set_to_first=True)
+                    self.logger.debug(self.profile.to_dict())
             except Exception as e:
-                PyGUI.Popup("Failed to parse encoded profile from clipboard.")
+                PyGUI.Popup("Failed to parse encoded DCSWE profile from clipboard.",
+                            title="Import Fails")
                 self.logger.error(e, exc_info=True)
 
     # imports profile from text JSON or combatflite XML file into empty/new profile
@@ -926,7 +952,7 @@ class WaypointEditorGUI:
     def do_menu_profile_import_from_file(self):
         if self.approve_profile_change(action="Importing a new"):
             filename = PyGUI.PopupGetFile("Select a File to Import From", "Importing Profile from File")
-            if filename is not None:
+            if filename is not None and len(filename) > 0:
                 try:
                     self.validate_text_callsign('ux_callsign')
                     tmp_profile = self.import_profile(filename, warn=True,
@@ -934,20 +960,32 @@ class WaypointEditorGUI:
                                                       aircraft=self.editor.prefs.airframe_default)
                     if tmp_profile is None:
                         raise Exception("Unable to import profile")
-                    self.profile = tmp_profile
-                    #
-                    # note that text JSON may carry profile name, we will force the name to the name
-                    # of the empty slot, "" here.
-                    #
-                    self.profile.profilename = ""
-                    if self.profile.aircraft is None:
-                        self.profile.aircraft = self.editor.prefs.airframe_default
-                    self.is_profile_dirty = True
-                    self.window['ux_prof_select'].update(set_to_index=0)
-                    self.update_for_profile_change(set_to_first=True)
-                    self.logger.debug(self.profile.to_dict())
+
+                    def_name = tmp_profile.profilename
+                    if def_name == "":
+                        file = os.path.split(filename)[1]
+                        def_name = os.path.splitext(file)[0]
+                    name = self.prompt_profile_name("Saving New Profile", def_name, allow_blank=True)
+                    if name is not None:
+                        self.profile = tmp_profile
+                        self.profile.profilename = name
+                        if self.profile.aircraft is None:
+                            self.profile.aircraft = self.editor.prefs.airframe_default
+                        self.is_profile_dirty = True
+                        if name != "":
+                            self.save_profile(name)
+                            self.update_for_profile_change()
+                        else:
+                            self.window['ux_prof_select'].update(set_to_index=0)
+                            self.update_for_profile_change(set_to_first=True)
+                        self.logger.debug(self.profile.to_dict())
                 except:
-                    PyGUI.Popup(f"Unable to parse the file '{filename}'", title="Error")
+                    file = os.path.split(filename)[1]
+                    PyGUI.Popup(f"Failed to parse the file '{file}' for import.", title="Import Fails")
+            elif filename is not None and len(filename) == 0:
+                    PyGUI.Popup(f"There was no file specified to import.",
+                                title="Import Fails")
+
 
     def do_menu_mission_install_package(self):
         try:
