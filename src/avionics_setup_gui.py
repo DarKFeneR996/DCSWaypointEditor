@@ -82,6 +82,8 @@ class AvionicsSetupGUI:
         mfd_formats = list(mfd_format_map.keys())
         airframe_ui = airframe_type_to_ui_text(airframe)
 
+        # ---- MFD Formats
+
         layout_nav = [
             [PyGUI.Checkbox("Reconfigure MFD formats:", key='ux_nav_ckbx', enable_events=True,
                             size=(19,1)),
@@ -206,6 +208,19 @@ class AvionicsSetupGUI:
                         font="Helvetica 8")]
         ]
 
+        layout_mfd_tab = [
+            PyGUI.Tab("MFD Formats",
+                      [[PyGUI.Frame("Navigation Master Mode", layout_nav, pad=(12,(12,6)))],
+                       [PyGUI.Frame("Air-to-Ground Master Mode (ICP AG)", layout_gnd, pad=(12,6))],
+                       [PyGUI.Frame("Air-to-Air Master Mode (ICP AA)," +
+                                    " Dogfight MSL Override Mode (DGFT MSL OVRD)",
+                                    layout_air, pad=(12,6))],
+                       [PyGUI.Frame("Dogfight Override Mode (DGFT DOGFIGHT)",
+                                    layout_dog, pad=(12,(6,12)))]])
+        ]
+
+        # ---- TACAN
+
         layout_tacan = [
             [PyGUI.Checkbox("Setup TACAN yardstick at:", key='ux_tacan_ckbx', enable_events=True,
                             size=(19,1), pad=(6,(6,8))),
@@ -221,6 +236,12 @@ class AvionicsSetupGUI:
                         size=(34,1), pad=(6,(6,8)))]
         ]
 
+        layout_tacan_tab = [
+            PyGUI.Tab("TACAN", [[PyGUI.Frame("Yardstick", layout_tacan, pad=(12,12))]])
+        ]
+
+        # ---- Management Controls
+
         layout_mgmt = [
             [PyGUI.Text("Avionics setup name:"),
              PyGUI.Combo(values=["DCS Default"], key='ux_tmplt_select', readonly=True,
@@ -232,14 +253,8 @@ class AvionicsSetupGUI:
         ]
 
         return PyGUI.Window(f"{airframe_ui} Avionics Setup",
-                            [[PyGUI.Frame("Navigation Master Mode", layout_nav)],
-                             [PyGUI.Frame("Air-to-Ground Master Mode (ICP AG)", layout_gnd)],
-                             [PyGUI.Frame("Air-to-Air Master Mode (ICP AA)," +
-                                          " Dogfight MSL Override Mode (DGFT MSL OVRD)",
-                                          layout_air)],
-                             [PyGUI.Frame("Dogfight Override Mode (DGFT DOGFIGHT)",
-                                          layout_dog)],
-                             [PyGUI.Frame("TACAN Yardstick", layout_tacan)],
+                            [[PyGUI.TabGroup([layout_mfd_tab,
+                                              layout_tacan_tab], pad=(8,8))],
                              [layout_mgmt]],
                             enable_close_attempted_event=True, modal=True, finalize=True)
 
