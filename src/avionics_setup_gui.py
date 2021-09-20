@@ -53,6 +53,21 @@ mfd_default_setup_map = { 'ux_nav' : [ 20, 9, 8, 6, 7, 1 ],     # L: FCR, TEST, 
 #
 mfd_key_suffixes = [ '_l14', '_l13', '_l12', '_r14', '_r13', '_r12' ]
 
+# CMDS types and parameters.
+#
+cmds_types = [ 'c', 'f' ]
+cmds_params = [ 'bq', 'bi', 'sq', 'si' ]
+
+# CMDS program defaults.
+#
+# These are "<chaff> ; <flare>", where <chaff> or <flare> is "<BQ>,<BI>,<SQ>,<SI>"
+#
+cmds_prog_default_map = { 'MAN 1' : "1,0.020,10,1.00;1,0.020,10,1.00",
+                          'MAN 2' : "1,0.020,10,0.50;1,0.020,10,0.50",
+                          'MAN 3' : "2,0.100,5,1.00;2,0.100,5,1.00",
+                          'MAN 4' : "2,0.100,5,0.50;2,0.100,5,0.50",
+                          'Panic' : "2,0.050,20,0.75;2,0.050,20,0.75"
+}
 
 class AvionicsSetupGUI:
 
@@ -60,8 +75,11 @@ class AvionicsSetupGUI:
         self.logger = get_logger(__name__)
         self.dbase_setup = None
         self.values = None
-        self.window = self.create_gui(airframe)
+        self.cur_cmds_prog_sel = "MAN 1"
+        self.cur_cmds_prog_map = { }
         self.cur_av_setup = cur_av_setup
+
+        self.window = self.create_gui(airframe)
 
         if self.cur_av_setup is not None:
             try:
@@ -240,6 +258,75 @@ class AvionicsSetupGUI:
             PyGUI.Tab("TACAN", [[PyGUI.Frame("Yardstick", layout_tacan, pad=(12,12))]])
         ]
 
+        # ---- CMDS
+
+        layout_cmds_sel = [
+            PyGUI.Text("Program:", pad=((12,4),(12,6))),
+            PyGUI.Combo(values=["MAN 1", "MAN 2", "MAN 3", "MAN 4", "Panic"],
+                        default_value=self.cur_cmds_prog_sel, key='ux_cmds_prog_sel',
+                        readonly=True, enable_events=True, size=(8,1), pad=(6,(12,6))),
+            PyGUI.Checkbox("Reconfigure", key='ux_cmds_reconfig', enable_events=True, pad=(6,(12,6)))
+        ]
+
+        layout_cmds_chaff_prog = [
+            PyGUI.Frame("Chaff",
+                        [[PyGUI.Text("Burst Quantity:", key='ux_cmds_c_bq_t1',
+                                     justification="right", size=(12,1), pad=(8,4)),
+                          PyGUI.Input(default_text="", key='ux_cmds_c_bq', enable_events=True,
+                                      size=(6,1), pad=((0,6),4)),
+                          PyGUI.Text("(chaff)", key='ux_cmds_c_bq_t2', pad=((0,8),(6,4)))],
+
+                        [PyGUI.Text("Burst Interval:", key='ux_cmds_c_bi_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_c_bi', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(seconds)", key='ux_cmds_c_bi_t2', pad=((0,8),4))],
+
+                        [PyGUI.Text("Salvo Quantity:", key='ux_cmds_c_sq_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_c_sq', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(bursts)", key='ux_cmds_c_sq_t2', pad=((0,8),4))],
+
+                        [PyGUI.Text("Salvo Interval:", key='ux_cmds_c_si_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_c_si', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(seconds)", key='ux_cmds_c_si_t2', pad=((0,8),(4,8)))]], pad=(12,6))
+        ]
+
+        layout_cmds_flare_prog = [
+            PyGUI.Frame("Flare",
+                        [[PyGUI.Text("Burst Quantity:", key='ux_cmds_f_bq_t1',
+                                     justification="right", size=(12,1), pad=(8,4)),
+                          PyGUI.Input(default_text="", key='ux_cmds_f_bq', enable_events=True,
+                                      size=(6,1), pad=((0,6),4)),
+                          PyGUI.Text("(flare)", key='ux_cmds_f_bq_t2', pad=((0,8),(6,4)))],
+
+                        [PyGUI.Text("Burst Interval:", key='ux_cmds_f_bi_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_f_bi', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(seconds)", key='ux_cmds_f_bi_t2', pad=((0,8),4))],
+
+                        [PyGUI.Text("Salvo Quantity:", key='ux_cmds_f_sq_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_f_sq', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(bursts)", key='ux_cmds_f_sq_t2', pad=((0,8),4))],
+
+                        [PyGUI.Text("Salvo Interval:", key='ux_cmds_f_si_t1',
+                                    justification="right", size=(12,1), pad=(8,4)),
+                         PyGUI.Input(default_text="", key='ux_cmds_f_si', enable_events=True,
+                                     size=(6,1), pad=((0,6),4)),
+                         PyGUI.Text("(seconds)", key='ux_cmds_f_si_t2', pad=((0,8),(4,8)))]], pad=(12,6))
+        ]
+
+        layout_cmds_tab = [
+            PyGUI.Tab("CMDS",
+                      [layout_cmds_sel, layout_cmds_chaff_prog, layout_cmds_flare_prog])
+        ]
+
         # ---- Management Controls
 
         layout_mgmt = [
@@ -254,7 +341,8 @@ class AvionicsSetupGUI:
 
         return PyGUI.Window(f"{airframe_ui} Avionics Setup",
                             [[PyGUI.TabGroup([layout_mfd_tab,
-                                              layout_tacan_tab], pad=(8,8))],
+                                              layout_tacan_tab,
+                                              layout_cmds_tab], pad=(8,8))],
                              [layout_mgmt]],
                             enable_close_attempted_event=True, modal=True, finalize=True)
 
@@ -295,10 +383,10 @@ class AvionicsSetupGUI:
             if row_key != key and self.values[row_key] == value:
                 self.window[row_key].update(value="")
 
-    # update the gui for the enable state of a MFD master mode
+    # update the gui for the enable state of the tacan
     #
     def update_gui_enable_tacan_row(self):
-        if self.values[f"ux_tacan_ckbx"]:
+        if self.values['ux_tacan_ckbx']:
             label_color = "#ffffff"
             input_color = "#000000"
             chan = self.values['ux_tacan_chan']
@@ -319,6 +407,24 @@ class AvionicsSetupGUI:
         self.window['ux_tacan_role'].update(text_color=label_color)
         self.window['ux_tacan_info'].update(summary_txt)
 
+    # update the gui for the enable state of the cmds
+    #
+    def update_gui_enable_cmds(self):
+        if self.values['ux_cmds_reconfig']:
+            label_color = "#ffffff"
+            input_color = "#000000"
+            disabled = False
+        else:
+            label_color = "#b8b8b8"
+            input_color = "#b8b8b8"
+            disabled = True
+        for cmds_type in cmds_types:
+            for cmds_param in cmds_params:
+                self.window[f"ux_cmds_{cmds_type}_{cmds_param}"].update(disabled=disabled,
+                                                                        text_color=input_color)
+                self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t1"].update(text_color=label_color)
+                self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t2"].update(text_color=label_color)
+
     # update the gui state based on a change to the template list
     #
     def update_gui_template_list(self):
@@ -334,14 +440,6 @@ class AvionicsSetupGUI:
     # update the gui button state based on current setup
     #
     def update_gui_control_enable_state(self):
-        if (not self.values['ux_nav_ckbx'] and
-            not self.values['ux_air_ckbx'] and
-            not self.values['ux_gnd_ckbx'] and
-            not self.values['ux_dog_ckbx'] and
-            not self.values['ux_tacan_ckbx']):
-            self.dbase_setup = None
-            self.is_dirty = False
-
         if self.is_dirty:
             save_disabled = False
         else:
@@ -355,6 +453,9 @@ class AvionicsSetupGUI:
 
 
     # get/set mfd format row ui state
+    #
+    # the state is expressed in the database format (csv list of osb numbers, see the definition
+    # of the f16_mfd_setup_* fields in the database model).
     #
     def get_gui_mfd_row(self, key_base):
         if self.values[f"{key_base}_ckbx"] == False:
@@ -379,6 +480,48 @@ class AvionicsSetupGUI:
             if (len(hits) == 0):
                 hits = [""]
             self.window[f"{key_base}{key_suffix}"].update(value=hits[0])
+
+    # get/set cmds program state
+    #
+    def get_gui_cmds_prog(self):
+        if self.values['ux_cmds_reconfig'] == True:
+            value = ""
+            sep = ""
+            for cmds_type in cmds_types:
+                for cmds_param in cmds_params:
+                    value += sep
+                    value += self.values[f'ux_cmds_{cmds_type}_{cmds_param}']
+                    sep = ","
+                sep = ";"
+        else:
+            value = None
+        return value
+    
+    def set_gui_cmds_prog(self, value):
+        if value is None:
+            self.window['ux_cmds_reconfig'].update(value=False)
+            self.values['ux_cmds_reconfig'] = False
+            for cmds_type in cmds_types:
+                for cmds_param in cmds_params:
+                    self.window[f"ux_cmds_{cmds_type}_{cmds_param}"].update("")
+        else:
+            self.window['ux_cmds_reconfig'].update(value=True)
+            self.values['ux_cmds_reconfig'] = True
+            types = value.split(";")
+            c_params = types[0].split(",")
+            f_params = types[1].split(",")
+
+            self.window['ux_cmds_c_bq'].update(f"{int(c_params[0]):#d}")
+            self.window['ux_cmds_c_bi'].update(f"{float(c_params[1]):#0.3f}")
+            self.window['ux_cmds_c_sq'].update(f"{int(c_params[2]):#d}")
+            self.window['ux_cmds_c_si'].update(f"{float(c_params[3]):#0.2f}")
+
+            self.window['ux_cmds_f_bq'].update(f"{int(f_params[0]):#d}")
+            self.window['ux_cmds_f_bi'].update(f"{float(f_params[1]):#0.3f}")
+            self.window['ux_cmds_f_sq'].update(f"{int(f_params[2]):#d}")
+            self.window['ux_cmds_f_si'].update(f"{float(f_params[3]):#0.2f}")
+        self.update_gui_enable_cmds()
+        
 
     # synchronize TACAN setup UI and database
     #
@@ -453,6 +596,44 @@ class AvionicsSetupGUI:
             self.is_dirty = False
 
 
+    # synchronize F-16 CMDS setup UI and database
+    #
+    def copy_f16_cmds_dbase_to_ui(self, cur_prog=None):
+        if cur_prog is None:
+            cur_prog = self.values['ux_cmds_prog_sel']
+        if self.dbase_setup is not None:
+            self.cur_cmds_prog_map['MAN 1'] = self.dbase_setup.f16_cmds_setup_p1
+            self.cur_cmds_prog_map['MAN 2'] = self.dbase_setup.f16_cmds_setup_p2
+            self.cur_cmds_prog_map['MAN 3'] = self.dbase_setup.f16_cmds_setup_p3
+            self.cur_cmds_prog_map['MAN 4'] = self.dbase_setup.f16_cmds_setup_p4
+            self.cur_cmds_prog_map['Panic'] = self.dbase_setup.f16_cmds_setup_p5
+        else:
+            self.cur_cmds_prog_map['MAN 1'] = None
+            self.cur_cmds_prog_map['MAN 2'] = None
+            self.cur_cmds_prog_map['MAN 3'] = None
+            self.cur_cmds_prog_map['MAN 4'] = None
+            self.cur_cmds_prog_map['Panic'] = None
+        self.set_gui_cmds_prog(self.cur_cmds_prog_map[cur_prog])
+        self.is_dirty = False
+    
+    def copy_f16_cmds_ui_to_dbase(self, cur_prog=None, db_save=True):
+        if cur_prog is None:
+            cur_prog = self.values['ux_cmds_prog_sel']
+        self.cur_cmds_prog_map[cur_prog] = self.get_gui_cmds_prog()
+        if self.dbase_setup is not None:
+            self.dbase_setup.f16_cmds_setup_p1 = self.cur_cmds_prog_map['MAN 1']
+            self.dbase_setup.f16_cmds_setup_p2 = self.cur_cmds_prog_map['MAN 2']
+            self.dbase_setup.f16_cmds_setup_p3 = self.cur_cmds_prog_map['MAN 3']
+            self.dbase_setup.f16_cmds_setup_p4 = self.cur_cmds_prog_map['MAN 4']
+            self.dbase_setup.f16_cmds_setup_p5 = self.cur_cmds_prog_map['Panic']
+            if db_save:
+                try:
+                    self.dbase_setup.save()
+                except:
+                    PyGUI.PopupError("Unable to save CMDS setup information to database?")
+            self.is_dirty = False
+
+
     # gui action handlers
     #
     def do_mfd_osb_ckbx(self, event):
@@ -480,6 +661,42 @@ class AvionicsSetupGUI:
                             title="Invalid Channel")
                 self.window[event].update(self.values[event][:-1])
 
+    def do_cmds_reconfig(self, event):
+        cur_prog = self.values['ux_cmds_prog_sel']
+        if self.values[event] == True:
+            program = cmds_prog_default_map[cur_prog]
+        else:
+            program = None
+        self.cur_cmds_prog_map[cur_prog] = [program]
+        self.set_gui_cmds_prog(program)
+        self.is_dirty = True
+    
+    def do_cmds_prog_select(self, event):
+        self.cur_cmds_prog_map[self.cur_cmds_prog_sel] = self.get_gui_cmds_prog()
+        self.cur_cmds_prog_sel = self.values[event]
+        self.set_gui_cmds_prog(self.cur_cmds_prog_map[self.cur_cmds_prog_sel])
+
+    def do_cmds_prog_field_quantity(self, event):
+        if self.values[event]:
+            if self.val_cmds_prog_field_quantity(self.values[event]):
+                self.is_dirty = True
+            else:
+                self.window[event].update(self.values[event][:-1])
+
+    def do_cmds_prog_field_bint(self, event):
+        if self.values[event]:
+            if self.val_cmds_prog_field_bint(self.values[event]):
+                self.is_dirty = True
+            else:
+                self.window[event].update(self.values[event][:-1])
+
+    def do_cmds_prog_field_sint(self, event):
+        if self.values[event]:
+            if self.val_cmds_prog_field_sint(self.values[event]):
+                self.is_dirty = True
+            else:
+                self.window[event].update(self.values[event][:-1])
+
     def do_template_select(self, event):
         if self.is_dirty:
             action = PyGUI.PopupOKCancel(f"You have unsaved changes to the current template." +
@@ -494,6 +711,11 @@ class AvionicsSetupGUI:
         else:
             self.dbase_setup = AvionicsSetupModel.get(AvionicsSetupModel.name == self.values[event])
         self.cur_av_setup = self.values['ux_tmplt_select']
+
+        self.cur_cmds_prog_sel = 'MAN 1'
+        self.window['ux_cmds_prog_sel'].update(value=self.cur_cmds_prog_sel)
+
+        self.copy_f16_cmds_dbase_to_ui()
         self.copy_f16_mfd_dbase_to_ui()
         self.copy_tacan_dbase_to_ui()
 
@@ -503,6 +725,7 @@ class AvionicsSetupGUI:
             if name is not None:
                 try:
                     self.dbase_setup = AvionicsSetupModel.create(name=name)
+                    self.copy_f16_cmds_ui_to_dbase(db_save=False)
                     self.copy_f16_mfd_ui_to_dbase(db_save=False)
                     self.copy_tacan_ui_to_dbase(db_save=True)
                     self.update_gui_template_list()
@@ -510,7 +733,8 @@ class AvionicsSetupGUI:
                     PyGUI.Popup(f"Unable to create a template named '{name}'. Is there already" +
                                  " a template with that name?", title="Error")
         else:
-            self.copy_f16_mfd_ui_to_dbase(db_save=False)
+            self.copy_f16_cmds_ui_to_dbase(db_save=True)
+            self.copy_f16_mfd_ui_to_dbase(db_save=True)
             self.copy_tacan_ui_to_dbase(db_save=True)
 
     def do_template_delete(self, event):
@@ -521,11 +745,50 @@ class AvionicsSetupGUI:
                 self.dbase_setup.delete_instance()
                 self.dbase_setup = None
                 self.is_dirty = False
+                self.cur_cmds_prog_sel = 'MAN 1'
+                self.window['ux_cmds_prog_sel'].update(value=self.cur_cmds_prog_sel)
                 self.update_gui_template_list()
+                self.copy_f16_cmds_dbase_to_ui()
                 self.copy_f16_mfd_dbase_to_ui()
                 self.copy_tacan_dbase_to_ui()
             except Exception as e:
                 PyGUI.PopupError(f"Unable to delete the settings {self.cur_av_setup} from the database.")
+
+    def val_cmds_prog_field_quantity(self, value, quiet=False):
+        try:
+            input_as_int = int(value)
+            if input_as_int < 0 or input_as_int > 99:
+                raise ValueError("Out of bounds")
+            return True
+        except:
+            if not quiet:
+                PyGUI.Popup("The quantity must be between 0 and 99 in a CMDS program.",
+                            title="Invalid Quantity")
+        return False
+
+    def val_cmds_prog_field_bint(self, value, quiet=False):
+        try:
+            input_as_float = float(value)
+            if (input_as_float < 0.020 or input_as_float > 10.0) and (input_as_float != 0.0):
+                raise ValueError("Out of bounds")
+            return True
+        except:
+            if not quiet:
+                PyGUI.Popup("The burst interval must be between 0.020 and 10.000 in a CMDS program.",
+                            title="Invalid Burst Interval")
+        return False
+
+    def val_cmds_prog_field_sint(self, value, quiet=False):
+        try:
+            input_as_float = float(value)
+            if (input_as_float < 0.50 or input_as_float > 150.0) and (input_as_float != 0.0):
+                raise ValueError("Out of bounds")
+            return True
+        except:
+            if not quiet:
+                PyGUI.Popup("The salvo interval must be between 0.50 and 150.00 in a CMDS program.",
+                            title="Invalid Salvo Interval")
+        return False
 
     # run the gui for the preferences window.
     #
@@ -533,15 +796,17 @@ class AvionicsSetupGUI:
         self.window.disappear()
 
         try:
-            self.copy_f16_mfd_dbase_to_ui()
-            self.copy_tacan_dbase_to_ui()
-
             event, self.values = self.window.read(timeout=0)
+
+            self.copy_f16_mfd_dbase_to_ui()
+            self.copy_f16_cmds_dbase_to_ui()
+            self.copy_tacan_dbase_to_ui()
 
             self.update_gui_control_enable_state()
             for key_base in ['ux_nav', 'ux_gnd', 'ux_air', 'ux_dog']:
                 self.update_gui_enable_mfd_row(key_base)
             self.update_gui_enable_tacan_row()
+            self.update_gui_enable_cmds()
             self.update_gui_template_list()
 
             self.window['ux_tmplt_select'].update(value=self.cur_av_setup)
@@ -582,20 +847,52 @@ class AvionicsSetupGUI:
                         'ux_tacan_chan' : self.do_tacan_chan,
                         'ux_tacan_xy_select' : self.do_tacan_dirty,
                         'ux_tacan_lw_select' : self.do_tacan_dirty,
+                        'ux_cmds_reconfig' : self.do_cmds_reconfig,
+                        'ux_cmds_prog_sel' : self.do_cmds_prog_select,
+                        'ux_cmds_c_bq' : self.do_cmds_prog_field_quantity,
+                        'ux_cmds_c_bi' : self.do_cmds_prog_field_bint,
+                        'ux_cmds_c_sq' : self.do_cmds_prog_field_quantity,
+                        'ux_cmds_c_si' : self.do_cmds_prog_field_sint,
+                        'ux_cmds_f_bq' : self.do_cmds_prog_field_quantity,
+                        'ux_cmds_f_bi' : self.do_cmds_prog_field_bint,
+                        'ux_cmds_f_sq' : self.do_cmds_prog_field_quantity,
+                        'ux_cmds_f_si' : self.do_cmds_prog_field_sint,
                         'ux_tmplt_select' : self.do_template_select,
                         'ux_tmplt_save' : self.do_template_save,
                         'ux_tmplt_delete' : self.do_template_delete,
         }
 
+        edit_text_val_map = { 'ux_cmds_c_bq' : self.val_cmds_prog_field_quantity,
+                              'ux_cmds_c_bi' : self.val_cmds_prog_field_bint,
+                              'ux_cmds_c_sq' : self.val_cmds_prog_field_quantity,
+                              'ux_cmds_c_si' : self.val_cmds_prog_field_sint,
+                              'ux_cmds_f_bq' : self.val_cmds_prog_field_quantity,
+                              'ux_cmds_f_bi' : self.val_cmds_prog_field_bint,
+                              'ux_cmds_f_sq' : self.val_cmds_prog_field_quantity,
+                              'ux_cmds_f_si' : self.val_cmds_prog_field_sint,
+        }
+
         tout_val = 1000000
         while True:
-            event, new_values = self.window.Read(timeout=tout_val, timeout_key='ux_timeout')
+            new_event, new_values = self.window.Read(timeout=tout_val, timeout_key='ux_timeout')
             tout_val = 1000000
             if event != 'ux_timeout':
-                self.logger.debug(f"AVS Event: {event}")
-                self.logger.debug(f"AVS Values: {self.values}")
+                self.logger.debug(f"AVS Event: {new_event} / {event}")
+                self.logger.debug(f"AVS Values: {new_values}")
             if new_values is not None:
                 self.values = new_values
+            event = new_event
+
+            self.logger.debug(f"{event} / {new_event}")
+            if event != new_event and event in edit_text_val_map.keys():
+                if event == 'ux_done' or \
+                   event != PyGUI.WINDOW_CLOSE_ATTEMPTED_EVENT or \
+                   event is None:
+                    valid = (edit_text_val_map[event])(self.values[event], quiet=True)
+                else:
+                    valid = (edit_text_val_map[event])(self.values[event], quiet=False)
+                if not valid:
+                    event = 'ux_timeout'
 
             if event != 'ux_done' and \
                event != PyGUI.WINDOW_CLOSE_ATTEMPTED_EVENT and \
@@ -604,6 +901,7 @@ class AvionicsSetupGUI:
                 for key_base in ['ux_nav', 'ux_air', 'ux_gnd', 'ux_dog']:
                     self.update_gui_enable_mfd_row(key_base)
                 self.update_gui_enable_tacan_row()
+                self.update_gui_enable_cmds()
             elif not self.is_dirty or \
                  PyGUI.PopupOKCancel(f"You have unsaved changes to the current template." +
                                      f" Closing the window will discard these changes.",
@@ -614,7 +912,8 @@ class AvionicsSetupGUI:
                 try:
                     (handler_map[event])(event)
                 except Exception as e:
-                    self.logger.debug(f"AVS ERROR: {e}")
+                    pass
+                    # self.logger.debug(f"AVS ERROR: {e}")
                 tout_val = 0
         
         self.close()
