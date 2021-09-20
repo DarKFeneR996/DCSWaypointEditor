@@ -20,6 +20,7 @@
 *
 '''
 
+import types
 import keyboard
 import re
 import socket
@@ -754,6 +755,8 @@ class ViperDriver(Driver):
             key = "ICP_AA_MODE_BTN"
         elif num == "AG_MODE":
             key = "ICP_AG_MODE_BTN"
+        elif num == "LIST":
+            key = "ICP_LIST_BTN"
         self.push_btn(key, delay_after=delay_after, delay_release=delay_release)
 
     def icp_ded(self, num, delay_after=None, delay_release=None):
@@ -945,6 +948,48 @@ class ViperDriver(Driver):
             elif mode != "NAV":
                 self.icp_btn(mode)
 
+    def enter_cmds_prog(self, type, prog, command_q=None, progress_q=None):
+        if prog is not None:
+            self.bkgnd_advance(command_q, progress_q)
+
+            self.logger.info(f"Entering CMDS {type} program: {prog}")
+            fields = prog.split(",")
+
+            self.enter_number(fields[0])                # BQ field
+            self.icp_btn("ENTR", delay_after=0.1)
+            self.icp_data('DN', delay_after=0.1)        # BQ --> BI
+            self.enter_number(fields[1])                # BI field
+            self.icp_btn("ENTR", delay_after=0.1)
+            self.icp_data('DN', delay_after=0.1)        # BI --> SQ
+            self.enter_number(fields[2])                # SQ field
+            self.icp_btn("ENTR", delay_after=0.1)
+            self.icp_data('DN', delay_after=0.1)        # SQ --> SI
+            self.enter_number(fields[3])                # SI field
+            self.icp_btn("ENTR", delay_after=0.1)
+            self.icp_data('DN', delay_after=0.1)        # SI --> BQ
+
+        else:
+            self.logger.info(f"Skipping unchanged CMDS {type} program")
+            sleep(0.25)
+
+        self.icp_ded("UP", delay_after=0.25)            # Increment program number
+
+    def enter_cmds(self, progs, command_q=None, progress_q=None):
+        self.icp_btn('LIST')                            # Select CMDS DED page
+        self.icp_btn('7')
+        self.icp_data('SEQ', delay_after=0.25)          # BINGO --> CHAFF
+
+        types = [ "Chaff", "Flare" ]
+        for type in types:
+            for prog in progs:
+                if prog is not None:
+                    prog = prog.split(";")[types.index(type)]
+                self.enter_cmds_prog(type, prog, command_q=command_q, progress_q=progress_q)
+
+            self.icp_data('SEQ', delay_after=0.25)      # CHAFF --> FLARE
+
+        self.icp_data("RTN")
+
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
 
@@ -960,15 +1005,21 @@ class ViperDriver(Driver):
             self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
             self.enter_tacan(avs_dict.get('tacan_yard'), command_q=command_q, progress_q=progress_q)
             self.enter_mfd("NAV", avs_dict.get('f16_mfd_setup_nav'),
-                        command_q=command_q, progress_q=progress_q)
+                           command_q=command_q, progress_q=progress_q)
             self.enter_mfd("AA_MODE", avs_dict.get('f16_mfd_setup_air'),
-                        command_q=command_q, progress_q=progress_q)
+                           command_q=command_q, progress_q=progress_q)
             self.enter_mfd("AG_MODE", avs_dict.get('f16_mfd_setup_gnd'),
-                        command_q=command_q, progress_q=progress_q)
+                           command_q=command_q, progress_q=progress_q)
             self.enter_mfd("DGFT_D", avs_dict.get('f16_mfd_setup_dog'),
-                        command_q=command_q, progress_q=progress_q)
+                           command_q=command_q, progress_q=progress_q)
             self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_air'),
-                        command_q=command_q, progress_q=progress_q)
+                           command_q=command_q, progress_q=progress_q)
+            self.enter_cmds([avs_dict.get('f16_cmds_setup_p1'),
+                             avs_dict.get('f16_cmds_setup_p2'),
+                             avs_dict.get('f16_cmds_setup_p3'),
+                             avs_dict.get('f16_cmds_setup_p4'),
+                             avs_dict.get('f16_cmds_setup_p5')],
+                            command_q=command_q, progress_q=progress_q)
             self.bkgnd_advance(command_q, progress_q, is_done=True)
         except Exception as e:
             self.logger.debug(f"Exception raised: {e}")
