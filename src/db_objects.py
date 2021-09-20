@@ -242,6 +242,16 @@ class Profile:
                         avs_dict['f16_mfd_setup_gnd'] = setup.f16_mfd_setup_gnd
                     if setup.f16_mfd_setup_dog is not None:
                         avs_dict['f16_mfd_setup_dog'] = setup.f16_mfd_setup_dog
+                    if setup.f16_cmds_setup_p1 is not None:
+                        avs_dict['f16_cmds_setup_p1'] = setup.f16_cmds_setup_p1
+                    if setup.f16_cmds_setup_p2 is not None:
+                        avs_dict['f16_cmds_setup_p2'] = setup.f16_cmds_setup_p2
+                    if setup.f16_cmds_setup_p3 is not None:
+                        avs_dict['f16_cmds_setup_p3'] = setup.f16_cmds_setup_p3
+                    if setup.f16_cmds_setup_p4 is not None:
+                        avs_dict['f16_cmds_setup_p4'] = setup.f16_cmds_setup_p4
+                    if setup.f16_cmds_setup_p5 is not None:
+                        avs_dict['f16_cmds_setup_p5'] = setup.f16_cmds_setup_p5
                 except:
                     pass
                 return avs_dict

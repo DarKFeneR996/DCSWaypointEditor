@@ -42,7 +42,7 @@ class DatabaseInterface:
             for metadata in db.get_columns('ProfileModel'):
                 if metadata.name == 'av_setup_name':
                     #
-                    # db v.2 adds "viper_setup" column to "ProfileModel" table.
+                    # db v.2 adds "av_setup_name" column to "ProfileModel" table.
                     #
                     self.db_version = 2
             for metadata in db.get_columns('WaypointModel'):
@@ -51,6 +51,12 @@ class DatabaseInterface:
                     # db v.3 adds "is_set_cur" column to "WaypointModel" table.
                     #
                     self.db_version = 3
+            for metadata in db.get_columns('AvionicsSetupModel'):
+                if self.db_version == 3 and metadata.name == 'f16_cmds_setup_p1':
+                    #
+                    # db v.4 adds "f16_cmds_setup_p<x>" columns to "AvionicsSetupModel" table.
+                    #
+                    self.db_version = 4
 
             if self.db_version == 1:
                 avionics_setup_field = CharField(null=True, unique=False)
@@ -67,6 +73,18 @@ class DatabaseInterface:
                         migrator.add_column('WaypointModel', 'is_set_cur', is_init_field)
                     )
                 self.db_version = 3
+                self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
+            if self.db_version == 3:
+                is_init_field = CharField(null=True, default=None)
+                with db.atomic():
+                    migrate(
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p1', is_init_field),
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p2', is_init_field),
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p3', is_init_field),
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p4', is_init_field),
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p5', is_init_field)
+                    )
+                self.db_version = 4
                 self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
 
         except Exception as e:

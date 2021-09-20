@@ -93,6 +93,23 @@ class AvionicsSetupModel(BaseModel):
     f16_mfd_setup_gnd = CharField(null=True, default=None)
     f16_mfd_setup_dog = CharField(null=True, default=None)
 
+    # airframes supported: viper
+    #
+    # Fields added in db v.4, v1.3.0-51stVFW and later
+    #
+    # List of integers/floats corresponding to the CMDS program parameters. The strings
+    # are of the format "<C>;<F>" where <C> and <F> are the chaff and flare programs,
+    # respectively. Both <C> and <F> are of the form "<BQ>,<BI>,<SQ>,<SI>" where <BQ>
+    # and <SQ> are integers on [0, 99], <BI> is a float on [0.020, 10.000] (the float
+    # must have 3 digits right of decimal), and <SI> is a float on [0.50, 150.00] (the
+    # float must have 2 digits right of decimal)
+    #
+    f16_cmds_setup_p1 = CharField(null=True, default=None)
+    f16_cmds_setup_p2 = CharField(null=True, default=None)
+    f16_cmds_setup_p3 = CharField(null=True, default=None)
+    f16_cmds_setup_p4 = CharField(null=True, default=None)
+    f16_cmds_setup_p5 = CharField(null=True, default=None)
+
     @staticmethod
     def list_all():
         return sorted(list(AvionicsSetupModel.select()), key=lambda setup: setup.name)
