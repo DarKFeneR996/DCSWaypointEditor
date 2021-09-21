@@ -956,28 +956,28 @@ class ViperDriver(Driver):
             fields = prog.split(",")
 
             self.enter_number(fields[0])                # BQ field
-            self.icp_btn("ENTR", delay_after=0.1)
-            self.icp_data('DN', delay_after=0.1)        # BQ --> BI
+            self.icp_btn("ENTR", delay_after=0.15)
+            self.icp_data('DN', delay_after=0.15)       # BQ --> BI
             self.enter_number(fields[1])                # BI field
-            self.icp_btn("ENTR", delay_after=0.1)
-            self.icp_data('DN', delay_after=0.1)        # BI --> SQ
+            self.icp_btn("ENTR", delay_after=0.15)
+            self.icp_data('DN', delay_after=0.15)       # BI --> SQ
             self.enter_number(fields[2])                # SQ field
-            self.icp_btn("ENTR", delay_after=0.1)
-            self.icp_data('DN', delay_after=0.1)        # SQ --> SI
+            self.icp_btn("ENTR", delay_after=0.15)
+            self.icp_data('DN', delay_after=0.15)       # SQ --> SI
             self.enter_number(fields[3])                # SI field
-            self.icp_btn("ENTR", delay_after=0.1)
-            self.icp_data('DN', delay_after=0.1)        # SI --> BQ
+            self.icp_btn("ENTR", delay_after=0.15)
+            self.icp_data('DN', delay_after=0.15)       # SI --> BQ
 
         else:
             self.logger.info(f"Skipping unchanged CMDS {type} program")
-            sleep(0.25)
+            sleep(0.35)
 
         self.icp_ded("UP", delay_after=0.25)            # Increment program number
 
     def enter_cmds(self, progs, command_q=None, progress_q=None):
         self.icp_btn('LIST')                            # Select CMDS DED page
         self.icp_btn('7')
-        self.icp_data('SEQ', delay_after=0.25)          # BINGO --> CHAFF
+        self.icp_data('SEQ', delay_after=0.35)          # BINGO --> CHAFF
 
         types = [ "Chaff", "Flare" ]
         for type in types:
@@ -986,7 +986,7 @@ class ViperDriver(Driver):
                     prog = prog.split(";")[types.index(type)]
                 self.enter_cmds_prog(type, prog, command_q=command_q, progress_q=progress_q)
 
-            self.icp_data('SEQ', delay_after=0.25)      # CHAFF --> FLARE
+            self.icp_data('SEQ', delay_after=0.35)      # CHAFF --> FLARE
 
         self.icp_data("RTN")
 
@@ -1001,6 +1001,15 @@ class ViperDriver(Driver):
         self.bkgnd_prog_step = (1.0 / (len(waypoints) + avs_dict_len + 1)) * 100.0
         self.bkgnd_prog_cur = 0
 
+        cmds_progs = [ avs_dict.get('f16_cmds_setup_p1'),
+                       avs_dict.get('f16_cmds_setup_p2'),
+                       avs_dict.get('f16_cmds_setup_p3'),
+                       avs_dict.get('f16_cmds_setup_p4'),
+                       avs_dict.get('f16_cmds_setup_p5')
+        ]
+        if cmds_progs.count(None) == 5:
+            cmds_progs = None
+
         try:
             self.enter_waypoints(waypoints, command_q=command_q, progress_q=progress_q)
             self.enter_tacan(avs_dict.get('tacan_yard'), command_q=command_q, progress_q=progress_q)
@@ -1014,12 +1023,8 @@ class ViperDriver(Driver):
                            command_q=command_q, progress_q=progress_q)
             self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_air'),
                            command_q=command_q, progress_q=progress_q)
-            self.enter_cmds([avs_dict.get('f16_cmds_setup_p1'),
-                             avs_dict.get('f16_cmds_setup_p2'),
-                             avs_dict.get('f16_cmds_setup_p3'),
-                             avs_dict.get('f16_cmds_setup_p4'),
-                             avs_dict.get('f16_cmds_setup_p5')],
-                            command_q=command_q, progress_q=progress_q)
+            if cmds_progs is not None:
+                self.enter_cmds(cmds_progs, command_q=command_q, progress_q=progress_q)
             self.bkgnd_advance(command_q, progress_q, is_done=True)
         except Exception as e:
             self.logger.debug(f"Exception raised: {e}")
