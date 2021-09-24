@@ -483,14 +483,46 @@ class AvionicsSetupGUI:
 
     # get/set cmds program state
     #
+    def get_gui_cmds_prog_field_quant(self, value):
+        try:
+            value_as_int = int(value)
+            if value_as_int < 0 or value_as_int > 99:
+                raise ValueError("Out of bounds")
+        except:
+            value_as_int = 0
+        return f"{value_as_int:#d}"
+
+    def get_gui_cmds_prog_field_bint(self, value):
+        try:
+            value_as_float = float(value)
+            if (value_as_float < 0.020 or value_as_float > 10.0):
+                raise ValueError("Out of bounds")
+        except:
+            value_as_float = 0.02
+        return f"{value_as_float:#0.3f}"
+
+    def get_gui_cmds_prog_field_sint(self, value, quiet=False):
+        try:
+            value_as_float = float(value)
+            if (value_as_float < 0.50 or value_as_float > 150.0):
+                raise ValueError("Out of bounds")
+        except:
+            value_as_float = 0.5
+        return f"{value_as_float:#0.2f}"
+
     def get_gui_cmds_prog(self):
+        cmds_params_val_map = { 'bq' : self.get_gui_cmds_prog_field_quant,
+                                'bi' : self.get_gui_cmds_prog_field_bint,
+                                'sq' : self.get_gui_cmds_prog_field_quant,
+                                'si' : self.get_gui_cmds_prog_field_sint }
         if self.values['ux_cmds_reconfig'] == True:
             value = ""
             sep = ""
             for cmds_type in cmds_types:
                 for cmds_param in cmds_params:
                     value += sep
-                    value += self.values[f'ux_cmds_{cmds_type}_{cmds_param}']
+                    field = self.values[f'ux_cmds_{cmds_type}_{cmds_param}']
+                    value += cmds_params_val_map[cmds_param](field)
                     sep = ","
                 sep = ";"
         else:
@@ -631,7 +663,7 @@ class AvionicsSetupGUI:
                     self.dbase_setup.save()
                 except:
                     PyGUI.PopupError("Unable to save CMDS setup information to database?")
-            self.is_dirty = False
+            self.copy_f16_cmds_dbase_to_ui()
 
 
     # gui action handlers
@@ -862,16 +894,6 @@ class AvionicsSetupGUI:
                         'ux_tmplt_delete' : self.do_template_delete,
         }
 
-        edit_text_val_map = { 'ux_cmds_c_bq' : self.val_cmds_prog_field_quantity,
-                              'ux_cmds_c_bi' : self.val_cmds_prog_field_bint,
-                              'ux_cmds_c_sq' : self.val_cmds_prog_field_quantity,
-                              'ux_cmds_c_si' : self.val_cmds_prog_field_sint,
-                              'ux_cmds_f_bq' : self.val_cmds_prog_field_quantity,
-                              'ux_cmds_f_bi' : self.val_cmds_prog_field_bint,
-                              'ux_cmds_f_sq' : self.val_cmds_prog_field_quantity,
-                              'ux_cmds_f_si' : self.val_cmds_prog_field_sint,
-        }
-
         tout_val = 1000000
         while True:
             new_event, new_values = self.window.Read(timeout=tout_val, timeout_key='ux_timeout')
@@ -882,17 +904,6 @@ class AvionicsSetupGUI:
             if new_values is not None:
                 self.values = new_values
             event = new_event
-
-            self.logger.debug(f"{event} / {new_event}")
-            if event != new_event and event in edit_text_val_map.keys():
-                if event == 'ux_done' or \
-                   event != PyGUI.WINDOW_CLOSE_ATTEMPTED_EVENT or \
-                   event is None:
-                    valid = (edit_text_val_map[event])(self.values[event], quiet=True)
-                else:
-                    valid = (edit_text_val_map[event])(self.values[event], quiet=False)
-                if not valid:
-                    event = 'ux_timeout'
 
             if event != 'ux_done' and \
                event != PyGUI.WINDOW_CLOSE_ATTEMPTED_EVENT and \
