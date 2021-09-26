@@ -246,6 +246,20 @@ class Preferences:
             value = "true" if value else "false"
         self._is_av_setup_for_unk = value
 
+    @property
+    def is_f10_elev_clamped(self):
+        return self._is_f10_elev_clamped
+
+    @property
+    def is_f10_elev_clamped_bool(self):
+        return True if self._is_f10_elev_clamped == "true" else False
+
+    @is_f10_elev_clamped.setter
+    def is_f10_elev_clamped(self, value):
+        if type(value) == bool or type(value) == int or type(value) == float:
+            value = "true" if value else "false"
+        self._is_f10_elev_clamped = value
+
     # ================ general methods
 
     # validate a hot key sequence
@@ -291,6 +305,7 @@ class Preferences:
         self.is_auto_upd_check = "true"
         self.is_tesseract_debug = "false"
         self.is_av_setup_for_unk = "true"
+        self.is_f10_elev_clamped = "true"
 
     # synchronize the preferences the backing store file
     #
@@ -315,6 +330,7 @@ class Preferences:
             self.is_auto_upd_check = self.prefs["PREFERENCES"]["is_auto_upd_check"]
             self.is_tesseract_debug = self.prefs["PREFERENCES"]["is_tesseract_debug"]
             self.is_av_setup_for_unk = self.prefs["PREFERENCES"]["is_av_setup_for_unk"]
+            self.is_f10_elev_clamped = self.prefs["PREFERENCES"]["is_f10_elev_clamped"]
         except:
             logger.error("Synchronize failed, resetting preferences to defaults")
             self.reset_prefs()
@@ -338,6 +354,7 @@ class Preferences:
         self.prefs["PREFERENCES"]["is_auto_upd_check"] = self.is_auto_upd_check
         self.prefs["PREFERENCES"]["is_tesseract_debug"] = self.is_tesseract_debug
         self.prefs["PREFERENCES"]["is_av_setup_for_unk"] = self.is_av_setup_for_unk
+        self.prefs["PREFERENCES"]["is_f10_elev_clamped"] = self.is_f10_elev_clamped
 
         if do_write:
             with open(self.path_ini, "w+") as f:

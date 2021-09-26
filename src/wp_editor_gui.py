@@ -1297,6 +1297,8 @@ class WaypointEditorGUI:
             position, elevation = dcs_f10_parse_map_coords_string(captured_coords)
             if position is None:
                 raise ValueError("Capture or parse fails")
+            elif elevation is not None and elevation < 0 and self.editor.prefs.is_f10_elev_clamped_bool:
+                elevation = 0
             if self.is_dcs_f10_tgt_add:
                 if self.add_waypoint(position, elevation) is None:
                     raise ValueError("Adding captured waypoint fails")

@@ -75,9 +75,12 @@ There are four preferences in this category,
 - *Default Airframe:* Selects the default airframe to use in new profiles.
 - *Default Avionics Setup:* Selects the default avionics setup to use in airframes that
   support this functionality (currently, the Viper). See **TODO** for more information.
+- *DCS F10 clamps elevation:* When selected, DCSWE will clamp the elevation of
+  coordinates it captures from the DCS F10 map to greater-than or equal-to 0. See
+  **TODO** for more information.
+- *DCS F10 logs OCR Output:* When selected, DCSWE will log the raw image output from
+  Tesseract when capturing coordinates from the DCS F10 map. This is primarily useful
+  for debugging. See **TODO** for more information.
 - *Check for Updates:* When selected, DCSWE will check for updates both to DCSWE and
   DCS-BIOS when it is launched. If new versions are available, DCSWE will ask you if you
   want to update.
-- *Log Raw OCR Output:* When selected, DCSWE will log the raw image output from
-  Tesseract when capturing coordinates from the DCS F10 map. This is primarily useful
-  for debugging. See **TODO** for more information.

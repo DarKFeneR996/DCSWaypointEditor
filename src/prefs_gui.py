@@ -112,6 +112,7 @@ class PreferencesGUI:
         self.prefs.is_auto_upd_check = values.get('ux_is_auto_upd_check')
         self.prefs.is_tesseract_debug = values.get('ux_is_tesseract_debug')
         self.prefs.is_av_setup_for_unk = values.get('ux_av_setup_unknown')
+        self.prefs.is_f10_elev_clamped = values.get('ux_is_f10_elev_clamped')
 
         self.prefs.persist_prefs()
 
@@ -123,6 +124,7 @@ class PreferencesGUI:
         is_auto_upd_check = self.prefs.is_auto_upd_check_bool
         is_tesseract_debug = self.prefs.is_tesseract_debug_bool
         is_av_setup_for_unk = self.prefs.is_av_setup_for_unk_bool
+        is_f10_elev_clamped = self.prefs.is_f10_elev_clamped_bool
         dcs_bios_ver = dcs_bios_vers_install(self.prefs.path_dcs)
         try:
             as_tmplts = [ "DCS Default" ] + AvionicsSetupModel.list_all_names()
@@ -206,11 +208,14 @@ class PreferencesGUI:
              PyGUI.Checkbox("Use when setup unknown", default=is_av_setup_for_unk,
                             key='ux_av_setup_unknown', pad=((6,8),6))],
 
-            [PyGUI.Text("Check for updates:", (21,1), justification="right"),
-             PyGUI.Checkbox("", default=is_auto_upd_check, key='ux_is_auto_upd_check')],
+            [PyGUI.Text("DCS F10 clamps elevation:", (21,1), justification="right", pad=(6,(6,0))),
+             PyGUI.Checkbox("", default=is_f10_elev_clamped, key='ux_is_f10_elev_clamped', pad=(0,(6,0)))],
 
-            [PyGUI.Text("Log raw OCR output:", (21,1), justification="right"),
-             PyGUI.Checkbox("", default=is_tesseract_debug, key='ux_is_tesseract_debug')]
+            [PyGUI.Text("DCS F10 logs OCR output:", (21,1), justification="right", pad=(6,(0,6))),
+             PyGUI.Checkbox("", default=is_tesseract_debug, key='ux_is_tesseract_debug', pad=(0,(0,6)))],
+
+            [PyGUI.Text("Check for updates:", (21,1), justification="right", pad=(6,6)),
+             PyGUI.Checkbox("", default=is_auto_upd_check, key='ux_is_auto_upd_check', pad=(0,6))]
         ]
 
         return PyGUI.Window("Preferences",
