@@ -191,10 +191,10 @@ class HornetDriver(Driver):
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
-            if num == ".":
-                break
-            else:
+            if num in "0123456789":
                 self.ufc(num)
+            elif num == ".":
+                break
 
         self.ufc("ENT", delay_release=self.long_delay, delay_after=self.medium_delay)
 
@@ -207,6 +207,11 @@ class HornetDriver(Driver):
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
+
+        # lat/lon without decimal can confuse enter_number, avoid that situation...
+        #
+        lat_str = self.ensure_decimal(lat_str)
+        lon_str = self.ensure_decimal(lon_str)
 
         if not pp:
             self.logger.info(f"Entering coords string (W): {lat_str}, {lon_str}")
@@ -225,17 +230,18 @@ class HornetDriver(Driver):
             self.enter_number(lon_str, two_enters=True)
             sleep(0.5)
 
-            if elev:
-                self.ufc("OSB3")
-                self.ufc("OSB1")
-                self.enter_number(elev if elev>=0 else 0)
-        else:
-
-            # lat/lon without decimal can confuse enter_number, avoid that situation...
+            # For non-pre-planned waypoints skip elevations less than 0 (effectively
+            # clamping them to 0). For navagation <0 does not make sense.
+            # Hornet avionics do not seem to allow WPT elevations < -2000'
             #
-            lat_str = self.ensure_decimal(lat_str)
-            lon_str = self.ensure_decimal(lon_str)
+            self.ufc("OSB3")
+            self.ufc("OSB1")
+            if elev < 0:
+                elev = -max(elev, -2000)
+                self.ufc("0", delay_release=self.medium_delay)
+            self.enter_number(elev)
 
+        else:
             self.logger.info(f"Entering coords string (M): {lat_str}, {lon_str}")
 
             self.ufc("OSB1")
@@ -257,11 +263,15 @@ class HornetDriver(Driver):
             self.lmdi("14")
             self.lmdi("14")
 
-            if elev:
-                self.ufc("OSB4")
-                self.ufc("OSB4")
-                elev = round(float(elev) / 3.2808)
-                self.enter_number(elev)
+            # For pre-planned waypoints (which are targets), allow elevations less than 0.
+            # Hornet avionics do not seem to allow MSN elevations < -328'
+            #
+            self.ufc("OSB4")
+            self.ufc("OSB3")
+            if elev < 0:
+                elev = -max(elev, -328)
+                self.ufc("0", delay_release=self.medium_delay)
+            self.enter_number(elev)
 
     def count_steps_enter_wypts(self, wps, sequences):
         count = 0
@@ -422,10 +432,10 @@ class HarrierDriver(Driver):
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
-            if num == ".":
+            if num in "0123456789":
+                self.ufc(num)
+            elif num == ".":
                 break
-
-            self.ufc(num)
 
         self.ufc("ENT", delay_release=self.medium_delay)
 
@@ -434,7 +444,8 @@ class HarrierDriver(Driver):
         if two_enters:
             if i > 0:
                 for num in str(number)[str(number).find(".") + 1:]:
-                    self.ufc(num)
+                    if num in "0123456789":
+                        self.ufc(num)
 
             self.ufc("ENT", delay_release=self.medium_delay)
 
@@ -461,6 +472,11 @@ class HarrierDriver(Driver):
 
         if elev:
             self.odu("3")
+            #
+            # TODO: Check negative elevation support, for now clamp.
+            #
+            if elev < 0:
+                elev = 0
             self.enter_number(elev)
 
     def enter_waypoints(self, wps, command_q=None, progress_q=None):
@@ -507,10 +523,8 @@ class MirageDriver(Driver):
 
     def enter_number(self, number):
         for num in str(number):
-            if num == ".":
-                continue
-
-            self.pcn(num)
+            if num in "0123456789":
+                self.pcn(num)
         self.pcn("ENTER")
 
     def enter_coords(self, latlong):
@@ -581,7 +595,8 @@ class TomcatDriver(Driver):
 
     def enter_number(self, number):
         for num in str(number):
-            self.cap(num)
+            if num in "0123456789":
+                self.cap(num)
         self.cap("ENTER")
 
     def enter_coords(self, latlong, elev):
@@ -605,6 +620,11 @@ class TomcatDriver(Driver):
 
         if elev:
             self.cap("3")
+            #
+            # TODO: Check negative elevation support, for now clamp.
+            #
+            if elev < 0:
+                elev = 0
             self.enter_number(elev)
 
     def enter_waypoints(self, wps, command_q=None, progress_q=None):
@@ -672,7 +692,7 @@ class WarthogDriver(Driver):
 
     def enter_number(self, number):
         for num in str(number):
-            if num != '.':
+            if num in "0123456789":
                 self.logger.debug(f"Entering value: " + str(num))
                 self.cdu(num)
 
@@ -700,6 +720,11 @@ class WarthogDriver(Driver):
 
     def enter_elevation(self, elev):
         self.clear_input(repeat=2)
+        #
+        # TODO: Check negative elevation support, for now clamp.
+        #
+        if elev < 0:
+            elev = 0
         self.enter_number(elev)
         self.cdu("LSK_5L")
         self.clear_input(repeat=2)
@@ -818,11 +843,16 @@ class ViperDriver(Driver):
 
     def enter_number(self, number):
         for num in str(number):
-            if num != '.':
+            if num in "0123456789":
                 self.icp_btn(num)
 
     def enter_elevation(self, elev):
+        #
+        # Clamp negative elevations.
+        # Viper avionics will not allow elevations < -1500'.
+        #
         if elev < 0:
+            elev = -max(elev, -1500)
             self.icp_btn("0")
         self.enter_number(elev)
         self.icp_btn("ENTR")
