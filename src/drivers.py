@@ -646,6 +646,8 @@ class WarthogDriver(Driver):
         self.limits = dict(WP=99)
 
     def cdu(self, num, delay_after=None, delay_release=None):
+        if num == " ":
+            num = "SPC"
         key = f"CDU_{num}"
         self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
 
@@ -654,9 +656,12 @@ class WarthogDriver(Driver):
             self.cdu("CLR")
 
     def enter_waypoint_name(self, wp):
-        result = re.sub(r'[^A-Za-z0-9]', '', wp.name)
+        result = re.sub(r'^[^A-Z]+', '', wp.name.upper())
+        result = re.sub(r'[^A-Z0-9]', '', result)
         if result == "":
             result = f"WP{wp.number}"
+        if len(result) > 12:
+            result = result[0:11]
         self.logger.debug("Waypoint name: " + result)
         self.clear_input()
         for character in result:
@@ -703,6 +708,8 @@ class WarthogDriver(Driver):
         self.cdu("WP", self.short_delay)
         self.cdu("LSK_3L", self.medium_delay)
         self.logger.debug("Number of waypoints: " + str(len(wps)))
+        ret_wp = -1
+        cur_wp = 1
         for wp in wps:
             self.bkgnd_advance(command_q, progress_q)
 
@@ -716,6 +723,15 @@ class WarthogDriver(Driver):
                 self.enter_elevation(wp.elevation)
             else:
                 self.logger.debug("Not entering elevation because it is 0")
+
+            if wp.is_set_cur:
+                ret_wp = cur_wp
+            cur_wp += 1
+
+        if ret_wp != -1:
+            self.clear_input(repeat=3)
+            self.enter_number(ret_wp)
+            self.cdu("LSK_3L")
 
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
