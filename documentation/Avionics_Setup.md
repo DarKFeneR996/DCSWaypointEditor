@@ -5,6 +5,7 @@ following state, in addition to waypoints, from the Viper's avionics can be set 
 
 - TACAN, in yardstick mode
 - MFD formats for use on the left and right MFDs in NAV, AA, AG, and DGFT master modes
+- CMDS programs for chaff and flares
 
 At present, this support is specific to the Viper. As other airframes can have some
 analogous state, we may extend the support in the future.
@@ -28,6 +29,28 @@ when configuring the jet using non-native sources.
 
 As with waypoint entry, it is important to minimize interactions with the jet while
 DCSWE is driving the cockpit switches.
+
+## Preferences
+
+There are three preferences that control the behavior of the avionics setup functionality.
+
+- *Default Avionics Setup:* Specifies the default avionics setup to use when creating new
+  profiles, the setup "DCS Default" corresponds to the default setup of the jet in DCS.
+  For airframes other than the Viper, this setting is effectively always "DCS Default".
+- *Use When Setup Unknown:* When set, this preference causes DCSWE to use the default
+  avionics setup in situations where it does not have information on the avionics setup.
+  For example, if this is set, when loading a mission from a CombatFlite export file
+  will use the specified default avionics setup. When not set, DCSWE will not change
+  avionics setup if it does not have information on the desired setup (i.e., it behaves
+  as if the default were "DCS Default")
+- *F-16 HOTAS DOGFIGHT Cycle:* Specifies the keybind for the `Cycle` command on the
+  HOTAS DGFT switch, the keybind should use at least one of `shift`, `alt`, or `ctrl`.
+  The keybind should be specified keeping in mind that DCS uses specific modifiers
+  (left or right `shift`, for example).
+
+These can be set throught the DCSWE preferences, strangely enough. Note that the
+`Cycle` hotkey will need to also be set up through the control options in DCS
+(specifically, see the HOTAS section in the "F-16C Sim" controls).
 
 ## TACAN Yardstick
 
@@ -74,8 +97,8 @@ follows,
 DCSWE allows per-mode selection of format sets to update. That is, you can update only
 only AG while leaving the other setups in their default configuration.
 
-For MFD format setup to work correct, DCSWE expects the following initial conditions in
-the Viper:
+For MFD format setup to work correctly, DCSWE expects the following initial conditions
+in the Viper:
 
 - Master mode should be NAV
 - For all master modes that are to be updated, the current format selected on the left
@@ -87,24 +110,21 @@ the Viper:
 The initial state of the Viper in DCS when the jet is either powered up from a cold
 start or running following a hot start should match these requirements.
 
-## Preferences
+## CMDS Programs
 
-There are three preferences that control the behavior of the avionics setup functionality.
+There are five CMDS programs accessible through the UFC in the Viper: MAN 1 through 4
+and the "Panic" program. Each program includes parameters for both chaff and flare
+countermeasures that specify burst quantity, burst interval, salvo quantity, and salvo
+interval to use when the corresponding program is triggered through the CMDS controls.
 
-- *Default Avionics Setup:* Specifies the default avionics setup to use when creating new
-  profiles, the setup "DCS Default" corresponds to the default setup of the jet in DCS.
-  For airframes other than the Viper, this setting is effectively always "DCS Default".
-- *Use When Setup Unknown:* When set, this preference causes DCSWE to use the default
-  avionics setup in situations where it does not have information on the avionics setup.
-  For example, if this is set, when loading a mission from a CombatFlite export file
-  will use the specified default avionics setup. When not set, DCSWE will not change
-  avionics setup if it does not have information on the desired setup (i.e., it behaves
-  as if the default were "DCS Default")
-- *F-16 HOTAS DOGFIGHT Cycle:* Specifies the keybind for the `Cycle` command on the
-  HOTAS DGFT switch, the keybind should use at least one of `shift`, `alt`, or `ctrl`.
-  The keybind should be specified keeping in mind that DCS uses specific modifiers
-  (left or right `shift`, for example).
+DCSWE allows any combination of the five programs to be changed from the default setup
+in the jet.
 
-These can be set throught the DCSWE preferences, strangely enough. Note that the
-`Cycle` hotkey will need to also be set up through the control options in DCS
-(specifically, see the HOTAS section in the "F-16C Sim" controls).
+For CMDS program setup to work correctly, DCSWE expects the following initial
+conditions in the Viper:
+
+- CMDS Chaff program 1 should be selected in the CMDS CHAFF DED page.
+- CMDS Flare program 1 should be selected in the CMDS FLARE DED page.
+
+The initial state of the Viper in DCS when the jet is either powered up from a cold
+start or running following a hot start should match these requirements.
