@@ -321,8 +321,8 @@ class AvionicsSetupGUI:
         ]
 
         layout_cmds_prog_updates = [
-            PyGUI.Text("Programs updated:", pad=((12,4),6)),
-            PyGUI.Text("None", key='ux_cmds_prog_update', size=(30,1))
+            PyGUI.Text("Programs to be updated:", pad=((12,4),6)),
+            PyGUI.Text("None", key='ux_cmds_prog_update', pad=((4,6),6), size=(30,1))
         ]
 
         layout_cmds_tab = [
