@@ -711,7 +711,7 @@ class AvionicsSetupGUI:
             program = cmds_prog_default_map[cur_prog]
         else:
             program = None
-        self.cur_cmds_prog_map[cur_prog] = [program]
+        self.cur_cmds_prog_map[cur_prog] = program
         self.set_gui_cmds_prog(program)
         self.is_dirty = True
     
@@ -845,6 +845,8 @@ class AvionicsSetupGUI:
             self.copy_f16_mfd_dbase_to_ui()
             self.copy_f16_cmds_dbase_to_ui()
             self.copy_tacan_dbase_to_ui()
+
+            event, self.values = self.window.read(timeout=0)
 
             self.update_gui_control_enable_state()
             for key_base in ['ux_nav', 'ux_gnd', 'ux_air', 'ux_dog']:
