@@ -265,10 +265,11 @@ class AvionicsSetupGUI:
             PyGUI.Combo(values=["MAN 1", "MAN 2", "MAN 3", "MAN 4", "Panic"],
                         default_value=self.cur_cmds_prog_sel, key='ux_cmds_prog_sel',
                         readonly=True, enable_events=True, size=(8,1), pad=(6,(12,6))),
-            PyGUI.Checkbox("Reconfigure", key='ux_cmds_reconfig', enable_events=True, pad=(6,(12,6)))
+            PyGUI.Checkbox("Change this program from aircraft defaults", key='ux_cmds_reconfig',
+                           enable_events=True, pad=(6,(12,6)))
         ]
 
-        layout_cmds_chaff_prog = [
+        layout_cmds_prog_params = [
             PyGUI.Frame("Chaff",
                         [[PyGUI.Text("Burst Quantity:", key='ux_cmds_c_bq_t1',
                                      justification="right", size=(12,1), pad=(8,4)),
@@ -292,10 +293,7 @@ class AvionicsSetupGUI:
                                     justification="right", size=(12,1), pad=(8,4)),
                          PyGUI.Input(default_text="", key='ux_cmds_c_si', enable_events=True,
                                      size=(6,1), pad=((0,6),4)),
-                         PyGUI.Text("(seconds)", key='ux_cmds_c_si_t2', pad=((0,8),(4,8)))]], pad=(12,6))
-        ]
-
-        layout_cmds_flare_prog = [
+                         PyGUI.Text("(seconds)", key='ux_cmds_c_si_t2', pad=((0,8),(4,8)))]], pad=(12,6)),
             PyGUI.Frame("Flare",
                         [[PyGUI.Text("Burst Quantity:", key='ux_cmds_f_bq_t1',
                                      justification="right", size=(12,1), pad=(8,4)),
@@ -322,9 +320,14 @@ class AvionicsSetupGUI:
                          PyGUI.Text("(seconds)", key='ux_cmds_f_si_t2', pad=((0,8),(4,8)))]], pad=(12,6))
         ]
 
+        layout_cmds_prog_updates = [
+            PyGUI.Text("Programs updated:", pad=((12,4),6)),
+            PyGUI.Text("None", key='ux_cmds_prog_update', size=(30,1))
+        ]
+
         layout_cmds_tab = [
             PyGUI.Tab("CMDS",
-                      [layout_cmds_sel, layout_cmds_chaff_prog, layout_cmds_flare_prog])
+                      [layout_cmds_sel, layout_cmds_prog_params, layout_cmds_prog_updates])
         ]
 
         # ---- Management Controls
@@ -418,12 +421,21 @@ class AvionicsSetupGUI:
             label_color = "#b8b8b8"
             input_color = "#b8b8b8"
             disabled = True
+        updating = None
         for cmds_type in cmds_types:
             for cmds_param in cmds_params:
                 self.window[f"ux_cmds_{cmds_type}_{cmds_param}"].update(disabled=disabled,
                                                                         text_color=input_color)
                 self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t1"].update(text_color=label_color)
                 self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t2"].update(text_color=label_color)
+        prog_list = "None"
+        for prog in [ 'MAN 1', 'MAN 2', 'MAN 3', 'MAN 4', 'Panic']:
+            if self.cur_cmds_prog_map[prog]:
+                if prog_list == "None":
+                    prog_list = prog
+                else:
+                    prog_list += f", {prog}"
+        self.window['ux_cmds_prog_update'].update(prog_list)
 
     # update the gui state based on a change to the template list
     #
