@@ -1031,6 +1031,8 @@ class WaypointEditorGUI:
             try:
                 profile_name = self.values['ux_prof_select']
                 self.load_profile(profile_name)
+                self.editor.prefs.last_profile_sel = profile_name
+                self.editor.prefs.persist_prefs()
             except DoesNotExist:
                 PyGUI.Popup(f"Profile '{profile_name}' was not found in the database.", title="Error")
                 self.load_profile()
@@ -1394,6 +1396,12 @@ class WaypointEditorGUI:
         self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_profile, self.hkey_profile_enter_in_jet)
         self.rebind_hotkey(None, self.editor.prefs.hotkey_enter_mission, self.hkey_mission_enter_in_jet)
 
+        if self.editor.prefs.last_profile_sel != "":
+            try:
+                self.load_profile(self.editor.prefs.last_profile_sel)
+            except DoesNotExist:
+                self.editor.prefs.last_profile_sel = ""
+                self.load_profile()
         self.update_for_profile_change()
 
         # the handler map includes only those controls managed by PySimpleGUI
