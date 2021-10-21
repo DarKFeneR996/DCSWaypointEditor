@@ -45,19 +45,30 @@ class DatabaseInterface:
                     # db v.2 adds "av_setup_name" column to "ProfileModel" table.
                     #
                     self.db_version = 2
+                    break
             for metadata in db.get_columns('WaypointModel'):
                 if self.db_version == 2 and metadata.name == 'is_set_cur':
                     #
                     # db v.3 adds "is_set_cur" column to "WaypointModel" table.
                     #
                     self.db_version = 3
+                    break
             for metadata in db.get_columns('AvionicsSetupModel'):
                 if self.db_version == 3 and metadata.name == 'f16_cmds_setup_p1':
                     #
                     # db v.4 adds "f16_cmds_setup_p<x>" columns to "AvionicsSetupModel" table.
                     #
                     self.db_version = 4
-
+                    break
+            for metadata in db.get_columns('AvionicsSetupModel'):
+                if self.db_version == 4 and metadata.name == 'f16_bulls_setup':
+                    #
+                    # db v.5 adds "f16_bulls_setup" and "f16_jhmcs_setup" columns to
+                    # "AvionicsSetupModel" table.
+                    #
+                    self.db_version = 5
+                    break
+            
             if self.db_version == 1:
                 avionics_setup_field = CharField(null=True, unique=False)
                 with db.atomic():
@@ -84,8 +95,17 @@ class DatabaseInterface:
                         migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p4', is_init_field),
                         migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p5', is_init_field)
                     )
-                self.db_version = 4
+            if self.db_version == 4:
+                is_init_field = CharField(null=True, default=None)
+                with db.atomic():
+                    migrate(
+                        migrator.add_column('AvionicsSetupModel', 'f16_bulls_setup', is_init_field),
+                        migrator.add_column('AvionicsSetupModel', 'f16_jhmcs_setup', is_init_field)
+                    )
+                self.db_version = 5
                 self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
+            self.logger.debug(f"Database {db_name} is v{self.db_version}")
+
 
         except Exception as e:
             self.logger.error(f"Database migration fails, {e}")

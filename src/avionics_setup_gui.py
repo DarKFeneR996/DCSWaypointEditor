@@ -48,6 +48,13 @@ mfd_default_setup_map = { 'ux_nav' : [ 20, 9, 8, 6, 7, 1 ],     # L: FCR, TEST, 
                           'ux_dog' : [ 20, 1, 1, 6, 1, 1 ]      # L: FCR, -, -; R: SMS, -, -
 }
 
+# Maps UI JHMCS declutter levels onto dbase value.
+#
+jhmcs_dc_setup_map = { "Level 1 (Show All Content)" : 0,
+                       "Level 2 (Hide Heading, Waypoint, Altitude)" : 1,
+                       "Level 3 (Show Mode Only)" : 2
+}
+
 # Suffixes for MFD format selection combo boxes in the UI. These appear in the order the
 # corresponding formats appear on the MFDs when reading from left to right.
 #
@@ -330,6 +337,40 @@ class AvionicsSetupGUI:
                       [layout_cmds_sel, layout_cmds_prog_params, layout_cmds_prog_updates])
         ]
 
+        # ---- Miscellaneous
+
+        layout_bulls = [
+            PyGUI.Frame("Bullseye",
+                        [[PyGUI.Text("FCR and HSD MFD formats display:"),
+                          PyGUI.Combo(values=[ "Steering Cue", "Ownship Bullseye" ], default_value="Steering Cue",
+                                      key='ux_bulls_select', enable_events=True, readonly=True,
+                                      size=(18,1), pad=(6,(6,8))),
+                          PyGUI.Text("", size=(40,1), pad=((6,7),6))]], pad=(12,6))
+        ]
+
+        layout_jhmcs = [
+            PyGUI.Frame("JHMCS",
+                        [[PyGUI.Checkbox("Blank HMCS when looking through HUD", key='ux_jhmcs_hud',
+                           enable_events=True, pad=(6,(6,6)))],
+                         [PyGUI.Checkbox("Blank HMCS when looking in cockpit", key='ux_jhmcs_pit',
+                           enable_events=True, pad=(6,(6,6)))],
+                         [PyGUI.Checkbox("HMCS displays RWR information", key='ux_jhmcs_rwr',
+                          enable_events=True, pad=(6,(6,6)))],
+                         [PyGUI.Text("HMCS declutter:"),
+                          PyGUI.Combo(values=[ "Level 1 (Show All Content)",
+                                               "Level 2 (Hide Heading, Waypoint, Altitude)",
+                                               "Level 3 (Show Mode Only)" ],
+                                      default_value="Level 1 (Show All Content)",
+                                      key='ux_jhmcs_dc_select', enable_events=True, readonly=True,
+                                      size=(38,1), pad=(6,(6,8))),
+                          PyGUI.Text("", size=(37,1), pad=((6,7),6))]], pad=(12,6))
+        ]
+        
+        layout_misc_tab = [
+            PyGUI.Tab("Miscellaneous",
+                      [layout_bulls, layout_jhmcs])
+        ]
+
         # ---- Management Controls
 
         layout_mgmt = [
@@ -345,7 +386,8 @@ class AvionicsSetupGUI:
         return PyGUI.Window(f"{airframe_ui} Avionics Setup",
                             [[PyGUI.TabGroup([layout_mfd_tab,
                                               layout_tacan_tab,
-                                              layout_cmds_tab], pad=(8,8))],
+                                              layout_cmds_tab,
+                                              layout_misc_tab], pad=(8,8))],
                              [layout_mgmt]],
                             enable_close_attempted_event=True, modal=True, finalize=True)
 
@@ -678,6 +720,58 @@ class AvionicsSetupGUI:
             self.copy_f16_cmds_dbase_to_ui()
 
 
+    # synchronize F-16 Miscellaneous setup UI and database
+    #
+    def copy_f16_misc_dbase_to_ui(self):
+        if self.dbase_setup is not None:
+            if self.dbase_setup.f16_bulls_setup is None:
+                self.window['ux_bulls_select'].update(set_to_index=0)
+            else:
+                self.window['ux_bulls_select'].update(set_to_index=self.dbase_setup.f16_bulls_setup)
+            if self.dbase_setup.f16_jhmcs_setup is None:
+                self.window['ux_jhmcs_hud'].update(value=True)
+                self.window['ux_jhmcs_pit'].update(value=True)
+                self.window['ux_jhmcs_rwr'].update(value=True)
+                self.window['ux_jhmcs_dc_select'].update(set_to_index=0)
+            else:
+                fields = [ int(field) for field in self.dbase_setup.f16_jhmcs_setup.split(",") ]
+                self.window['ux_jhmcs_hud'].update(value=bool(fields[0]))
+                self.window['ux_jhmcs_pit'].update(value=bool(fields[1]))
+                self.window['ux_jhmcs_rwr'].update(value=bool(fields[2]))
+                self.window['ux_jhmcs_dc_select'].update(set_to_index=fields[3])
+        else:
+            self.window['ux_bulls_select'].update(set_to_index=0)
+            self.window['ux_jhmcs_hud'].update(value=True)
+            self.window['ux_jhmcs_pit'].update(value=True)
+            self.window['ux_jhmcs_rwr'].update(value=True)
+            self.window['ux_jhmcs_dc_select'].update(set_to_index=0)
+        self.is_dirty = False
+
+    def copy_f16_misc_ui_to_dbase(self, db_save=True):
+        if self.dbase_setup is not None:
+            if self.values['ux_bulls_select'] == "Ownship Bullseye":
+                self.dbase_setup.f16_bulls_setup = "1"
+            else:
+                self.dbase_setup.f16_bulls_setup = None
+
+            hud = int(self.values['ux_jhmcs_hud'])
+            pit = int(self.values['ux_jhmcs_pit'])
+            rwr = int(self.values['ux_jhmcs_rwr'])
+            dcs = jhmcs_dc_setup_map[self.values['ux_jhmcs_dc_select']]
+            jhmcs_setup = f"{hud},{pit},{rwr},{dcs}"
+            if jhmcs_setup != "1,1,1,0":
+                self.dbase_setup.f16_jhmcs_setup = jhmcs_setup
+            else:
+                self.dbase_setup.f16_jhmcs_setup = None
+
+            if db_save:
+                try:
+                    self.dbase_setup.save()
+                except:
+                    PyGUI.PopupError("Unable to save miscellaneous information to database?")
+            self.is_dirty = False
+
+
     # gui action handlers
     #
     def do_mfd_osb_ckbx(self, event):
@@ -741,6 +835,9 @@ class AvionicsSetupGUI:
             else:
                 self.window[event].update(self.values[event][:-1])
 
+    def do_misc_dirty(self, event):
+        self.is_dirty = True
+
     def do_template_select(self, event):
         if self.is_dirty:
             action = PyGUI.PopupOKCancel(f"You have unsaved changes to the current template." +
@@ -761,6 +858,7 @@ class AvionicsSetupGUI:
 
         self.copy_f16_cmds_dbase_to_ui()
         self.copy_f16_mfd_dbase_to_ui()
+        self.copy_f16_misc_dbase_to_ui()
         self.copy_tacan_dbase_to_ui()
 
     def do_template_save(self, event):
@@ -771,6 +869,7 @@ class AvionicsSetupGUI:
                     self.dbase_setup = AvionicsSetupModel.create(name=name)
                     self.copy_f16_cmds_ui_to_dbase(db_save=False)
                     self.copy_f16_mfd_ui_to_dbase(db_save=False)
+                    self.copy_f16_misc_ui_to_dbase(db_save=False)
                     self.copy_tacan_ui_to_dbase(db_save=True)
                     self.update_gui_template_list()
                 except:
@@ -779,6 +878,7 @@ class AvionicsSetupGUI:
         else:
             self.copy_f16_cmds_ui_to_dbase(db_save=True)
             self.copy_f16_mfd_ui_to_dbase(db_save=True)
+            self.copy_f16_misc_ui_to_dbase(db_save=True)
             self.copy_tacan_ui_to_dbase(db_save=True)
 
     def do_template_delete(self, event):
@@ -794,6 +894,7 @@ class AvionicsSetupGUI:
                 self.update_gui_template_list()
                 self.copy_f16_cmds_dbase_to_ui()
                 self.copy_f16_mfd_dbase_to_ui()
+                self.copy_f16_misc_dbase_to_ui()
                 self.copy_tacan_dbase_to_ui()
             except Exception as e:
                 PyGUI.PopupError(f"Unable to delete the settings {self.cur_av_setup} from the database.")
@@ -842,8 +943,9 @@ class AvionicsSetupGUI:
         try:
             event, self.values = self.window.read(timeout=0)
 
-            self.copy_f16_mfd_dbase_to_ui()
             self.copy_f16_cmds_dbase_to_ui()
+            self.copy_f16_mfd_dbase_to_ui()
+            self.copy_f16_misc_dbase_to_ui()
             self.copy_tacan_dbase_to_ui()
 
             event, self.values = self.window.read(timeout=0)
@@ -903,6 +1005,11 @@ class AvionicsSetupGUI:
                         'ux_cmds_f_bi' : self.do_cmds_prog_field_bint,
                         'ux_cmds_f_sq' : self.do_cmds_prog_field_quantity,
                         'ux_cmds_f_si' : self.do_cmds_prog_field_sint,
+                        'ux_bulls_select' : self.do_misc_dirty,
+                        'ux_jhmcs_hud' : self.do_misc_dirty,
+                        'ux_jhmcs_pit' : self.do_misc_dirty,
+                        'ux_jhmcs_rwr' : self.do_misc_dirty,
+                        'ux_jhmcs_dc_select' : self.do_misc_dirty,
                         'ux_tmplt_select' : self.do_template_select,
                         'ux_tmplt_save' : self.do_template_save,
                         'ux_tmplt_delete' : self.do_template_delete,

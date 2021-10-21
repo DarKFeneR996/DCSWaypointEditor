@@ -86,7 +86,7 @@ class AvionicsSetupModel(BaseModel):
     #
     # CSV list of 6 integers corresponding to MFD OSBs L 14, L 13, L 12, R 14, R 13, R 12
     # (i.e., list[0] = L 14, list[1] = L 13, etc.). integers values are the OSB to push on
-    # the format select page to select desired format. None (empty list) indicates default.
+    # the format select page to select desired format. None (empty string) indicates default.
     #
     f16_mfd_setup_nav = CharField(null=True, default=None)
     f16_mfd_setup_air = CharField(null=True, default=None)
@@ -102,13 +102,30 @@ class AvionicsSetupModel(BaseModel):
     # respectively. Both <C> and <F> are of the form "<BQ>,<BI>,<SQ>,<SI>" where <BQ>
     # and <SQ> are integers on [0, 99], <BI> is a float on [0.020, 10.000] (the float
     # must have 3 digits right of decimal), and <SI> is a float on [0.50, 150.00] (the
-    # float must have 2 digits right of decimal)
+    # float must have 2 digits right of decimal). None (empty string) indicates default.
     #
     f16_cmds_setup_p1 = CharField(null=True, default=None)
     f16_cmds_setup_p2 = CharField(null=True, default=None)
     f16_cmds_setup_p3 = CharField(null=True, default=None)
     f16_cmds_setup_p4 = CharField(null=True, default=None)
     f16_cmds_setup_p5 = CharField(null=True, default=None)
+
+    # airframes supported: viper
+    #
+    # Fields added in db v.5, v1.4.0-51stVFW and later
+    #
+    # Bulls setup is a string where "0" indicates steering cue and "1" indicates ownship
+    # bullseye FCR/HSD MFD setup.
+    #
+    # JHMCS setup is a a string of the form "<HUD>,<PIT>,<RWR>,<DEC>" where <HUD>, <PIT>,
+    # and <RWR> are integers with 0 disabling and 1 enabling HUD block, cockpit block,
+    # and RWR display, respectively and <DEC> is an integer on [0,2] indicating the
+    # declutter level - 1.
+    #
+    # In both, None (empty string) indicates default setup.
+    #
+    f16_bulls_setup = CharField(null=True, default=None)
+    f16_jhmcs_setup = CharField(null=True, default=None)
 
     @staticmethod
     def list_all():

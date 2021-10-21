@@ -252,6 +252,10 @@ class Profile:
                         avs_dict['f16_cmds_setup_p4'] = setup.f16_cmds_setup_p4
                     if setup.f16_cmds_setup_p5 is not None:
                         avs_dict['f16_cmds_setup_p5'] = setup.f16_cmds_setup_p5
+                    if setup.f16_bulls_setup is not None:
+                        avs_dict['f16_bulls_setup'] = setup.f16_bulls_setup
+                    if setup.f16_jhmcs_setup is not None:
+                        avs_dict['f16_jhmcs_setup'] = setup.f16_jhmcs_setup
                 except:
                     pass
                 return avs_dict

@@ -798,6 +798,8 @@ class ViperDriver(Driver):
             key = "ICP_AG_MODE_BTN"
         elif num == "LIST":
             key = "ICP_LIST_BTN"
+        elif num == "RCL":
+            key = "ICP_RCL_BTN"
         self.push_btn(key, delay_after=delay_after, delay_release=delay_release)
 
     def icp_ded(self, num, delay_after=None, delay_release=None):
@@ -1021,20 +1023,60 @@ class ViperDriver(Driver):
         self.icp_ded("UP", delay_after=0.25)            # Increment program number
 
     def enter_cmds(self, progs, command_q=None, progress_q=None):
-        self.icp_btn('LIST')                            # Select CMDS DED page
-        self.icp_btn('7')
-        self.icp_data('SEQ', delay_after=0.35)          # BINGO --> CHAFF
+        if progs is not None:
+            self.icp_btn('LIST')                        # Select CMDS DED page
+            self.icp_btn('7')
+            self.icp_data('SEQ', delay_after=0.35)      # BINGO --> CHAFF
 
-        types = [ "Chaff", "Flare" ]
-        for type in types:
-            for prog in progs:
-                if prog is not None:
-                    prog = prog.split(";")[types.index(type)]
-                self.enter_cmds_prog(type, prog, command_q=command_q, progress_q=progress_q)
+            types = [ "Chaff", "Flare" ]
+            for type in types:
+                for prog in progs:
+                    if prog is not None:
+                        prog = prog.split(";")[types.index(type)]
+                    self.enter_cmds_prog(type, prog, command_q=command_q, progress_q=progress_q)
 
-            self.icp_data('SEQ', delay_after=0.35)      # CHAFF --> FLARE
+                self.icp_data('SEQ', delay_after=0.35)  # CHAFF --> FLARE
 
-        self.icp_data("RTN")
+            self.icp_data("RTN")
+
+    def enter_bulls(self, bulls, command_q=None, progress_q=None):
+        if bulls is not None:
+            self.icp_btn('LIST')                        # Select BULLS DED page
+            self.icp_btn('0')
+            self.icp_btn('8')
+
+            if bulls == "1":
+                self.icp_btn('0')                       # Set OWNSHIP mode
+            self.bkgnd_advance(command_q, progress_q)
+
+            self.icp_data("RTN")
+
+    def enter_jhmcs(self, jhmcs, command_q=None, progress_q=None):
+        if jhmcs is not None:
+            self.icp_btn('LIST')                        # Select HMCS DED page
+            self.icp_btn('0')
+            self.icp_btn('RCL')
+
+            fields = [ int(field) for field in jhmcs.split(",") ]
+            if bool(fields[0]) == False:
+                self.icp_btn('0', delay_after=0.15)     # Disable HUD BLNK, advance
+            else:
+                self.icp_data('DN', delay_after=0.15)   # HUD BLNK --> CKPT BLNK
+            if bool(fields[1]) == False:
+                self.icp_btn('0', delay_after=0.15)     # Disable CKPT BLNK, advance
+            else:
+                self.icp_data('DN', delay_after=0.15)   # CKPT BLNK --> DECLUTTER
+            if fields[3] > 1:
+                self.icp_btn('1', delay_after=0.15)     # Advance DECLUTTER
+            if fields[3] > 0:
+                self.icp_btn('1', delay_after=0.15)     # Advance DECLUTTER
+            self.icp_data('DN', delay_after=0.15)       # CKPT BLNK --> DECLUTTER
+            if bool(fields[2]) == False:
+                self.icp_btn('0', delay_after=0.15)     # Disable RWR, advance
+
+            self.bkgnd_advance(command_q, progress_q)
+
+            self.icp_data("RTN")
 
     def enter_all(self, profile, command_q=None, progress_q=None):
         waypoints = self.validate_waypoints(profile.all_waypoints_as_list)
@@ -1043,6 +1085,16 @@ class ViperDriver(Driver):
         avs_dict_len = len(avs_dict)
         if avs_dict is not None and avs_dict.get('f16_mfd_setup_dog') is not None:
             avs_dict_len += 1
+        if avs_dict is not None and avs_dict.get('f16_bulls_setup') is not None:
+            bulls_setup = avs_dict.get('f16_bulls_setup')
+            avs_dict_len += 1
+        else:
+            bulls_setup = None
+        if avs_dict is not None and avs_dict.get('f16_jhmcs_setup') is not None:
+            jhmcs_setup = avs_dict.get('f16_jhmcs_setup')
+            avs_dict_len += 1
+        else:
+            jhmcs_setup = None
 
         self.bkgnd_prog_step = (1.0 / (len(waypoints) + avs_dict_len + 1)) * 100.0
         self.bkgnd_prog_cur = 0
@@ -1069,8 +1121,9 @@ class ViperDriver(Driver):
                            command_q=command_q, progress_q=progress_q)
             self.enter_mfd("DGFT_M", avs_dict.get('f16_mfd_setup_air'),
                            command_q=command_q, progress_q=progress_q)
-            if cmds_progs is not None:
-                self.enter_cmds(cmds_progs, command_q=command_q, progress_q=progress_q)
+            self.enter_cmds(cmds_progs, command_q=command_q, progress_q=progress_q)
+            self.enter_bulls(bulls_setup, command_q=command_q, progress_q=progress_q)
+            self.enter_jhmcs(jhmcs_setup, command_q=command_q, progress_q=progress_q)
             self.bkgnd_advance(command_q, progress_q, is_done=True)
         except Exception as e:
             self.logger.debug(f"Exception raised: {e}")
