@@ -62,7 +62,7 @@ class CombatFliteXML:
         if e_alt is None:
             elev = 0.0
         else:
-            elev = int(float(e_alt.text))
+            elev = int(float(e_alt.text) * 3.2808399)
         return LatLon(Latitude(e_lat.text), Longitude(e_lon.text)), elev
 
     # returns True/False if the element's name matches a regex.
