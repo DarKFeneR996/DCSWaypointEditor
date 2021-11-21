@@ -33,7 +33,7 @@ from shutil import copytree, copyfile, move
 from src.logger import get_logger
 
 
-DCS_BIOS_VERSION = "0.7.42"
+DCS_BIOS_VERSION = "0.7.43"
 DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/v{}/DCS-BIOS_{}.zip"
 DCS_BIOS_EXPORT = "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])"
 
