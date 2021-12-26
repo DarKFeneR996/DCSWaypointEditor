@@ -68,6 +68,13 @@ class DatabaseInterface:
                     #
                     self.db_version = 5
                     break
+            for metadata in db.get_columns('AvionicsSetupModel'):
+                if self.db_version == 5 and metadata.name == 'f16_cmds_setup_p6':
+                    #
+                    # db v.4 adds "f16_cmds_setup_p6" column to "AvionicsSetupModel" table.
+                    #
+                    self.db_version = 6
+                    break
             
             if self.db_version == 1:
                 avionics_setup_field = CharField(null=True, unique=False)
@@ -95,6 +102,8 @@ class DatabaseInterface:
                         migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p4', is_init_field),
                         migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p5', is_init_field)
                     )
+                self.db_version = 4
+                self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
             if self.db_version == 4:
                 is_init_field = CharField(null=True, default=None)
                 with db.atomic():
@@ -103,6 +112,14 @@ class DatabaseInterface:
                         migrator.add_column('AvionicsSetupModel', 'f16_jhmcs_setup', is_init_field)
                     )
                 self.db_version = 5
+                self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
+            if self.db_version == 5:
+                is_init_field = CharField(null=True, default=None)
+                with db.atomic():
+                    migrate(
+                        migrator.add_column('AvionicsSetupModel', 'f16_cmds_setup_p6', is_init_field),
+                    )
+                self.db_version = 6
                 self.logger.debug(f"Migrated database {db_name} to v{self.db_version}")
             self.logger.debug(f"Database {db_name} is v{self.db_version}")
 

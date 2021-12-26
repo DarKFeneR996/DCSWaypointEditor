@@ -70,11 +70,12 @@ cmds_params = [ 'bq', 'bi', 'sq', 'si' ]
 #
 # These are "<chaff> ; <flare>", where <chaff> or <flare> is "<BQ>,<BI>,<SQ>,<SI>"
 #
-cmds_prog_default_map = { 'MAN 1' : "1,0.020,10,1.00;1,0.020,10,1.00",
-                          'MAN 2' : "1,0.020,10,0.50;1,0.020,10,0.50",
-                          'MAN 3' : "2,0.100,5,1.00;2,0.100,5,1.00",
-                          'MAN 4' : "2,0.100,5,0.50;2,0.100,5,0.50",
-                          'Panic' : "2,0.050,20,0.75;2,0.050,20,0.75"
+cmds_prog_default_map = { 'MAN 1'  : "1,0.020,10,1.00;1,0.020,10,1.00",
+                          'MAN 2'  : "1,0.020,10,0.50;1,0.020,10,0.50",
+                          'MAN 3'  : "2,0.100,5,1.00;2,0.100,5,1.00",
+                          'MAN 4'  : "2,0.100,5,0.50;2,0.100,5,0.50",
+                          'Panic'  : "2,0.050,20,0.75;2,0.050,20,0.75",
+                          'Bypass' : "1,0.020,1,0.50;1,0.020,1,0.50"
 }
 
 class AvionicsSetupGUI:
@@ -270,7 +271,7 @@ class AvionicsSetupGUI:
 
         layout_cmds_sel = [
             PyGUI.Text("Program:", pad=((12,4),(12,6))),
-            PyGUI.Combo(values=["MAN 1", "MAN 2", "MAN 3", "MAN 4", "Panic"],
+            PyGUI.Combo(values=["MAN 1", "MAN 2", "MAN 3", "MAN 4", "Panic", "Bypass"],
                         default_value=self.cur_cmds_prog_sel, key='ux_cmds_prog_sel',
                         readonly=True, enable_events=True, size=(8,1), pad=(6,(12,6))),
             PyGUI.Checkbox("Change this program from aircraft defaults", key='ux_cmds_reconfig',
@@ -472,7 +473,7 @@ class AvionicsSetupGUI:
                 self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t1"].update(text_color=label_color)
                 self.window[f"ux_cmds_{cmds_type}_{cmds_param}_t2"].update(text_color=label_color)
         prog_list = "None"
-        for prog in [ 'MAN 1', 'MAN 2', 'MAN 3', 'MAN 4', 'Panic']:
+        for prog in [ 'MAN 1', 'MAN 2', 'MAN 3', 'MAN 4', 'Panic', 'Bypass']:
             if self.cur_cmds_prog_map[prog]:
                 if prog_list == "None":
                     prog_list = prog
@@ -694,12 +695,14 @@ class AvionicsSetupGUI:
             self.cur_cmds_prog_map['MAN 3'] = self.dbase_setup.f16_cmds_setup_p3
             self.cur_cmds_prog_map['MAN 4'] = self.dbase_setup.f16_cmds_setup_p4
             self.cur_cmds_prog_map['Panic'] = self.dbase_setup.f16_cmds_setup_p5
+            self.cur_cmds_prog_map['Bypass'] = self.dbase_setup.f16_cmds_setup_p6
         else:
             self.cur_cmds_prog_map['MAN 1'] = None
             self.cur_cmds_prog_map['MAN 2'] = None
             self.cur_cmds_prog_map['MAN 3'] = None
             self.cur_cmds_prog_map['MAN 4'] = None
             self.cur_cmds_prog_map['Panic'] = None
+            self.cur_cmds_prog_map['Bypass'] = None
         self.set_gui_cmds_prog(self.cur_cmds_prog_map[cur_prog])
         self.is_dirty = False
     
@@ -713,6 +716,7 @@ class AvionicsSetupGUI:
             self.dbase_setup.f16_cmds_setup_p3 = self.cur_cmds_prog_map['MAN 3']
             self.dbase_setup.f16_cmds_setup_p4 = self.cur_cmds_prog_map['MAN 4']
             self.dbase_setup.f16_cmds_setup_p5 = self.cur_cmds_prog_map['Panic']
+            self.dbase_setup.f16_cmds_setup_p6 = self.cur_cmds_prog_map['Bypass']
             if db_save:
                 try:
                     self.dbase_setup.save()

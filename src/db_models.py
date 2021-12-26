@@ -127,6 +127,15 @@ class AvionicsSetupModel(BaseModel):
     f16_bulls_setup = CharField(null=True, default=None)
     f16_jhmcs_setup = CharField(null=True, default=None)
 
+    # airframes supported: viper
+    #
+    # Fields added in db v.6, v1.5.0-51stVFW and later
+    #
+    # Format of this field is identical to the f16_cmds_setup_p? fields from db v.4
+    # (see above).
+    #
+    f16_cmds_setup_p6 = CharField(null=True, default=None)
+
     @staticmethod
     def list_all():
         return sorted(list(AvionicsSetupModel.select()), key=lambda setup: setup.name)

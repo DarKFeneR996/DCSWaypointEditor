@@ -1103,9 +1103,10 @@ class ViperDriver(Driver):
                        avs_dict.get('f16_cmds_setup_p2'),
                        avs_dict.get('f16_cmds_setup_p3'),
                        avs_dict.get('f16_cmds_setup_p4'),
-                       avs_dict.get('f16_cmds_setup_p5')
+                       avs_dict.get('f16_cmds_setup_p5'),
+                       avs_dict.get('f16_cmds_setup_p6')
         ]
-        if cmds_progs.count(None) == 5:
+        if cmds_progs.count(None) == 6:
             cmds_progs = None
 
         try:
