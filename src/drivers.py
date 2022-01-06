@@ -459,16 +459,12 @@ class HarrierDriver(Driver):
             self.ufc("8", delay_release=self.medium_delay)
         self.enter_number(lat_str)
 
-        self.odu("2")
-
         if latlong.lon.degree > 0:
             self.ufc("6", delay_release=self.medium_delay)
         else:
             self.ufc("4", delay_release=self.medium_delay)
 
         self.enter_number(lon_str)
-
-        self.odu("2")
 
         if elev:
             self.odu("3")
