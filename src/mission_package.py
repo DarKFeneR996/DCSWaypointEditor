@@ -62,7 +62,7 @@ def dcswe_install_mpack(mpack_path, mpack_name, airframe, callsign, dcs_path):
     except:
         raise ValueError("Unable to find per-airframe kneeboard path in DCS directory.")
     if not os.path.exists(kb_path):
-        raise ("Unable to find per-airframe kneeboard path in DCS directory.")
+        raise ValueError("Unable to find per-airframe kneeboard path in DCS directory.")
     logger.info(f"Kneeboards path found at: {kb_path}")
 
     try:
@@ -98,7 +98,7 @@ def dcswe_install_mpack(mpack_path, mpack_name, airframe, callsign, dcs_path):
                 with open(mission_path, "rb") as f:
                     mission_data = f.read()
                 mission_str = mission_data.decode("UTF-8")
-                if CombatFliteXML.is_xml(str):
+                if CombatFliteXML.is_xml(mission_str):
                     profile = CombatFliteXML.profile_from_string(mission_str, callsign, "", airframe)
                 else:
                     profile = Profile.from_string(mission_str)
