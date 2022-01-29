@@ -245,7 +245,7 @@ class CombatFliteXML:
                     if pos_wypt.almost_equal(pos_refp, e=0.00001):
                         name = CombatFliteXML.elem_get_name(elem_r)
                         dmpi_stn = CombatFliteXML.find_matching_ship(flight, ship, name)
-                        if ship is not None:
+                        if dmpi_stn is not None:
                             if callsign == "":
                                 name = CombatFliteXML.elem_get_name(elem_w)
                             msn = MSN(name=name, station=dmpi_stn,
