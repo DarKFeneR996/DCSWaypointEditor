@@ -105,19 +105,25 @@ def dcs_f10_capture_map_coords(x_start=101, x_width=269, y_start=5, y_height=27,
             if is_debug:
                 inverted.save(debug_dirname + "/lat_lon_image_inverted.png")
 
-            captured_map_coords = pytesseract.image_to_string(inverted).replace("\x0A\x0C", "")
+            captured_map_coords = pytesseract.image_to_string(inverted)
+            captured_map_coords = captured_map_coords.replace("\x0a", "").replace("\x0d", "")
 
-            logger.info(f"Raw captured text: {captured_map_coords}")
+            logger.info(f"Raw captured text: '{captured_map_coords}'")
 
-            # HACK: tesseract sometimes recognizes "E" as "£" and "J" as ")", "]", or "}".
-            # HACK: since "£", ")", "]", and "}" symbols cannot appear in the coordinate
-            # HACK: formats that DCS uses, we'll assume any occurance of "£", ")", and "]"
-            # HACK: are something else and fix up the string here.
+            # HACK: tesseract sometimes recognizes "E" as "£", "S" as "$" or "9", and "J" as ")",
+            # HACK: "]", or "}". since "£", "$", ")", "]", and "}" symbols cannot appear in the
+            # HACK: coordinate formats that DCS uses, we'll assume any occurance of "£", "$",
+            # HACK: ")", and "]" are something else and fix up the string here. "9" is changed to
+            # HACK: "S" if it is the first character in the string as no valid coordinate string
+            # HACK: can start with "9"
             #
+            if captured_map_coords[0] == '9':
+                captured_map_coords = captured_map_coords.replace("9", "S", 1)
             captured_map_coords = captured_map_coords.replace(")", "J")
             captured_map_coords = captured_map_coords.replace("]", "J")
             captured_map_coords = captured_map_coords.replace("}", "J")
             captured_map_coords = captured_map_coords.replace("£", "E")
+            captured_map_coords = captured_map_coords.replace("$", "S")
             return captured_map_coords.upper()
 
     logger.debug("Raise exception (could not find the map anywhere i guess?)")
@@ -209,7 +215,7 @@ def dcs_f10_parse_map_coords_string(coords_string, tomcat_mode=False):
     # 
     # Not sure how to convert this yet, just fall through with an error.
 
-    logger.info("Unable to parse captured text '{coords_string}'")
+    logger.info(f"Unable to parse captured text '{coords_string}'")
     return None, None
 
     '''
